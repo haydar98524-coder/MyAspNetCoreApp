@@ -1,0 +1,170 @@
+@model Teacher
+@{
+    Layout = User.Identity?.IsAuthenticated == true ? "_Layout" : "_PublicLayout";
+    ViewData["Title"] = L.Pick(Model.FullNameAr, Model.FullNameEn);
+    var others = ViewBag.OtherTeachers as List<Teacher> ?? new();
+    var visibleRatings = Model.Ratings.Where(r => r.IsVisible).OrderByDescending(r => r.CreatedAt).ToList();
+}
+<section class="bg-gradient-to-br from-brand-950 via-brand-900 to-brand-800 py-10 text-white">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="flex flex-col items-center gap-6 sm:flex-row sm:items-end">
+            @if (!string.IsNullOrEmpty(Model.PhotoPath))
+            {
+                <img src="@Model.PhotoPath" alt="" class="h-28 w-28 rounded-3xl object-cover ring-4 ring-white/20" />
+            }
+            else { <span class="avatar h-28 w-28 rounded-3xl bg-gold-400 text-3xl text-brand-950">@L.Initials(Model.FullNameAr)</span> }
+            <div class="flex-1 text-center sm:text-start">
+                <div class="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                    <span class="rounded-full bg-gold-400/15 px-3 py-1 text-[11px] font-bold text-gold-300 ring-1 ring-inset ring-gold-400/30">@Model.Specialization</span>
+                    <span class="rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-brand-100 ring-1 ring-inset ring-white/15">@L.E(Model.TeachingMode)</span>
+                </div>
+                <h1 class="mt-2 text-3xl font-extrabold">@L.Pick(Model.FullNameAr, Model.FullNameEn)</h1>
+                <p class="mt-1 text-sm text-brand-100/80">@Model.Certificate · @Model.University · @L.Num(Model.ExperienceYears) @L.T("years of experience", "سنوات خبرة")</p>
+                <div class="mt-3 flex flex-wrap items-center justify-center gap-3 sm:justify-start">
+                    <span class="inline-flex items-center gap-1 text-gold-300">
+                        @for (var i = 1; i <= 5; i++)
+                        {
+                            <svg class="h-4 w-4 @(i <= Math.Round(Model.RatingAvg) ? "" : "opacity-30")"><use href="#i-star-fill"/></svg>
+                        }
+                        <span class="ms-1 text-sm font-bold text-white">@Model.RatingAvg.ToString("0.0")</span>
+                        <span class="text-xs text-brand-200">(@Model.RatingCount @L.T("ratings", "تقييم"))</span>
+                    </span>
+                    <span class="flex items-center gap-1 text-xs text-brand-100/70"><svg class="h-3.5 w-3.5"><use href="#i-pin"/></svg>@(string.IsNullOrEmpty(Model.Areas) ? L.T("Kirkuk", "كركوك") : Model.Areas)</span>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <a asp-action="Directory" class="btn btn-outline !border-white/20 !bg-white/5 !text-white btn-sm">@L.T("All teachers", "كل المدرسين")</a>
+                <a asp-controller="PrivateLessons" asp-action="Request" asp-route-teacherId="@Model.Id" class="btn btn-gold btn-sm"><svg class="h-4 w-4"><use href="#i-book"/></svg>@L.T("Request a lesson", "طلب درس")</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div class="grid gap-6 lg:grid-cols-3">
+        <div class="space-y-5 lg:col-span-2">
+            <div class="card card-pad">
+                <h2 class="section-title mb-3">@L.T("About", "نبذة")</h2>
+                <p class="text-sm leading-8 text-ink-600">@(string.IsNullOrWhiteSpace(L.Pick(Model.BioAr, Model.BioEn)) ? L.T("This teacher has not added a biography yet.", "لم يضف المدرّس نبذة بعد.") : L.Pick(Model.BioAr, Model.BioEn))</p>
+                <div class="mt-4 grid gap-3 border-t border-sand-200 pt-4 sm:grid-cols-3">
+                    <div class="rounded-xl bg-sand-50 p-3 text-center"><p class="text-lg font-extrabold text-brand-950">@L.Num(Model.ExperienceYears)+</p><p class="text-[11px] text-ink-500">@L.T("Years teaching", "سنوات تدريس")</p></div>
+                    <div class="rounded-xl bg-sand-50 p-3 text-center"><p class="text-lg font-extrabold text-brand-950">@L.Num(Model.Grades.Count)</p><p class="text-[11px] text-ink-500">@L.T("Grades covered", "صفوف يدرّسها")</p></div>
+                    <div class="rounded-xl bg-sand-50 p-3 text-center"><p class="text-lg font-extrabold text-brand-950">@L.Num(Model.Courses.Count(c => c.Status == CourseStatus.Active))</p><p class="text-[11px] text-ink-500">@L.T("Active courses", "دورات نشطة")</p></div>
+                </div>
+            </div>
+
+            <div class="grid gap-5 sm:grid-cols-2">
+                <div class="card card-pad">
+                    <h2 class="section-title mb-3">@L.T("Subjects", "المواد")</h2>
+                    <div class="flex flex-wrap gap-1.5">
+                        @foreach (var s in Model.Subjects)
+                        {
+                            <span class="chip !bg-brand-50 !text-brand-800 !ring-brand-200">@L.Pick(s.Subject.NameAr, s.Subject.NameEn)</span>
+                        }
+                        @if (Model.Subjects.Count == 0) { <p class="text-xs text-ink-400">—</p> }
+                    </div>
+                </div>
+                <div class="card card-pad">
+                    <h2 class="section-title mb-3">@L.T("Grades", "الصفوف")</h2>
+                    <div class="flex flex-wrap gap-1.5">
+                        @foreach (var g in Model.Grades)
+                        {
+                            <span class="chip">@L.Pick(g.Grade.NameAr, g.Grade.NameEn)</span>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="card card-pad">
+                <h2 class="section-title mb-3">@L.T("Weekly availability", "الأوقات الأسبوعية")</h2>
+                <div class="grid gap-2 sm:grid-cols-2">
+                    @foreach (var a in Model.Availabilities.OrderBy(a => a.DayOfWeek))
+                    {
+                        <div class="flex items-center justify-between rounded-xl border border-sand-200 px-3 py-2 text-xs">
+                            <span class="font-bold text-ink-800">@L.Day(a.DayOfWeek)</span>
+                            <span class="text-ink-500" dir="ltr">@a.StartTime – @a.EndTime</span>
+                        </div>
+                    }
+                    @if (Model.Availabilities.Count == 0) { <p class="text-xs text-ink-400">@L.T("Contact the institute to arrange a time.", "اتصل بالمعهد لتحديد الوقت.")</p> }
+                </div>
+            </div>
+
+            @if (Model.Courses.Any(c => c.Status == CourseStatus.Active))
+            {
+                <div class="card card-pad">
+                    <h2 class="section-title mb-3">@L.T("Courses taught", "الدورات التي يدرّسها")</h2>
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        @foreach (var c in Model.Courses.Where(c => c.Status == CourseStatus.Active).Take(6))
+                        {
+                            <a asp-controller="Courses" asp-action="Details" asp-route-id="@c.Id" class="rounded-xl border border-sand-200 p-3 transition hover:border-brand-300 hover:bg-brand-50/40">
+                                <p class="text-sm font-bold text-brand-950">@L.Pick(c.NameAr, c.NameEn)</p>
+                                <p class="mt-0.5 text-[11px] text-ink-500">@L.Pick(c.Grade.NameAr, c.Grade.NameEn) · @L.Pick(c.Subject.NameAr, c.Subject.NameEn)</p>
+                                <p class="mt-2 text-xs font-bold text-brand-700">@L.Money(c.Fee)</p>
+                            </a>
+                        }
+                    </div>
+                </div>
+            }
+
+            <div class="card card-pad">
+                <div class="flex items-center justify-between">
+                    <h2 class="section-title">@L.T("Guardian ratings", "تقييمات أولياء الأمور")</h2>
+                    <span class="text-sm font-extrabold text-gold-700">@Model.RatingAvg.ToString("0.0") / 5</span>
+                </div>
+                <div class="mt-3 space-y-3">
+                    @if (visibleRatings.Count == 0)
+                    {
+                        <p class="text-xs text-ink-400">@L.T("No ratings yet.", "لا توجد تقييمات بعد.")</p>
+                    }
+                    @foreach (var r in visibleRatings.Take(6))
+                    {
+                        <div class="rounded-xl border border-sand-200 p-3">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <span class="avatar h-7 w-7 text-[10px]">@L.Initials(r.RatedByName)</span>
+                                    <span class="text-xs font-bold text-ink-800">@r.RatedByName</span>
+                                </div>
+                                <span class="inline-flex items-center gap-1 text-xs font-bold text-gold-700"><svg class="h-3 w-3"><use href="#i-star-fill"/></svg>@r.Average</span>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(r.Comment)) { <p class="mt-2 text-xs leading-6 text-ink-500">@r.Comment</p> }
+                            <p class="mt-1 text-[10px] text-ink-400">@L.DateShort(r.CreatedAt)</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-5">
+            <div class="card card-pad">
+                <h2 class="section-title mb-3">@L.T("Request this teacher", "اطلب هذا المدرّس")</h2>
+                <p class="text-xs leading-6 text-ink-500">@L.T("Submit a private lesson request and the institute will confirm scheduling and fees.", "أرسل طلب درس خصوصي وسيؤكد المعهد الجدول والرسوم.")</p>
+                <a asp-controller="PrivateLessons" asp-action="Request" asp-route-teacherId="@Model.Id" class="btn btn-gold mt-4 w-full"><svg class="h-4 w-4"><use href="#i-book"/></svg>@L.T("Start a request", "ابدأ الطلب")</a>
+                <a asp-controller="Home" asp-action="Index" class="btn btn-ghost mt-2 w-full">@L.T("Back to home", "العودة للرئيسية")</a>
+            </div>
+
+            @if (others.Count > 0)
+            {
+                <div class="card card-pad">
+                    <h2 class="section-title mb-3">@L.T("Other teachers", "مدرسون آخرون")</h2>
+                    <div class="space-y-3">
+                        @foreach (var t in others)
+                        {
+                            <a asp-action="Profile" asp-route-id="@t.Id" class="flex items-center gap-3 rounded-xl border border-sand-200 p-2 transition hover:border-brand-300">
+                                @if (!string.IsNullOrEmpty(t.PhotoPath))
+                                {
+                                    <img src="@t.PhotoPath" alt="" class="h-9 w-9 rounded-full object-cover" />
+                                }
+                                else { <span class="avatar h-9 w-9 text-xs">@L.Initials(t.FullNameAr)</span> }
+                                <div class="min-w-0 flex-1">
+                                    <p class="truncate text-xs font-bold text-ink-900">@L.Pick(t.FullNameAr, t.FullNameEn)</p>
+                                    <p class="text-[10px] text-ink-500">@t.Specialization</p>
+                                </div>
+                                <span class="inline-flex items-center gap-0.5 text-[10px] font-bold text-gold-700"><svg class="h-3 w-3"><use href="#i-star-fill"/></svg>@t.RatingAvg.ToString("0.0")</span>
+                            </a>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>

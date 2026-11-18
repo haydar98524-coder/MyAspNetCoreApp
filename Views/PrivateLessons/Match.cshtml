@@ -1,0 +1,122 @@
+@model List<TeacherMatch>
+@{
+    ViewData["Title"] = L.T("Match a teacher", "مطابقة مدرّس");
+    var request = ViewBag.Request as PrivateLessonRequest;
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Suggested teachers", "المدرسون المقترحون")</h1>
+        <p class="page-sub">
+            @if (request is not null)
+            {
+                <span>@L.Pick(request.Subject.NameAr, request.Subject.NameEn) · @L.Pick(request.Grade.NameAr, request.Grade.NameEn) · @L.E(request.Mode) · @request.Area</span>
+            }
+            else
+            {
+                <span>@L.T("Ranked by subject, grade, area and rating.", "مرتبون حسب المادة والصف والمنطقة والتقييم.")</span>
+            }
+        </p>
+    </div>
+    @if (request is not null)
+    {
+        <a asp-action="Details" asp-route-id="@request.Id" class="btn btn-outline btn-sm"><svg class="h-4 w-4 flip-x"><use href="#i-arrow-left"/></svg>@L.T("Back to request", "العودة للطلب")</a>
+    }
+</div>
+
+@if (request is not null)
+{
+    <div class="card card-pad mb-5">
+        <div class="flex flex-wrap items-center gap-x-8 gap-y-3 text-xs">
+            <div><span class="text-ink-500">@L.T("Guardian", "ولي الأمر")</span><p class="mt-0.5 font-bold text-ink-900">@request.GuardianName</p></div>
+            <div><span class="text-ink-500">@L.T("Preferred schedule", "الموعد المفضل")</span><p class="mt-0.5 font-bold text-ink-900">@request.DaysPerWeek @L.T("days/week", "أيام/أسبوع") · <span dir="ltr">@request.PreferredTime</span></p></div>
+            <div><span class="text-ink-500">@L.T("Offered fee", "الأجر المعروض")</span><p class="mt-0.5 font-bold text-brand-900">@L.Money(request.OfferedFee)</p></div>
+            @if (request.PreferredTeacher is not null)
+            {
+                <div><span class="text-ink-500">@L.T("Preferred teacher", "المدرّس المفضّل")</span><p class="mt-0.5 font-bold text-ink-900">@L.Pick(request.PreferredTeacher.FullNameAr, request.PreferredTeacher.FullNameEn)</p></div>
+            }
+            <div class="ms-auto"><span class="badge badge-gold">@(Model.Count == 1 ? L.T("1 match", "مطابقة واحدة") : $"{Model.Count} {L.T("matches", "مطابقات")}")</span></div>
+        </div>
+    </div>
+}
+
+@if (Model.Count == 0)
+{
+    <div class="card">
+        <div class="empty">
+            <svg class="h-10 w-10 text-sand-300"><use href="#i-user"/></svg>
+            <p>@L.T("No active teacher matches this subject, grade and mode.", "لا يوجد مدرّس نشط يطابق هذه المادة والصف والنمط.")</p>
+            <a asp-controller="Teachers" asp-action="Index" class="btn btn-outline btn-sm mt-2">@L.T("Review teacher profiles", "مراجعة ملفات المدرسين")</a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        @foreach (var match in Model)
+        {
+            var teacher = match.Teacher;
+            <div class="card card-pad flex flex-col">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex min-w-0 items-center gap-3">
+                        <span class="avatar h-12 w-12 text-sm">@L.Initials(L.Pick(teacher.FullNameAr, teacher.FullNameEn))</span>
+                        <div class="min-w-0">
+                            <p class="truncate text-sm font-bold text-ink-900">@L.Pick(teacher.FullNameAr, teacher.FullNameEn)</p>
+                            <p class="truncate text-[11px] text-ink-500">@teacher.Specialization</p>
+                            <p class="mt-0.5 text-[11px] font-semibold text-gold-700">
+                                ★ @teacher.RatingAvg.ToString("0.0", CultureInfo.InvariantCulture)
+                                <span class="font-normal text-ink-400">(@L.Num(teacher.RatingCount) @L.T("ratings", "تقييم"))</span>
+                            </p>
+                        </div>
+                    </div>
+                    <span class="badge badge-blue shrink-0">@L.Num(match.Score) @L.T("pts", "نقطة")</span>
+                </div>
+
+                <div class="mt-3 flex flex-wrap gap-1.5">
+                    <span class="badge @(match.SubjectMatch ? "badge-green" : "badge-gray")">@L.T("Subject", "المادة")</span>
+                    <span class="badge @(match.GradeMatch ? "badge-green" : "badge-gray")">@L.T("Grade", "الصف")</span>
+                    <span class="badge @(match.AreaMatch ? "badge-green" : "badge-gray")">@L.T("Area", "المنطقة")</span>
+                    <span class="badge badge-violet">@L.E(teacher.TeachingMode)</span>
+                </div>
+
+                @if (teacher.Subjects.Count > 0)
+                {
+                    <p class="mt-3 text-[11px] text-ink-600">
+                        <span class="font-semibold text-ink-800">@L.T("Subjects:", "المواد:")</span>
+                        @string.Join("، ", teacher.Subjects.Take(4).Select(s => L.Pick(s.Subject.NameAr, s.Subject.NameEn)))
+                        @if (teacher.Subjects.Count > 4)
+                        {
+                            <span> +@(teacher.Subjects.Count - 4)</span>
+                        }
+                    </p>
+                }
+                @if (teacher.Grades.Count > 0)
+                {
+                    <p class="mt-1 text-[11px] text-ink-600">
+                        <span class="font-semibold text-ink-800">@L.T("Grades:", "الصفوف:")</span>
+                        @string.Join("، ", teacher.Grades.Take(4).Select(g => L.Pick(g.Grade.NameAr, g.Grade.NameEn)))
+                        @if (teacher.Grades.Count > 4)
+                        {
+                            <span> +@(teacher.Grades.Count - 4)</span>
+                        }
+                    </p>
+                }
+                <p class="mt-1 text-[11px] text-ink-600"><span class="font-semibold text-ink-800">@L.T("Areas:", "المناطق:")</span> @(string.IsNullOrWhiteSpace(teacher.Areas) ? L.T("Not specified", "غير محددة") : teacher.Areas)</p>
+                <p class="mt-1 text-[11px] text-ink-600"><span class="font-semibold text-ink-800">@L.T("Experience:", "الخبرة:")</span> @L.Num(teacher.ExperienceYears) @L.T("years", "سنة") · @teacher.Certificate</p>
+
+                @if (!string.IsNullOrWhiteSpace(teacher.BioAr) || !string.IsNullOrWhiteSpace(teacher.BioEn))
+                {
+                    <p class="mt-2 line-clamp-2 text-[11px] text-ink-500">@L.Pick(teacher.BioAr, teacher.BioEn)</p>
+                }
+
+                <form asp-action="Assign" asp-route-id="@(request?.Id ?? 0)" method="post" class="mt-auto pt-4">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="teacherId" value="@teacher.Id" />
+                    <input name="adminNotes" class="input !py-1.5 !text-xs" placeholder="@L.T("Optional note for the file", "ملاحظة اختيارية للسجل")" />
+                    <button class="btn btn-primary mt-2 w-full btn-sm">
+                        <svg class="h-4 w-4"><use href="#i-check"/></svg>@L.T("Assign this teacher", "إسناد هذا المدرّس")
+                    </button>
+                </form>
+            </div>
+        }
+    </div>
+}

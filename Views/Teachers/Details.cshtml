@@ -1,0 +1,187 @@
+@model Teacher
+@{
+    ViewData["Title"] = Model.FullNameAr;
+    var earnings = ViewBag.Earnings as List<TeacherEarning> ?? new();
+    var canEdit = User.IsInRole(Roles.Administrator) || User.IsInRole(Roles.Manager) || User.IsInRole(Roles.Hr);
+    var canPay = User.IsInRole(Roles.Administrator) || User.IsInRole(Roles.Manager) || User.IsInRole(Roles.Accountant);
+}
+<div class="page-head">
+    <div>
+        <div class="mb-1 flex items-center gap-2 text-xs text-ink-500">
+            <a asp-action="Index" class="hover:text-brand-700">@L.T("Teachers", "المدرسون")</a>
+            <svg class="h-3 w-3 flip-x"><use href="#i-chevron-down"/></svg>
+            <span>@Model.Code</span>
+        </div>
+        <h1 class="page-title">@L.Pick(Model.FullNameAr, Model.FullNameEn)</h1>
+        <p class="page-sub">@Model.Specialization · @Model.Certificate · @L.Num(Model.ExperienceYears) @L.T("years experience", "سنوات خبرة")</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <a asp-action="Profile" asp-route-id="@Model.Id" class="btn btn-outline btn-sm"><svg class="h-4 w-4"><use href="#i-eye"/></svg>@L.T("Public profile", "الملف العام")</a>
+        @if (canEdit)
+        {
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-edit"/></svg>@L.T("Edit", "تعديل")</a>
+        }
+    </div>
+</div>
+
+<div class="grid gap-5 lg:grid-cols-3">
+    <div class="space-y-4">
+        <div class="card card-pad text-center">
+            @if (!string.IsNullOrEmpty(Model.PhotoPath))
+            {
+                <img src="@Model.PhotoPath" alt="" class="mx-auto h-24 w-24 rounded-full object-cover shadow-card" />
+            }
+            else { <span class="avatar mx-auto h-24 w-24 text-2xl">@L.Initials(Model.FullNameAr)</span> }
+            <h2 class="mt-3 text-lg font-extrabold text-brand-950">@L.Pick(Model.FullNameAr, Model.FullNameEn)</h2>
+            <p class="text-xs text-ink-500">@Model.Code</p>
+            <div class="mt-2 flex items-center justify-center gap-1">
+                @for (var i = 1; i <= 5; i++)
+                {
+                    <svg class="h-4 w-4 @(i <= Math.Round(Model.RatingAvg) ? "text-gold-500" : "text-sand-300")"><use href="#i-star-fill"/></svg>
+                }
+                <span class="ms-1 text-xs font-bold text-ink-700">@Model.RatingAvg.ToString("0.0")</span>
+                <span class="text-[10px] text-ink-400">(@Model.RatingCount)</span>
+            </div>
+            <div class="mt-3 flex flex-wrap justify-center gap-1.5">
+                <span class="badge @(Model.IsActive ? "badge-green" : "badge-gray")">@(Model.IsActive ? L.T("Active", "نشط") : L.T("Inactive", "غير نشط"))</span>
+                <span class="badge @(Model.IsPublic ? "badge-blue" : "badge-gray")">@(Model.IsPublic ? L.T("Public", "عام") : L.T("Private", "خاص"))</span>
+                <span class="badge badge-violet">@L.E(Model.TeachingMode)</span>
+            </div>
+            <dl class="mt-5 space-y-2 border-t border-sand-200 pt-4 text-start text-sm">
+                <div class="flex justify-between gap-2"><dt class="text-ink-500">@L.T("Phone", "الهاتف")</dt><dd class="font-semibold" dir="ltr">@Model.Phone</dd></div>
+                <div class="flex justify-between gap-2"><dt class="text-ink-500">@L.T("Email", "البريد")</dt><dd class="max-w-44 truncate font-semibold" dir="ltr">@(Model.Email ?? "—")</dd></div>
+                <div class="flex justify-between gap-2"><dt class="text-ink-500">@L.T("University", "الجامعة")</dt><dd class="font-semibold">@Model.University</dd></div>
+                <div class="flex justify-between gap-2"><dt class="text-ink-500">@L.T("Graduated", "التخرج")</dt><dd class="font-semibold">@Model.GraduationYear</dd></div>
+                <div class="flex justify-between gap-2"><dt class="text-ink-500">@L.T("Hired", "التعيين")</dt><dd class="font-semibold">@L.DateShort(Model.HireDate)</dd></div>
+                <div class="flex justify-between gap-2"><dt class="text-ink-500">@L.T("Salary", "الراتب")</dt><dd class="font-semibold">@(Model.FixedMonthlySalary.HasValue ? L.Money(Model.FixedMonthlySalary.Value) : "—")</dd></div>
+                <div class="flex justify-between gap-2"><dt class="text-ink-500">@L.T("Areas", "المناطق")</dt><dd class="max-w-44 text-end font-semibold">@(string.IsNullOrEmpty(Model.Areas) ? "—" : Model.Areas)</dd></div>
+            </dl>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+            <div class="stat-card !p-4"><p class="text-[11px] text-ink-500">@L.T("Lifetime earnings", "إجمالي المستحقات")</p><p class="mt-1 text-sm font-extrabold text-brand-950">@L.Money((long)ViewBag.Earned)</p></div>
+            <div class="stat-card !p-4"><p class="text-[11px] text-ink-500">@L.T("Unpaid", "غير مدفوع")</p><p class="mt-1 text-sm font-extrabold text-amber-700">@L.Money((long)ViewBag.Unpaid)</p></div>
+            <div class="stat-card !p-4"><p class="text-[11px] text-ink-500">@L.T("Active students", "الطلاب النشطون")</p><p class="mt-1 text-sm font-extrabold text-brand-950">@L.Num((int)ViewBag.StudentCount)</p></div>
+            <div class="stat-card !p-4"><p class="text-[11px] text-ink-500">@L.T("Courses", "الدورات")</p><p class="mt-1 text-sm font-extrabold text-brand-950">@L.Num(Model.Courses.Count)</p></div>
+        </div>
+    </div>
+
+    <div class="space-y-5 lg:col-span-2">
+        <div class="grid gap-5 md:grid-cols-2">
+            <div class="card card-pad">
+                <h2 class="section-title mb-3">@L.T("Subjects & grades", "المواد والصفوف")</h2>
+                <div class="flex flex-wrap gap-1.5">
+                    @foreach (var s in Model.Subjects)
+                    {
+                        <span class="chip !bg-brand-50 !text-brand-800 !ring-brand-200">@L.Pick(s.Subject.NameAr, s.Subject.NameEn)</span>
+                    }
+                    @if (Model.Subjects.Count == 0) { <span class="text-xs text-ink-400">@L.T("No subjects assigned.", "لم تسند مواد.")</span> }
+                </div>
+                <div class="mt-3 flex flex-wrap gap-1.5">
+                    @foreach (var g in Model.Grades)
+                    {
+                        <span class="chip">@L.Pick(g.Grade.NameAr, g.Grade.NameEn)</span>
+                    }
+                </div>
+            </div>
+            <div class="card card-pad">
+                <h2 class="section-title mb-3">@L.T("Weekly availability", "الأوقات الأسبوعية")</h2>
+                @if (Model.Availabilities.Count == 0)
+                {
+                    <p class="text-xs text-ink-400">@L.T("No availability configured.", "لم تحدد أوقات.")</p>
+                }
+                @foreach (var a in Model.Availabilities.OrderBy(a => a.DayOfWeek))
+                {
+                    <div class="flex items-center justify-between border-b border-sand-100 py-1.5 text-xs last:border-0">
+                        <span class="font-semibold text-ink-700">@L.Day(a.DayOfWeek)</span>
+                        <span class="text-ink-500" dir="ltr">@a.StartTime – @a.EndTime</span>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Model.BioAr) || !string.IsNullOrWhiteSpace(Model.BioEn))
+        {
+            <div class="card card-pad">
+                <h2 class="section-title mb-2">@L.T("Biography", "النبذة")</h2>
+                <p class="text-sm leading-7 text-ink-600">@L.Pick(Model.BioAr, Model.BioEn)</p>
+            </div>
+        }
+
+        <div class="card">
+            <div class="card-header"><h2 class="section-title">@L.T("Assigned courses", "الدورات المسندة")</h2><a asp-controller="Courses" asp-action="Create" asp-route-teacherId="@Model.Id" class="btn btn-soft btn-xs"><svg class="h-3.5 w-3.5"><use href="#i-plus"/></svg>@L.T("New course", "دورة جديدة")</a></div>
+            <div class="table-wrap">
+                <table class="table-base">
+                    <thead><tr><th>@L.T("Course", "الدورة")</th><th>@L.T("Grade", "الصف")</th><th>@L.T("Fee", "الرسوم")</th><th>@L.T("Share", "الحصة")</th><th>@L.T("Status", "الحالة")</th></tr></thead>
+                    <tbody>
+                    @if (Model.Courses.Count == 0)
+                    {
+                        <tr><td colspan="5"><div class="empty !py-8">@L.T("No courses assigned.", "لا توجد دورات مسندة.")</div></td></tr>
+                    }
+                    @foreach (var c in Model.Courses.OrderByDescending(x => x.StartDate))
+                    {
+                        <tr>
+                            <td><a asp-controller="Courses" asp-action="Details" asp-route-id="@c.Id" class="font-semibold text-brand-900 hover:underline">@L.Pick(c.NameAr, c.NameEn)</a><p class="text-[11px] text-ink-500">@L.Pick(c.Subject.NameAr, c.Subject.NameEn)</p></td>
+                            <td class="text-xs text-ink-600">@L.Pick(c.Grade.NameAr, c.Grade.NameEn)</td>
+                            <td>@L.Money(c.Fee)</td>
+                            <td>@L.Percent(c.TeacherSharePercent)</td>
+                            <td><span class="badge @(c.Status == CourseStatus.Active ? "badge-green" : "badge-gray")">@L.E(c.Status)</span></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2 class="section-title">@L.T("Recent earnings", "أحدث المستحقات")</h2>
+                @if (canPay)
+                {
+                    <a asp-controller="Finance" asp-action="TeacherPayables" class="text-xs link">@L.T("Manage payables", "إدارة المستحقات")</a>
+                }
+            </div>
+            <div class="table-wrap">
+                <table class="table-base">
+                    <thead><tr><th>@L.T("Date", "التاريخ")</th><th>@L.T("Type", "النوع")</th><th>@L.T("Base", "الأساس")</th><th>@L.T("Share", "الحصة")</th><th>@L.T("Amount", "المبلغ")</th><th>@L.T("Paid", "الحالة")</th></tr></thead>
+                    <tbody>
+                    @if (earnings.Count == 0)
+                    {
+                        <tr><td colspan="6"><div class="empty !py-8">@L.T("No earnings yet.", "لا توجد مستحقات بعد.")</div></td></tr>
+                    }
+                    @foreach (var e in earnings)
+                    {
+                        <tr>
+                            <td class="text-xs text-ink-500">@L.DateShort(e.Date)</td>
+                            <td class="text-xs">@L.E(e.Kind)</td>
+                            <td class="text-xs">@L.Money(e.BaseAmount)</td>
+                            <td class="text-xs">@L.Percent(e.SharePercent)</td>
+                            <td class="font-semibold">@L.Money(e.Amount)</td>
+                            <td><span class="badge @(e.IsPaid ? "badge-green" : "badge-amber")">@(e.IsPaid ? L.T("Paid", "مدفوع") : L.T("Unpaid", "غير مدفوع"))</span></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @if (Model.Ratings.Count > 0)
+        {
+            <div class="card card-pad">
+                <h2 class="section-title mb-3">@L.T("Guardian feedback", "تقييم أولياء الأمور")</h2>
+                <div class="space-y-3">
+                    @foreach (var r in Model.Ratings.Where(x => x.IsVisible).OrderByDescending(x => x.CreatedAt).Take(4))
+                    {
+                        <div class="rounded-xl border border-sand-200 p-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-ink-800">@r.RatedByName</span>
+                                <span class="inline-flex items-center gap-1 text-xs font-bold text-gold-700"><svg class="h-3 w-3"><use href="#i-star-fill"/></svg>@r.Average</span>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(r.Comment)) { <p class="mt-1 text-xs text-ink-500">@r.Comment</p> }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>

@@ -1,0 +1,39 @@
+@model ClassroomFormViewModel
+@{
+    var isEdit = Model.Id > 0;
+    ViewData["Title"] = isEdit ? L.T("Edit classroom", "تعديل قاعة") : L.T("Add classroom", "إضافة قاعة");
+}
+<div class="page-head">
+    <div>
+        <div class="mb-1 flex items-center gap-2 text-xs text-ink-500">
+            <a asp-action="Index" class="hover:text-brand-700">@L.T("Classrooms", "القاعات")</a>
+            <svg class="h-3 w-3 flip-x"><use href="#i-chevron-down"/></svg>
+            <span>@(isEdit ? L.T("Edit", "تعديل") : L.T("New", "جديد"))</span>
+        </div>
+        <h1 class="page-title">@(isEdit ? L.T("Edit classroom", "تعديل القاعة") : L.T("Add a classroom", "إضافة قاعة"))</h1>
+    </div>
+</div>
+<form method="post" asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@(isEdit ? Model.Id : (int?)null)" class="mx-auto max-w-3xl">
+    <input type="hidden" asp-for="Id" />
+    <div class="card card-pad">
+        <div asp-validation-summary="ModelOnly" class="alert alert-error mb-4 @(ViewData.ModelState.IsValid ? "hidden" : "")"></div>
+        <div class="grid gap-4 sm:grid-cols-2">
+            <div><label asp-for="Number" class="label">@L.T("Room number", "رقم القاعة") *</label><input asp-for="Number" class="input" dir="ltr" /><span asp-validation-for="Number" class="field-error"></span></div>
+            <div><label asp-for="Floor" class="label">@L.T("Floor", "الطابق")</label><input asp-for="Floor" class="input" /></div>
+            <div><label asp-for="NameAr" class="label">@L.T("Name (Arabic)", "الاسم (عربي)") *</label><input asp-for="NameAr" class="input" /></div>
+            <div><label asp-for="NameEn" class="label">@L.T("Name (English)", "الاسم (إنكليزي)") *</label><input asp-for="NameEn" class="input" dir="ltr" /></div>
+            <div><label asp-for="Capacity" class="label">@L.T("Seat capacity", "عدد المقاعد")</label><input asp-for="Capacity" type="number" class="input" /></div>
+            <div><label asp-for="RoomType" class="label">@L.T("Room type", "نوع القاعة")</label><input asp-for="RoomType" class="input" /></div>
+            <div><label asp-for="RentPerHour" class="label">@L.T("Rent per hour (IQD)", "الإيجار بالساعة (د.ع)")</label><input asp-for="RentPerHour" type="number" step="1000" class="input" /></div>
+            <div>
+                <label asp-for="Status" class="label">@L.T("Status", "الحالة")</label>
+                <select asp-for="Status" class="select" asp-items="Html.GetEnumSelectList<ClassroomStatus>()"></select>
+            </div>
+            <div class="sm:col-span-2"><label asp-for="Equipment" class="label">@L.T("Equipment", "التجهيزات")</label><textarea asp-for="Equipment" class="textarea" placeholder="@L.T("Projector, whiteboard, air conditioning…", "بروجكتر، سبورة، تكييف…")"></textarea></div>
+        </div>
+        <div class="mt-5 flex justify-end gap-2">
+            <a asp-action="Index" class="btn btn-outline">@L.T("Cancel", "إلغاء")</a>
+            <button class="btn btn-primary"><svg class="h-4 w-4"><use href="#i-check"/></svg>@L.T("Save", "حفظ")</button>
+        </div>
+    </div>
+</form>

@@ -1,0 +1,96 @@
+@model PayrollReportViewModel
+@{
+    ViewData["Title"] = L.T("Payroll register", "سجل الرواتب");
+    var monthValue = ViewBag.MonthValue as string ?? Model.Month.ToString("yyyy-MM");
+    var canSlip = User.IsInRole(Roles.Administrator) || User.IsInRole(Roles.Manager) || User.IsInRole(Roles.Hr) || User.IsInRole(Roles.Accountant);
+}
+<div class="page-head">
+    <div>
+        <div class="mb-1 flex items-center gap-2 text-xs text-ink-500">
+            <a asp-action="Index" class="hover:text-brand-700">@L.T("Reports", "التقارير")</a>
+            <svg class="h-3 w-3 flip-x"><use href="#i-chevron-down"/></svg>
+            <span>@L.T("Payroll register", "سجل الرواتب")</span>
+        </div>
+        <h1 class="page-title">@L.T("Payroll register", "سجل الرواتب")</h1>
+        <p class="page-sub">@L.Month(Model.Month) · @L.Num(Model.Rows.Count) @L.T("employees", "موظفاً")</p>
+    </div>
+    <div class="flex gap-2 no-print">
+        <a asp-action="Index" class="btn btn-outline btn-sm">@L.T("Back", "رجوع")</a>
+        <button type="button" class="btn btn-primary btn-sm" onclick="window.print()"><svg class="h-4 w-4"><use href="#i-printer"/></svg>@L.T("Print", "طباعة")</button>
+    </div>
+</div>
+
+<form method="get" class="card card-pad !py-4 no-print">
+    <div class="flex flex-wrap items-end gap-2">
+        <div><label class="label">@L.T("Month", "الشهر")</label><input type="month" name="month" value="@monthValue" class="input !py-2" /></div>
+        <button class="btn btn-primary btn-sm">@L.T("Show", "عرض")</button>
+        <a asp-controller="Hr" asp-action="Payroll" asp-route-month="@monthValue" class="btn btn-soft btn-sm ms-auto"><svg class="h-4 w-4"><use href="#i-cash"/></svg>@L.T("Open payroll", "فتح الرواتب")</a>
+    </div>
+</form>
+
+<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 mt-4">
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Basic", "الأساسي")</p><p class="kpi mt-1">@L.Money(Model.TotalBasic)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Allowances", "المخصصات")</p><p class="kpi mt-1 text-brand-800">@L.Money(Model.TotalAllowances)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Deductions", "الخصومات")</p><p class="kpi mt-1 text-red-600">@L.Money(Model.TotalDeductions)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Net paid / payable", "الصافي")</p><p class="kpi mt-1 text-emerald-700">@L.Money(Model.TotalNet)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Status", "الحالة")</p><p class="mt-1 text-xs leading-relaxed"><span class="badge badge-green">@L.T("Paid", "مدفوع") @L.Num(Model.Paid)</span> <span class="badge badge-amber">@L.Num(Model.Approved)</span> <span class="badge badge-gray">@L.Num(Model.Draft)</span></p></div>
+</div>
+
+<div class="card mt-4 overflow-hidden">
+    <div class="table-wrap">
+        <table class="table-base min-w-[1000px]">
+            <thead>
+                <tr>
+                    <th>@L.T("Employee", "الموظف")</th>
+                    <th>@L.T("Department", "القسم")</th>
+                    <th>@L.T("Basic", "الأساسي")</th>
+                    <th>@L.T("Allowances", "المخصصات")</th>
+                    <th>@L.T("Deductions", "الخصومات")</th>
+                    <th>@L.T("Net", "الصافي")</th>
+                    <th>@L.T("Status", "الحالة")</th>
+                    <th class="text-end">@L.T("Slip", "قسيمة")</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (Model.Rows.Count == 0)
+            {
+                <tr><td colspan="8"><div class="empty">@L.T("Payroll has not been generated for this month.", "لم يتم توليد رواتب هذا الشهر.")</div></td></tr>
+            }
+            @foreach (var row in Model.Rows)
+            {
+                var p = row.Payroll;
+                <tr>
+                    <td>
+                        <p class="font-semibold text-ink-900">@L.Pick(row.Employee.FullNameAr, row.Employee.FullNameEn)</p>
+                        <p class="text-[11px] text-ink-500">@row.Employee.Code · @L.Pick(row.Employee.JobTitleAr, row.Employee.JobTitleEn)</p>
+                    </td>
+                    <td class="text-xs text-ink-600">@row.Employee.Department</td>
+                    <td class="text-xs">@L.Money(p?.Basic ?? 0)</td>
+                    <td class="text-xs">@L.Money(p?.Allowances ?? 0)</td>
+                    <td class="text-xs text-red-600">@L.Money((p?.AbsenceDeduction ?? 0) + (p?.OtherDeductions ?? 0) + (p?.Advances ?? 0))</td>
+                    <td class="text-sm font-bold text-brand-900">@L.Money(p?.Net ?? 0)</td>
+                    <td><span class="badge @(p?.Status == PayrollStatus.Paid ? "badge-green" : p?.Status == PayrollStatus.Approved ? "badge-amber" : "badge-gray")">@(p is null ? L.T("Not generated", "غير مولّد") : L.E(p.Status))</span></td>
+                    <td>
+                        <div class="flex justify-end">
+                            @if (p is not null && canSlip)
+                            {
+                                <a asp-controller="Hr" asp-action="Slip" asp-route-id="@p.Id" class="icon-btn" title="@L.T("Payslip", "قسيمة الراتب")"><svg class="h-4 w-4"><use href="#i-receipt"/></svg></a>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+            <tfoot>
+                <tr class="bg-sand-50 font-bold">
+                    <td colspan="2">@L.T("Total", "الإجمالي")</td>
+                    <td>@L.Money(Model.TotalBasic)</td>
+                    <td>@L.Money(Model.TotalAllowances)</td>
+                    <td class="text-red-600">@L.Money(Model.TotalDeductions)</td>
+                    <td class="text-emerald-700">@L.Money(Model.TotalNet)</td>
+                    <td colspan="2"></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>

@@ -1,0 +1,78 @@
+@model IncomeFormViewModel
+@{
+    ViewData["Title"] = L.T("New income", "إيراد جديد");
+    var accounts = ViewBag.Accounts as List<Account> ?? new List<Account>();
+    var funds = ViewBag.Funds as List<Fund> ?? new List<Fund>();
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("New income", "إيراد جديد")</h1>
+        <p class="page-sub">@L.T("Posts immediately: fund (debit) against the revenue account (credit).", "يُرحّل فوراً: الصندوق مديناً مقابل حساب الإيراد دائناً.")</p>
+    </div>
+    <a asp-action="Incomes" class="btn btn-outline btn-sm"><svg class="h-4 w-4 flip-x"><use href="#i-arrow-left"/></svg>@L.T("Income", "الإيرادات")</a>
+</div>
+
+<form asp-action="CreateIncome" method="post" class="grid gap-4 lg:grid-cols-3">
+    @Html.AntiForgeryToken()
+    <div class="lg:col-span-2 card card-pad">
+        <div asp-validation-summary="ModelOnly" class="alert alert-error mb-4 @(ViewData.ModelState.ErrorCount == 0 ? "hidden" : "")"></div>
+        <div class="grid gap-4 sm:grid-cols-2">
+            <div class="sm:col-span-2">
+                <label class="label">@L.T("Revenue account", "حساب الإيراد")</label>
+                <select asp-for="AccountId" class="select">
+                    <option value="">@L.T("Select account…", "اختر الحساب…")</option>
+                    @foreach (var account in accounts)
+                    {
+                        <option value="@account.Id" selected="@(Model.AccountId == account.Id)">@account.Code · @L.Pick(account.NameAr, account.NameEn)</option>
+                    }
+                </select>
+                <span asp-validation-for="AccountId" class="field-error"></span>
+            </div>
+            <div>
+                <label class="label">@L.T("Amount (IQD)", "المبلغ (د.ع)")</label>
+                <input asp-for="Amount" type="number" min="1" step="1000" class="input text-end tabular-nums" />
+                <span asp-validation-for="Amount" class="field-error"></span>
+            </div>
+            <div>
+                <label class="label">@L.T("Date", "التاريخ")</label>
+                <input asp-for="Date" type="date" class="input" max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="sm:col-span-2">
+                <label class="label">@L.T("Source", "المصدر")</label>
+                <input asp-for="Source" class="input" placeholder="@L.T("e.g. Sponsorship of a student activity", "مثال: رعاية نشاط طلابي")" />
+                <span asp-validation-for="Source" class="field-error"></span>
+            </div>
+            <div class="sm:col-span-2">
+                <label class="label">@L.T("Description", "الوصف")</label>
+                <input asp-for="Description" class="input" />
+                <span asp-validation-for="Description" class="field-error"></span>
+            </div>
+            <div>
+                <label class="label">@L.T("Payment method", "طريقة الدفع")</label>
+                <select asp-for="Method" class="select">
+                    @foreach (var m in Enum.GetValues<PaymentMethod>()) { <option value="@m">@L.E(m)</option> }
+                </select>
+            </div>
+            <div>
+                <label class="label">@L.T("Fund", "الصندوق")</label>
+                <select asp-for="FundId" class="select">
+                    <option value="">@L.T("Auto by method", "تلقائي حسب الطريقة")</option>
+                    @foreach (var fund in funds) { <option value="@fund.Id">@L.Pick(fund.NameAr, fund.NameEn)</option> }
+                </select>
+            </div>
+        </div>
+    </div>
+    <div class="card card-pad">
+        <p class="text-sm font-bold text-brand-950">@L.T("Cash effect", "الأثر النقدي")</p>
+        <p class="mt-2 text-xs text-ink-500">@L.T("The selected fund balance increases immediately and a journal entry is created automatically.", "يرتفع رصيد الصندوق المحدد فوراً ويُنشأ قيد يومية تلقائياً.")</p>
+        <div class="mt-4 rounded-xl bg-brand-50 p-3 text-[11px] text-brand-800">
+            <p class="font-bold">@L.T("Entry", "القيد")</p>
+            <p class="mt-1">@L.T("Debit: cash / bank", "مدين: الصندوق / المصرف")</p>
+            <p>@L.T("Credit: revenue account", "دائن: حساب الإيراد")</p>
+        </div>
+        <div class="mt-5 flex flex-col gap-2">
+            <button class="btn btn-primary w-full"><svg class="h-4 w-4"><use href="#i-check"/></svg>@L.T("Save income", "حفظ الإيراد")</button>
+            <a asp-action="Incomes" class="btn btn-outline w-full">@L.T("Cancel", "إلغاء")</a>
+        </div>
+    </div>
+</form>

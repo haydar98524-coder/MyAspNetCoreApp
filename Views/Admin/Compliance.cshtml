@@ -1,0 +1,168 @@
+@model ComplianceViewModel
+@{
+    ViewData["Title"] = L.T("Compliance & docs", "الامتثال والتوثيق");
+    string StatusBadge(string status) => status == "ok" ? "badge-green" : status == "warn" ? "badge-amber" : "badge-red";
+    string StatusIconBg(string status) => status == "ok" ? "bg-emerald-50 text-emerald-700" : status == "warn" ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700";
+    string StatusIcon(string status) => status == "ok" ? "#i-check" : status == "warn" ? "#i-alert" : "#i-ban";
+    string StatusLabel(string status) => status == "ok" ? L.T("Compliant", "مطابق") : status == "warn" ? L.T("Attention", "يحتاج انتباه") : L.T("Action required", "إجراء مطلوب");
+    var s = Model.Settings;
+    var policies = new (string TitleAr, string TitleEn, string DetailAr, string DetailEn, bool Enforced)[]
+    {
+        ("سياسة القبول والتسجيل", "Admission & enrolment policy", "تسجيل الطالب مع ولي الأمر والصف والرسوم قبل المباشرة.", "Students are registered with a guardian, grade and fee record before attending.", true),
+        ("سياسة الحضور والغياب", "Attendance & absence policy", "تسجيل الحضور لكل حصة وتنبيه ولي الأمر عند تجاوز الحد المحدد.", "Attendance is recorded per session and guardians are alerted past the configured threshold.", true),
+        ("سياسة الرسوم والذمم", "Tuition, dues & refunds", "إصدار سند قبض لكل دفعة وربطها بالقسط المتبقي.", "A receipt is issued for every payment and linked to the outstanding installment.", true),
+        ("عقود المدرّسين والحصص", "Teacher engagement & shares", "نسبة كل دورة محفوظة في سجل الدورة، وحصة الدروس الخصوصية في الإعدادات.", "Each course carries its own share rate; private lesson share is set centrally.", true),
+        ("حفظ السجلات المالية", "Financial record retention", "دفتر يومية متوازن مع سجل تدقيق إضافي يحفظ لمدة خمس سنوات.", "A balanced general ledger with an append-only audit trail retained for five years.", true),
+        ("حماية البيانات الشخصية", "Personal data handling", "الوصول مقيد بالصلاحيات، والتصديرات والنسخ مسجلة في سجل التدقيق.", "Access is role-restricted; exports and snapshots are written to the audit trail.", true),
+        ("بوابات المدرّسين وأولياء الأمور والطلاب", "Teacher, guardian & student portals", "كل بوابة تعرض سجلات صاحب الحساب فقط: شعب المدرّس، أبناء ولي الأمر، وسجلات الطالب.", "Each portal is scoped to its own account: the teacher's sections, the guardian's children and the student's own records.", true),
+        ("سجل السلامة والصيانة", "Safety & maintenance register", "الأصول وحالتها ومسؤولها مسجلة في وحدة الأصول.", "Assets, condition and custodians are tracked in the assets register.", false)
+    };
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Compliance & documentation", "الامتثال والتوثيق")</h1>
+        <p class="page-sub">@L.T("Live readiness checks against the Iraqi private-institute requirements.", "فحوص جاهزية مباشرة مقابل متطلبات المعهد الأهلي العراقي.")</p>
+    </div>
+    <div class="flex flex-wrap gap-2 no-print">
+        <a asp-action="Compliance" class="btn btn-outline btn-sm"><svg class="h-4 w-4"><use href="#i-arrow-trend"/></svg>@L.T("Re-check", "إعادة الفحص")</a>
+        <button type="button" onclick="window.print()" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-printer"/></svg>@L.T("Print record", "طباعة السجل")</button>
+    </div>
+</div>
+
+<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="stat-card !p-4 print-card"><p class="text-xs text-ink-500">@L.T("Checks passed", "فحوص ناجحة")</p><p class="kpi mt-1 text-emerald-700">@L.Num(Model.Passed)</p></div>
+    <div class="stat-card !p-4 print-card"><p class="text-xs text-ink-500">@L.T("Need attention", "تحتاج انتباه")</p><p class="kpi mt-1 text-amber-600">@L.Num(Model.Warnings)</p></div>
+    <div class="stat-card !p-4 print-card"><p class="text-xs text-ink-500">@L.T("Action required", "إجراء مطلوب")</p><p class="kpi mt-1 text-red-600">@L.Num(Model.Failures)</p></div>
+    <div class="stat-card !p-4 print-card"><p class="text-xs text-ink-500">@L.T("Generated", "وقت التوليد")</p><p class="mt-1 text-sm font-bold text-brand-950">@L.DateTimeShort(Model.GeneratedAt.ToLocalTime())</p></div>
+</div>
+
+<div class="mt-5 grid items-start gap-5 lg:grid-cols-3">
+    <div class="space-y-5 lg:col-span-2">
+        <div class="card card-pad">
+            <div class="mb-4 flex flex-wrap items-start justify-between gap-2">
+                <div>
+                    <h2 class="section-title">@L.T("Readiness checks", "فحوص الجاهزية")</h2>
+                    <p class="mt-1 text-xs text-ink-500">@L.T("Computed from live records at the time this page was generated.", "تُحتسب من السجلات المباشرة وقت توليد هذه الصفحة.")</p>
+                </div>
+                <span class="badge @(Model.Failures > 0 ? "badge-red" : Model.Warnings > 0 ? "badge-amber" : "badge-green")">
+                    @(Model.Failures > 0 ? L.T("Not ready", "غير جاهز") : Model.Warnings > 0 ? L.T("Ready with notes", "جاهز مع ملاحظات") : L.T("Ready", "جاهز"))
+                </span>
+            </div>
+            <div class="space-y-2">
+                @foreach (var c in Model.Checks)
+                {
+                    <div class="flex flex-wrap items-start gap-3 rounded-xl border border-sand-200 p-3 print-card">
+                        <span class="stat-icon !h-9 !w-9 @StatusIconBg(c.Status)"><svg class="h-4 w-4"><use href="@StatusIcon(c.Status)"/></svg></span>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <p class="text-sm font-bold text-brand-950">@L.Pick(c.TitleAr, c.TitleEn)</p>
+                                <span class="badge @StatusBadge(c.Status)">@StatusLabel(c.Status)</span>
+                            </div>
+                            <p class="mt-1 text-xs text-ink-600">@L.Pick(c.DetailAr, c.DetailEn)</p>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(c.Url))
+                        {
+                            <a href="@c.Url" class="btn btn-ghost btn-xs no-print">@L.T("Open", "فتح")</a>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card card-pad">
+            <h2 class="section-title mb-1">@L.T("Policy register", "سجل السياسات")</h2>
+            <p class="mb-4 text-xs text-ink-500">@L.T("Policies applied by the system and where they are enforced.", "السياسات المطبقة في النظام وموضع تطبيقها.")</p>
+            <div class="table-wrap">
+                <table class="table-base">
+                    <thead>
+                        <tr>
+                            <th>@L.T("Policy", "السياسة")</th>
+                            <th>@L.T("Application", "التطبيق")</th>
+                            <th>@L.T("Status", "الحالة")</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var p in policies)
+                    {
+                        <tr>
+                            <td class="text-sm font-semibold text-ink-800">@L.Pick(p.TitleAr, p.TitleEn)</td>
+                            <td class="text-xs text-ink-600">@L.Pick(p.DetailAr, p.DetailEn)</td>
+                            <td>
+                                <span class="badge @(p.Enforced ? "badge-green" : "badge-gray")">@(p.Enforced ? L.T("System enforced", "مطبق بالنظام") : L.T("Manual register", "سجل يدوي"))</span>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="space-y-5">
+        <div class="card card-pad print-card">
+            <h2 class="section-title mb-4">@L.T("Regulatory register", "السجل التنظيمي")</h2>
+            <dl class="space-y-3 text-xs">
+                <div class="flex items-start justify-between gap-3">
+                    <dt class="text-ink-500">@L.T("Licence number", "رقم الإجازة")</dt>
+                    <dd class="text-end font-semibold text-ink-800" dir="ltr">@(string.IsNullOrWhiteSpace(s.LicenseNo) ? "—" : s.LicenseNo)</dd>
+                </div>
+                <div class="flex items-start justify-between gap-3">
+                    <dt class="text-ink-500">@L.T("Ministry code", "رمز الوزارة")</dt>
+                    <dd class="text-end font-semibold text-ink-800" dir="ltr">@(string.IsNullOrWhiteSpace(s.MinistryCode) ? "—" : s.MinistryCode)</dd>
+                </div>
+                <div class="flex items-start justify-between gap-3">
+                    <dt class="text-ink-500">@L.T("Academic year", "السنة الدراسية")</dt>
+                    <dd class="text-end font-semibold text-ink-800">@s.AcademicYear</dd>
+                </div>
+                <div class="flex items-start justify-between gap-3">
+                    <dt class="text-ink-500">@L.T("Principal", "مدير المعهد")</dt>
+                    <dd class="text-end font-semibold text-ink-800">@(string.IsNullOrWhiteSpace(s.PrincipalName) ? "—" : s.PrincipalName)</dd>
+                </div>
+                <div class="border-t border-sand-200 pt-3"></div>
+                <div class="flex items-start justify-between gap-3">
+                    <dt class="text-ink-500">@L.T("Pass mark", "درجة النجاح")</dt>
+                    <dd class="text-end font-semibold text-ink-800">@s.PassMark%</dd>
+                </div>
+                <div class="flex items-start justify-between gap-3">
+                    <dt class="text-ink-500">@L.T("Absence warning", "حد التنبيه بالغياب")</dt>
+                    <dd class="text-end font-semibold text-ink-800">@s.AttendanceWarningPercent%</dd>
+                </div>
+                <div class="flex items-start justify-between gap-3">
+                    <dt class="text-ink-500">@L.T("Tuition billing", "الرسوم الدراسية")</dt>
+                    <dd class="text-end font-semibold text-ink-800">@(s.TuitionEnabled ? L.T("Enabled", "مفعلة") : L.T("Disabled", "معطلة"))</dd>
+                </div>
+                <div class="flex items-start justify-between gap-3">
+                    <dt class="text-ink-500">@L.T("Course teacher share", "حصة المدرّس")</dt>
+                    <dd class="text-end font-semibold text-ink-800">@s.DefaultTeacherShare.ToString("0.#")%</dd>
+                </div>
+                <div class="flex items-start justify-between gap-3">
+                    <dt class="text-ink-500">@L.T("Private lesson share", "حصة الدرس الخصوصي")</dt>
+                    <dd class="text-end font-semibold text-ink-800">@s.PrivateLessonTeacherShare.ToString("0.#")%</dd>
+                </div>
+                <div class="flex items-start justify-between gap-3">
+                    <dt class="text-ink-500">@L.T("6th prep room rent", "إيجار غرف السادس")</dt>
+                    <dd class="text-end font-semibold text-ink-800">@L.Money(s.PrepTeacherMonthlyRent) / @L.T("month", "شهر")</dd>
+                </div>
+                <div class="flex items-start justify-between gap-3">
+                    <dt class="text-ink-500">@L.T("Cafeteria rent", "إيجار الكافيتيريا")</dt>
+                    <dd class="text-end font-semibold text-ink-800">@L.Money(s.CafeteriaAnnualRent) / @L.T("year", "سنة")</dd>
+                </div>
+                <div class="flex items-start justify-between gap-3">
+                    <dt class="text-ink-500">@L.T("Official contact", "التواصل الرسمي")</dt>
+                    <dd class="text-end font-semibold text-ink-800" dir="ltr">@s.Phone</dd>
+                </div>
+            </dl>
+            <a asp-action="Settings" class="btn btn-outline btn-sm mt-4 w-full no-print"><svg class="h-4 w-4"><use href="#i-settings"/></svg>@L.T("Open settings", "فتح الإعدادات")</a>
+        </div>
+
+        <div class="card card-pad print-card">
+            <h2 class="section-title mb-3">@L.T("Record certification", "إقرار السجل")</h2>
+            <p class="text-[11px] leading-relaxed text-ink-600">@L.T("This register is generated from live institute records. Print, sign and retain it with the annual compliance file.", "يُولَّد هذا السجل من بيانات المعهد المباشرة. اطبعه ووقّعه واحفظه مع ملف الامتثال السنوي.")</p>
+            <div class="mt-6 space-y-5 text-[11px] text-ink-500">
+                <div class="border-t border-dashed border-ink-300 pt-1">@L.T("Principal signature", "توقيع مدير المعهد")</div>
+                <div class="border-t border-dashed border-ink-300 pt-1">@L.T("Accountant signature", "توقيع المحاسب")</div>
+                <div class="border-t border-dashed border-ink-300 pt-1">@L.T("Date", "التاريخ")</div>
+            </div>
+        </div>
+    </div>
+</div>

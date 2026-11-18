@@ -1,0 +1,110 @@
+@model AnnouncementFormViewModel
+@{
+    ViewData["Title"] = L.T("New announcement", "إعلان جديد");
+    var audiences = new (string Key, string TitleAr, string TitleEn, string DescAr, string DescEn, string Icon)[]
+    {
+        ("all", "الجميع", "Everyone", "كل الحسابات النشطة في المعهد.", "Every active account in the institute.", "#i-users"),
+        ("staff", "الموظفون", "Staff", "الإدارة والمحاسبة والموارد البشرية والتسجيل.", "Leadership, accounting, HR and registrar.", "#i-briefcase"),
+        ("teachers", "المدرسون", "Teachers", "حسابات المدرسين فقط.", "Teacher accounts only.", "#i-cap"),
+        ("parents", "أولياء الأمور", "Parents", "حسابات أولياء الأمور فقط.", "Guardian accounts only.", "#i-home"),
+        ("students", "الطلبة", "Students", "حسابات الطلبة فقط.", "Student accounts only.", "#i-user")
+    };
+}
+<div class="page-head">
+    <div>
+        <div class="mb-1 flex items-center gap-2 text-xs text-ink-500">
+            <a asp-action="Index" class="hover:text-brand-700">@L.T("Notifications", "الإشعارات")</a>
+            <svg class="h-3 w-3 flip-x"><use href="#i-chevron-down"/></svg>
+            <span>@L.T("New announcement", "إعلان جديد")</span>
+        </div>
+        <h1 class="page-title">@L.T("Send an announcement", "إرسال إعلان")</h1>
+        <p class="page-sub">@L.T("Deliver a bilingual message to a group of accounts. The sender is not included.", "أرسل رسالة ثنائية اللغة إلى مجموعة حسابات. لا يُدرج المرسل ضمن المستلمين.")</p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline btn-sm">@L.T("Cancel", "إلغاء")</a>
+</div>
+
+<form method="post" asp-action="Compose" class="grid items-start gap-5 lg:grid-cols-3">
+    @Html.AntiForgeryToken()
+    <div class="space-y-5 lg:col-span-2">
+        <div asp-validation-summary="ModelOnly" class="alert alert-error @(ViewData.ModelState.IsValid ? "hidden" : "")"></div>
+
+        <div class="card card-pad">
+            <h2 class="section-title mb-4">@L.T("Message", "الرسالة")</h2>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label asp-for="TitleAr" class="label">@L.T("Title (Arabic)", "العنوان (عربي)") *</label>
+                    <input asp-for="TitleAr" class="input" />
+                    <span asp-validation-for="TitleAr" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="TitleEn" class="label">@L.T("Title (English)", "العنوان (إنكليزي)") *</label>
+                    <input asp-for="TitleEn" class="input" dir="ltr" />
+                    <span asp-validation-for="TitleEn" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="BodyAr" class="label">@L.T("Body (Arabic)", "النص (عربي)") *</label>
+                    <textarea asp-for="BodyAr" class="textarea" rows="5"></textarea>
+                    <span asp-validation-for="BodyAr" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="BodyEn" class="label">@L.T("Body (English)", "النص (إنكليزي)") *</label>
+                    <textarea asp-for="BodyEn" class="textarea" rows="5" dir="ltr"></textarea>
+                    <span asp-validation-for="BodyEn" class="field-error"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-pad">
+            <h2 class="section-title mb-1">@L.T("Audience", "الجمهور")</h2>
+            <p class="mb-4 text-xs text-ink-500">@L.T("Only active accounts receive the announcement.", "الحسابات النشطة فقط تستلم الإعلان.")</p>
+            <div class="grid gap-2 sm:grid-cols-2">
+                @foreach (var a in audiences)
+                {
+                    <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-sand-200 p-3 transition hover:border-brand-300">
+                        <input asp-for="Audience" type="radio" value="@a.Key" class="checkbox mt-0.5" />
+                        <span class="min-w-0">
+                            <span class="flex items-center gap-2 text-sm font-bold text-ink-800">
+                                <svg class="h-4 w-4 text-brand-600"><use href="@a.Icon"/></svg>
+                                @L.Pick(a.TitleAr, a.TitleEn)
+                            </span>
+                            <span class="mt-0.5 block text-[11px] text-ink-500">@L.Pick(a.DescAr, a.DescEn)</span>
+                        </span>
+                    </label>
+                }
+            </div>
+            <span asp-validation-for="Audience" class="field-error"></span>
+        </div>
+    </div>
+
+    <div class="space-y-5">
+        <div class="card card-pad">
+            <h2 class="section-title mb-4">@L.T("Delivery", "التسليم")</h2>
+            <div class="space-y-4">
+                <div>
+                    <label asp-for="Type" class="label">@L.T("Priority", "الأهمية")</label>
+                    <select asp-for="Type" class="select">
+                        @foreach (var t in Enum.GetValues<NotificationType>())
+                        {
+                            <option value="@t">@L.E(t)</option>
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label asp-for="Url" class="label">@L.T("Related page (optional)", "الصفحة المرتبطة (اختياري)")</label>
+                    <input asp-for="Url" class="input" dir="ltr" placeholder="/Payments" />
+                    <p class="help">@L.T("Internal path shown as a link in the notification.", "مسار داخلي يظهر كرابط داخل الإشعار.")</p>
+                    <span asp-validation-for="Url" class="field-error"></span>
+                </div>
+            </div>
+            <button class="btn btn-primary mt-5 w-full"><svg class="h-5 w-5"><use href="#i-bell"/></svg>@L.T("Send announcement", "إرسال الإعلان")</button>
+            <a asp-action="Index" class="btn btn-ghost mt-2 w-full">@L.T("Back to inbox", "العودة إلى الصندوق")</a>
+        </div>
+
+        <div class="card card-pad !bg-brand-50">
+            <p class="flex items-start gap-2 text-xs text-brand-800">
+                <svg class="mt-0.5 h-4 w-4 shrink-0"><use href="#i-info"/></svg>
+                <span>@L.T("Announcements are stored in each recipient's inbox and recorded in the audit trail. They never send external email or SMS in this build.", "تُحفظ الإعلانات في صندوق كل مستلم وتُسجل في سجل التدقيق. لا تُرسل بريداً أو رسائل نصية خارجية في هذه النسخة.")</span>
+            </p>
+        </div>
+    </div>
+</form>

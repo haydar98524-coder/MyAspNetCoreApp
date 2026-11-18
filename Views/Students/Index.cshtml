@@ -1,0 +1,156 @@
+@model List<Student>
+@{
+    ViewData["Title"] = L.T("Students", "الطلاب");
+    var q = ViewBag.Q as string;
+    var gradeId = ViewBag.GradeId as int?;
+    var status = ViewBag.Status as StudentStatus?;
+    int page = ViewBag.Page;
+    int pageCount = ViewBag.PageCount;
+    var grades = ViewBag.Grades as List<Grade> ?? new();
+    var canEdit = User.IsInRole(Roles.Administrator) || User.IsInRole(Roles.Manager) || User.IsInRole(Roles.Registrar);
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Student registry", "سجل الطلاب")</h1>
+        <p class="page-sub">@L.Num((int)ViewBag.Total) @L.T("students match the current filter", "طالباً مطابقاً للتصفية الحالية")</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <a asp-action="Index" asp-route-gradeId="@gradeId" class="btn btn-outline btn-sm no-print" onclick="window.print();return false;"><svg class="h-4 w-4"><use href="#i-printer"/></svg>@L.T("Print", "طباعة")</a>
+        <a asp-action="Export" asp-route-q="@q" asp-route-gradeId="@gradeId" asp-route-status="@status" class="btn btn-soft btn-sm no-print" title="@L.T("Download the filtered registry as Excel", "تنزيل السجل المصفّى بصيغة Excel")">
+            <svg class="h-4 w-4"><use href="#i-download"/></svg>@L.T("Export to Excel", "تصدير إلى Excel")
+        </a>
+        @if (canEdit)
+        {
+            <a asp-action="Create" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-plus"/></svg>@L.T("Register student", "تسجيل طالب")</a>
+        }
+    </div>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-3">
+    <div class="stat-card !p-4">
+        <p class="text-xs font-semibold text-ink-500">@L.T("Active students", "الطلاب المنتظمون")</p>
+        <p class="kpi mt-1">@L.Num((int)ViewBag.ActiveCount)</p>
+    </div>
+    <div class="stat-card !p-4">
+        <p class="text-xs font-semibold text-ink-500">@L.T("New this month", "جديد هذا الشهر")</p>
+        <p class="kpi mt-1 text-brand-700">@L.Num((int)ViewBag.NewCount)</p>
+    </div>
+    <div class="stat-card !p-4">
+        <p class="text-xs font-semibold text-ink-500">@L.T("Registered in filter", "المسجلون في التصفية")</p>
+        <p class="kpi mt-1">@L.Num((int)ViewBag.Total)</p>
+    </div>
+</div>
+
+<form method="get" class="card mt-5 card-pad !py-4">
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="relative">
+            <span class="pointer-events-none absolute inset-y-0 start-3 flex items-center text-ink-500"><svg class="h-4 w-4"><use href="#i-search"/></svg></span>
+            <input name="q" value="@q" class="input !ps-9" placeholder="@L.T("Name, number or phone…", "الاسم أو الرقم أو الهاتف…")" />
+        </div>
+        <select name="gradeId" class="select">
+            <option value="">@L.T("All grades", "كل الصفوف")</option>
+            @foreach (var g in grades)
+            {
+                <option value="@g.Id" selected="@(gradeId == g.Id)">@L.Pick(g.NameAr, g.NameEn) · @L.E(g.Stage.Type)</option>
+            }
+        </select>
+        <select name="status" class="select">
+            <option value="">@L.T("All statuses", "كل الحالات")</option>
+            @foreach (var s in Enum.GetValues<StudentStatus>())
+            {
+                <option value="@s" selected="@(status == s)">@L.E(s)</option>
+            }
+        </select>
+        <div class="flex gap-2">
+            <button class="btn btn-primary flex-1"><svg class="h-4 w-4"><use href="#i-filter"/></svg>@L.T("Filter", "تصفية")</button>
+            <a asp-action="Index" class="btn btn-outline">@L.T("Reset", "مسح")</a>
+        </div>
+    </div>
+</form>
+
+<div class="card mt-4 overflow-hidden">
+    <div class="table-wrap">
+        <table class="table-base">
+            <thead>
+                <tr>
+                    <th>@L.T("Student", "الطالب")</th>
+                    <th>@L.T("Grade", "الصف")</th>
+                    <th>@L.T("Guardian", "ولي الأمر")</th>
+                    <th>@L.T("Registered", "تاريخ التسجيل")</th>
+                    <th>@L.T("Status", "الحالة")</th>
+                    <th class="text-end">@L.T("Actions", "الإجراءات")</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (Model.Count == 0)
+            {
+                <tr><td colspan="6"><div class="empty"><svg class="h-9 w-9 text-brand-300"><use href="#i-users"/></svg><p>@L.T("No students match this filter.", "لا يوجد طلاب مطابقون لهذه التصفية.")</p></div></td></tr>
+            }
+            @foreach (var s in Model)
+            {
+                var badge = s.Status switch
+                {
+                    StudentStatus.Active => "badge-green",
+                    StudentStatus.Suspended => "badge-amber",
+                    StudentStatus.Graduated => "badge-blue",
+                    _ => "badge-gray"
+                };
+                <tr>
+                    <td>
+                        <div class="flex items-center gap-3">
+                            @if (!string.IsNullOrEmpty(s.PhotoPath))
+                            {
+                                <img src="@s.PhotoPath" alt="" class="h-9 w-9 rounded-full object-cover ring-2 ring-white" />
+                            }
+                            else
+                            {
+                                <span class="avatar h-9 w-9 text-xs">@L.Initials(s.FullNameAr)</span>
+                            }
+                            <div>
+                                <a asp-action="Details" asp-route-id="@s.Id" class="font-bold text-brand-900 hover:underline">@L.Pick(s.FullNameAr, s.FullNameEn)</a>
+                                <p class="text-[11px] text-ink-500">@s.StudentNo · @L.Age(s.BirthDate)</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td><span class="chip">@L.Pick(s.Grade.NameAr, s.Grade.NameEn)</span></td>
+                    <td>
+                        @if (s.Parent is not null)
+                        {
+                            <a asp-controller="Parents" asp-action="Details" asp-route-id="@s.ParentId" class="text-sm font-semibold text-ink-700 hover:text-brand-700">@L.Pick(s.Parent.FullNameAr, s.Parent.FullNameEn)</a>
+                            <p class="text-[11px] text-ink-500" dir="ltr">@s.Parent.Phone</p>
+                        }
+                        else
+                        {
+                            <span class="text-xs text-ink-400">—</span>
+                        }
+                    </td>
+                    <td class="text-xs text-ink-500">@L.DateShort(s.RegistrationDate)</td>
+                    <td><span class="badge @badge">@L.E(s.Status)</span></td>
+                    <td>
+                        <div class="flex justify-end gap-1">
+                            <a asp-action="Details" asp-route-id="@s.Id" class="icon-btn" title="@L.T("View", "عرض")"><svg class="h-4 w-4"><use href="#i-eye"/></svg></a>
+                            @if (canEdit)
+                            {
+                                <a asp-action="Edit" asp-route-id="@s.Id" class="icon-btn" title="@L.T("Edit", "تعديل")"><svg class="h-4 w-4"><use href="#i-edit"/></svg></a>
+                            }
+                            <a asp-controller="Enrollments" asp-action="Create" asp-route-studentId="@s.Id" class="icon-btn" title="@L.T("Enroll", "اشتراك")"><svg class="h-4 w-4"><use href="#i-book"/></svg></a>
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    @if (pageCount > 1)
+    {
+        <div class="flex items-center justify-between border-t border-sand-200 px-5 py-3 text-xs text-ink-500">
+            <span>@L.T("Page", "صفحة") @(page) / @(pageCount)</span>
+            <div class="flex gap-1">
+                <a asp-action="Index" asp-route-q="@q" asp-route-gradeId="@gradeId" asp-route-status="@status" asp-route-page="@(page - 1)"
+                   class="btn btn-outline btn-xs @(page <= 1 ? "pointer-events-none opacity-40" : "")">@L.T("Previous", "السابق")</a>
+                <a asp-action="Index" asp-route-q="@q" asp-route-gradeId="@gradeId" asp-route-status="@status" asp-route-page="@(page + 1)"
+                   class="btn btn-outline btn-xs @(page >= pageCount ? "pointer-events-none opacity-40" : "")">@L.T("Next", "التالي")</a>
+            </div>
+        </div>
+    }
+</div>

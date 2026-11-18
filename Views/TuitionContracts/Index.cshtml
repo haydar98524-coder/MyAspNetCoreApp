@@ -1,0 +1,89 @@
+@model List<TuitionContract>
+@{
+    ViewData["Title"] = L.T("Tuition contracts", "عقود الرسوم");
+    var q = ViewBag.Q as string;
+    var status = ViewBag.Status as TuitionContractStatus?;
+    var from = ViewBag.From as DateTime?;
+    var to = ViewBag.To as DateTime?;
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Tuition contracts", "عقود الرسوم")</h1>
+        <p class="page-sub">@L.T("Signed fee agreements, installment plans and collection progress.", "اتفاقيات الرسوم الخطية وخطط الأقساط وتقدم التحصيل.")</p>
+    </div>
+    <a asp-controller="Enrollments" asp-action="Create" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-plus"/></svg>@L.T("New enrollment", "اشتراك جديد")</a>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Active contracts", "العقود النشطة")</p><p class="kpi mt-1">@L.Num((int)ViewBag.Active)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Contracted value", "قيمة العقود")</p><p class="kpi mt-1">@L.Money((long)ViewBag.NetTotal)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Outstanding", "المتبقي")</p><p class="kpi mt-1 text-amber-700">@L.Money((long)ViewBag.Outstanding)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Installments", "الأقساط")</p><p class="kpi mt-1">@L.Num((int)ViewBag.InstallmentCount)</p></div>
+</div>
+
+<form method="get" class="card card-pad !py-4 mt-5">
+    <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+        <div class="relative lg:col-span-2">
+            <span class="pointer-events-none absolute inset-y-0 start-3 flex items-center text-ink-500"><svg class="h-4 w-4"><use href="#i-search"/></svg></span>
+            <input name="q" value="@q" class="input !ps-9" placeholder="@L.T("Contract, student or course…", "العقد أو الطالب أو الدورة…")" />
+        </div>
+        <select name="status" class="select">
+            <option value="">@L.T("All statuses", "كل الحالات")</option>
+            @foreach (var s in Enum.GetValues<TuitionContractStatus>())
+            {
+                <option value="@s" selected="@(status == s)">@L.E(s)</option>
+            }
+        </select>
+        <input type="date" name="from" value="@(from?.ToString("yyyy-MM-dd"))" class="input" title="@L.T("From", "من")" />
+        <div class="flex gap-2">
+            <input type="date" name="to" value="@(to?.ToString("yyyy-MM-dd"))" class="input" title="@L.T("To", "إلى")" />
+            <button class="btn btn-primary">@L.T("Filter", "تصفية")</button>
+        </div>
+    </div>
+</form>
+
+<div class="card mt-4 overflow-hidden">
+    <div class="table-wrap">
+        <table class="table-base">
+            <thead><tr><th>@L.T("Contract", "العقد")</th><th>@L.T("Student", "الطالب")</th><th>@L.T("Course", "الدورة")</th><th>@L.T("Plan", "الخطة")</th><th>@L.T("Net fee", "الصافي")</th><th>@L.T("Outstanding", "المتبقي")</th><th>@L.T("Status", "الحالة")</th><th class="text-end">@L.T("Actions", "الإجراءات")</th></tr></thead>
+            <tbody>
+            @if (Model.Count == 0)
+            {
+                <tr><td colspan="8"><div class="empty">@L.T("No contracts match the filter.", "لا توجد عقود مطابقة.")</div></td></tr>
+            }
+            @foreach (var c in Model)
+            {
+                var outstanding = c.Installments.Where(i => i.Status != DueStatus.Paid && i.Status != DueStatus.Waived).Sum(i => i.Remaining);
+                var badge = c.Status == TuitionContractStatus.Active ? "badge-green" : c.Status == TuitionContractStatus.Completed ? "badge-blue" : c.Status == TuitionContractStatus.Cancelled ? "badge-gray" : "badge-amber";
+                <tr>
+                    <td>
+                        <a asp-action="Details" asp-route-id="@c.Id" class="font-mono text-xs font-bold text-brand-900 hover:underline">@c.ContractNo</a>
+                        <p class="text-[11px] text-ink-500">@L.DateShort(c.StartDate)</p>
+                    </td>
+                    <td>
+                        <a asp-controller="Students" asp-action="Details" asp-route-id="@c.StudentId" class="font-semibold text-brand-900 hover:underline">@L.Pick(c.Student.FullNameAr, c.Student.FullNameEn)</a>
+                        <p class="text-[11px] text-ink-500">@c.Student.StudentNo · @L.Pick(c.Student.Grade.NameAr, c.Student.Grade.NameEn)</p>
+                    </td>
+                    <td class="text-sm font-semibold text-ink-800">@L.Pick(c.Course.NameAr, c.Course.NameEn)</td>
+                    <td class="text-xs text-ink-600">
+                        @L.Num(c.InstallmentCount) @L.T("installments", "قسطاً")
+                        <p class="text-[10px] text-ink-500">@L.T("first due", "أول استحقاق") @L.DateShort(c.FirstDueDate)</p>
+                    </td>
+                    <td class="font-semibold">@L.Money(c.NetFee)@if (c.Discount > 0) { <span class="block text-[10px] text-emerald-600">-@L.Money(c.Discount)</span> }</td>
+                    <td class="@(outstanding > 0 ? "font-semibold text-amber-700" : "text-emerald-700")">@L.Money(outstanding)</td>
+                    <td><span class="badge @badge">@L.E(c.Status)</span></td>
+                    <td>
+                        <div class="flex justify-end gap-1">
+                            <a asp-action="Details" asp-route-id="@c.Id" class="icon-btn" title="@L.T("View", "عرض")"><svg class="h-4 w-4"><use href="#i-receipt"/></svg></a>
+                            @if (outstanding > 0 && c.Status == TuitionContractStatus.Active)
+                            {
+                                <a asp-controller="Payments" asp-action="Collect" asp-route-studentId="@c.StudentId" class="icon-btn" title="@L.T("Collect", "تحصيل")"><svg class="h-4 w-4"><use href="#i-cash"/></svg></a>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

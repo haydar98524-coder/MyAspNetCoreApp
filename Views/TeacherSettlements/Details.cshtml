@@ -1,0 +1,230 @@
+@model TeacherSettlement
+@{
+    ViewData["Title"] = L.T("Settlement statement", "كشف التسوية");
+    var funds = ViewBag.Funds as List<Fund> ?? new();
+    var canApprove = ViewBag.CanApprove is true;
+    var journal = ViewBag.Journal as List<JournalEntry> ?? new();
+    var badge = Model.Status == TeacherSettlementStatus.Draft ? "badge-amber"
+        : Model.Status == TeacherSettlementStatus.Approved ? "badge-blue" : "badge-green";
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Settlement", "تسوية") <span class="font-mono">@Model.SettlementNo</span></h1>
+        <p class="page-sub">@L.Pick(Model.Teacher.FullNameAr, Model.Teacher.FullNameEn) · @L.DateShort(Model.PeriodStart) – @L.DateShort(Model.PeriodEnd)</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <span class="badge @badge self-center">@L.E(Model.Status)</span>
+        @if (Model.Status != TeacherSettlementStatus.Draft)
+        {
+            <a asp-action="Voucher" asp-route-id="@Model.Id" class="btn btn-outline btn-sm"><svg class="h-4 w-4"><use href="#i-printer"/></svg>@L.T("Voucher", "سند الصرف")</a>
+        }
+        <a asp-action="Index" class="btn btn-outline btn-sm"><svg class="h-4 w-4 flip-x"><use href="#i-arrow-left"/></svg>@L.T("Settlements", "التسويات")</a>
+    </div>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="stat-card !p-4">
+        <p class="text-xs text-ink-500">@L.T("Gross earnings", "إجمالي المستحقات")</p>
+        <p class="kpi mt-1">@L.Money(Model.Gross)</p>
+    </div>
+    <div class="stat-card !p-4">
+        <p class="text-xs text-ink-500">@L.T("Adjustments", "التعديلات")</p>
+        <p class="kpi mt-1 text-emerald-700">@(Model.Adjustments > 0 ? "+" + L.Money(Model.Adjustments) : L.Money(0))</p>
+    </div>
+    <div class="stat-card !p-4">
+        <p class="text-xs text-ink-500">@L.T("Deductions", "الاستقطاعات")</p>
+        <p class="kpi mt-1 text-red-600">@(Model.Deductions > 0 ? "−" + L.Money(Model.Deductions) : L.Money(0))</p>
+    </div>
+    <div class="stat-card !p-4 !bg-brand-50">
+        <p class="text-xs text-brand-700">@L.T("Net payable", "الصافي المستحق")</p>
+        <p class="kpi mt-1 text-brand-950">@L.Money(Model.Net)</p>
+    </div>
+</div>
+
+@if (Model.Status == TeacherSettlementStatus.Draft)
+{
+    <div class="alert alert-warning mt-5">
+        <svg class="h-4 w-4"><use href="#i-info"/></svg>
+        <p>@L.T("This statement is a draft. Adjust it if needed, then leadership must approve it before payout.", "هذا الكشف مسودة. عدّله عند الحاجة، ثم يجب أن تعتمده الإدارة قبل الصرف.")</p>
+    </div>
+}
+else if (Model.Status == TeacherSettlementStatus.Approved)
+{
+    <div class="alert alert-info mt-5">
+        <svg class="h-4 w-4"><use href="#i-check"/></svg>
+        <p>@L.T("Approved and ready for payout", "معتمد وجاهز للصرف") — @Model.ApprovedByName · @(Model.ApprovedAt.HasValue ? L.DateTimeShort(Model.ApprovedAt.Value) : "")</p>
+    </div>
+}
+else
+{
+    <div class="alert alert-info mt-5">
+        <svg class="h-4 w-4"><use href="#i-check"/></svg>
+        <p>@L.T("Paid", "مدفوع") — @Model.PaidByName · @(Model.PaidAt.HasValue ? L.DateTimeShort(Model.PaidAt.Value) : "") @(Model.Fund is null ? "" : "· " + L.Pick(Model.Fund.NameAr, Model.Fund.NameEn))</p>
+    </div>
+}
+
+<div class="mt-5 grid gap-5 lg:grid-cols-3">
+    <div class="card overflow-hidden lg:col-span-2">
+        <div class="card-header">
+            <h2 class="section-title">@L.T("Statement lines", "بنود الكشف")</h2>
+            <span class="chip">@L.Num(Model.Lines.Count) @L.T("lines", "بنداً")</span>
+        </div>
+        <div class="table-wrap">
+            <table class="table-base">
+                <thead>
+                    <tr>
+                        <th>@L.T("Kind", "النوع")</th>
+                        <th>@L.T("Description", "الوصف")</th>
+                        <th>@L.T("Reference", "المرجع")</th>
+                        <th class="text-end">@L.T("Amount", "المبلغ")</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (Model.Lines.Count == 0)
+                {
+                    <tr><td colspan="4"><div class="empty">@L.T("This statement has no lines.", "لا توجد بنود في هذا الكشف.")</div></td></tr>
+                }
+                @foreach (var line in Model.Lines.OrderBy(l => l.Kind).ThenBy(l => l.Id))
+                {
+                    <tr>
+                        <td><span class="badge badge-gray">@L.E(line.Kind)</span></td>
+                        <td class="text-xs text-ink-700">@line.Description</td>
+                        <td class="font-mono text-[10px] text-ink-500">@(line.TeacherEarning?.PaidReference ?? (line.TeacherEarningId.HasValue ? $"E#{line.TeacherEarningId}" : "—"))</td>
+                        <td class="text-end font-semibold">@L.Money(line.Amount)</td>
+                    </tr>
+                }
+                </tbody>
+                <tfoot>
+                    <tr class="bg-sand-50">
+                        <td colspan="3" class="text-end text-xs font-semibold">@L.T("Gross", "الإجمالي")</td>
+                        <td class="text-end font-bold">@L.Money(Model.Gross)</td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="text-end text-xs text-emerald-700">@L.T("Adjustments", "التعديلات")</td>
+                        <td class="text-end text-xs text-emerald-700">@L.Money(Model.Adjustments)</td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="text-end text-xs text-red-600">@L.T("Deductions", "الاستقطاعات")</td>
+                        <td class="text-end text-xs text-red-600">@L.Money(Model.Deductions)</td>
+                    </tr>
+                    <tr class="bg-brand-50">
+                        <td colspan="3" class="text-end text-sm font-bold text-brand-950">@L.T("Net payable", "الصافي المستحق")</td>
+                        <td class="text-end text-sm font-extrabold text-brand-950">@L.Money(Model.Net)</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <div class="space-y-4">
+        <div class="card card-pad">
+            <h2 class="section-title">@L.T("Statement info", "معلومات الكشف")</h2>
+            <dl class="mt-3 space-y-2 text-xs">
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Teacher", "المدرّس")</dt><dd class="font-semibold">@L.Pick(Model.Teacher.FullNameAr, Model.Teacher.FullNameEn)</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Contract", "العقد")</dt><dd class="font-mono">@(Model.Contract?.ContractNo ?? "—")</dd></div>
+                @if (Model.Contract is not null)
+                {
+                    <div class="flex justify-between"><dt class="text-ink-500">@L.T("Terms", "الشروط")</dt><dd>@L.E(Model.Contract.CompensationType)</dd></div>
+                }
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Generated", "أُنشئ")</dt><dd>@Model.GeneratedByName</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Date", "التاريخ")</dt><dd>@L.DateTimeShort(Model.GeneratedAt.ToLocalTime())</dd></div>
+            </dl>
+            @if (!string.IsNullOrWhiteSpace(Model.Notes))
+            {
+                <div class="mt-3 rounded-lg bg-ink-50 p-3 text-xs text-ink-600">@Model.Notes</div>
+            }
+        </div>
+
+        @if (Model.Status == TeacherSettlementStatus.Draft)
+        {
+            <div class="card card-pad">
+                <h2 class="section-title">@L.T("Adjust statement", "تعديل الكشف")</h2>
+                <form method="post" asp-action="Update" class="mt-3 space-y-3">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="Id" value="@Model.Id" />
+                    <div>
+                        <label class="label" for="adjustments">@L.T("Adjustments (add)", "التعديلات (إضافة)")</label>
+                        <input id="adjustments" name="Adjustments" type="number" min="0" step="1000" value="@Model.Adjustments" class="input" />
+                    </div>
+                    <div>
+                        <label class="label" for="deductions">@L.T("Deductions (subtract)", "الاستقطاعات (خصم)")</label>
+                        <input id="deductions" name="Deductions" type="number" min="0" step="1000" value="@Model.Deductions" class="input" />
+                    </div>
+                    <div>
+                        <label class="label" for="notes">@L.T("Notes", "ملاحظات")</label>
+                        <textarea id="notes" name="Notes" class="textarea" rows="2">@Model.Notes</textarea>
+                    </div>
+                    <button class="btn btn-outline w-full">@L.T("Save adjustments", "حفظ التعديلات")</button>
+                </form>
+            </div>
+
+            @if (canApprove)
+            {
+                <form method="post" asp-action="Approve" asp-route-id="@Model.Id" class="card card-pad"
+                      onsubmit="return confirm('@L.T("Approve this statement? It becomes locked and can no longer be edited.", "هل تريد اعتماد هذا الكشف؟ سيُقفل ولا يمكن تعديله بعد ذلك.")')">
+                    @Html.AntiForgeryToken()
+                    <h2 class="section-title">@L.T("Leadership approval", "اعتماد الإدارة")</h2>
+                    <p class="mt-1 text-[11px] leading-5 text-ink-500">@L.T("Approval posts the retainer and adjustments to the ledger. The statement then becomes payable.", "الاعتماد يقيّد المخصص والتعديلات في دفتر اليومية، ثم يصبح الكشف قابلاً للصرف.")</p>
+                    <button class="btn btn-primary mt-3 w-full"><svg class="h-4 w-4"><use href="#i-check"/></svg>@L.T("Approve statement", "اعتماد الكشف")</button>
+                </form>
+            }
+        }
+
+        @if (Model.Status == TeacherSettlementStatus.Approved)
+        {
+            <div class="card card-pad">
+                <h2 class="section-title">@L.T("Pay statement", "صرف الكشف")</h2>
+                <form method="post" asp-action="Pay" class="mt-3 space-y-3"
+                      onsubmit="return confirm('@L.T("Pay this statement from the selected fund?", "هل تريد صرف هذا الكشف من الصندوق المحدد؟")')">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="Id" value="@Model.Id" />
+                    <div>
+                        <label class="label" for="fundId">@L.T("Fund", "الصندوق")</label>
+                        <select id="fundId" name="FundId" class="select">
+                            <option value="">@L.T("Default fund for the method", "الصندوق الافتراضي للطريقة")</option>
+                            @foreach (var f in funds)
+                            {
+                                <option value="@f.Id">@L.Pick(f.NameAr, f.NameEn) · @L.Money(f.CurrentBalance)</option>
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label class="label" for="method">@L.T("Method", "طريقة الصرف")</label>
+                        <select id="method" name="Method" class="select">
+                            <option value="Cash">@L.E(PaymentMethod.Cash)</option>
+                            <option value="BankTransfer">@L.E(PaymentMethod.BankTransfer)</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary w-full"><svg class="h-4 w-4"><use href="#i-wallet"/></svg>@L.T("Pay", "صرف") @L.Money(Model.Net)</button>
+                </form>
+            </div>
+        }
+    </div>
+</div>
+
+@if (journal.Count > 0)
+{
+    <div class="card mt-5 overflow-hidden">
+        <div class="card-header"><h2 class="section-title">@L.T("Ledger impact", "الأثر المحاسبي")</h2></div>
+        <div class="table-wrap">
+            <table class="table-base">
+                <thead><tr><th>@L.T("Entry", "القيد")</th><th>@L.T("Date", "التاريخ")</th><th>@L.T("Account", "الحساب")</th><th class="text-end">@L.T("Debit", "مدين")</th><th class="text-end">@L.T("Credit", "دائن")</th></tr></thead>
+                <tbody>
+                @foreach (var entry in journal)
+                {
+                    foreach (var line in entry.Lines)
+                    {
+                        <tr>
+                            <td class="font-mono text-[10px] text-ink-500">@entry.EntryNo</td>
+                            <td class="text-xs text-ink-500">@L.DateShort(entry.Date)</td>
+                            <td class="text-xs">@line.Account.Code · @L.Pick(line.Account.NameAr, line.Account.NameEn)</td>
+                            <td class="text-end text-xs">@(line.Debit > 0 ? L.Money(line.Debit) : "—")</td>
+                            <td class="text-end text-xs">@(line.Credit > 0 ? L.Money(line.Credit) : "—")</td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

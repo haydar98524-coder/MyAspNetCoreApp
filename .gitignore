@@ -1,0 +1,8 @@
+bin/
+obj/
+publish/
+.vs/
+.preview/
+App_Data/
+tools/
+vibe_images/

@@ -1,0 +1,158 @@
+@model TeacherEarningsViewModel
+@{
+    ViewData["Title"] = L.T("My earnings", "مستحقاتي");
+    var teacher = ViewBag.Teacher as Teacher;
+    var maxMonth = Model.Months.Count == 0 ? 1 : Math.Max(1, Model.Months.Max(m => m.Amount));
+    var count = Model.Earnings.Count;
+}
+<div class="page-head">
+    <div>
+        <div class="flex items-center gap-2 text-xs text-ink-500">
+            <a asp-action="Index" class="link">@L.T("Teacher dashboard", "لوحة المدرّس")</a>
+            <svg class="h-3.5 w-3.5"><use href="#i-chevron-down"/></svg>
+            <span>@L.T("Earnings", "المستحقات")</span>
+        </div>
+        <h1 class="page-title mt-1">@L.T("Earnings statement", "كشف المستحقات")</h1>
+        <p class="page-sub">@(teacher is null ? "" : L.Pick(teacher.FullNameAr, teacher.FullNameEn)) · @(teacher?.Code) · @L.T("Latest", "أحدث") @L.Num(count) @L.T("entries", "حركة")</p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline btn-sm"><svg class="h-4 w-4 flip-x"><use href="#i-arrow-left"/></svg>@L.T("Back", "رجوع")</a>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="stat-card">
+        <p class="text-xs font-semibold text-ink-500">@L.T("Total earned", "إجمالي المستحقات")</p>
+        <p class="kpi mt-2">@L.Money(Model.Total)</p>
+        <p class="mt-1 text-[11px] text-ink-500">@L.T("All posted shares", "جميع الحصص المحتسبة")</p>
+    </div>
+    <div class="stat-card">
+        <p class="text-xs font-semibold text-ink-500">@L.T("Paid", "المدفوع")</p>
+        <p class="kpi mt-2 text-emerald-700">@L.Money(Model.Paid)</p>
+        <p class="mt-1 text-[11px] text-ink-500">@L.T("Settled by the accountant", "مسدد من المحاسب")</p>
+    </div>
+    <div class="stat-card">
+        <p class="text-xs font-semibold text-ink-500">@L.T("Outstanding", "غير المدفوع")</p>
+        <p class="kpi mt-2 text-amber-700">@L.Money(Model.Unpaid)</p>
+        <p class="mt-1 text-[11px] text-ink-500">@L.T("Awaiting settlement", "بانتظار التسديد")</p>
+    </div>
+    <div class="stat-card">
+        <p class="text-xs font-semibold text-ink-500">@L.T("Entries", "عدد الحركات")</p>
+        <p class="kpi mt-2">@L.Num(count)</p>
+        <p class="mt-1 text-[11px] text-ink-500">@L.T("Course shares and private lessons", "حصص الدورات والدروس الخصوصية")</p>
+    </div>
+</div>
+
+<div class="mt-5 grid gap-5 xl:grid-cols-3">
+    <div class="card xl:col-span-2">
+        <div class="card-header">
+            <div>
+                <p class="section-title">@L.T("Earnings history", "سجل المستحقات")</p>
+                <p class="mt-0.5 text-xs text-ink-500">@L.T("Shares are posted automatically when fees are received.", "تُحتسب الحصص تلقائياً عند قبض الرسوم.")</p>
+            </div>
+        </div>
+        @if (count == 0)
+        {
+            <div class="empty">@L.T("No earnings have been posted yet.", "لم تُحتسب مستحقات بعد.")</div>
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="table-base">
+                    <thead>
+                        <tr>
+                            <th>@L.T("Date", "التاريخ")</th>
+                            <th>@L.T("Kind", "النوع")</th>
+                            <th>@L.T("Source", "المصدر")</th>
+                            <th class="text-end">@L.T("Base", "الأساس")</th>
+                            <th class="text-end">@L.T("Share", "النسبة")</th>
+                            <th class="text-end">@L.T("Amount", "المبلغ")</th>
+                            <th>@L.T("Status", "الحالة")</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var e in Model.Earnings)
+                    {
+                        <tr>
+                            <td class="text-xs text-ink-500">@L.DateShort(e.Date)</td>
+                            <td><span class="badge @(e.Kind == TeacherEarningKind.PrivateLesson ? "badge-violet" : "badge-blue")">@L.E(e.Kind)</span></td>
+                            <td class="text-sm">
+                                @if (e.Course is not null)
+                                {
+                                    <span>@L.Pick(e.Course.NameAr, e.Course.NameEn)</span>
+                                }
+                                else if (e.PrivateLesson?.Subject is not null)
+                                {
+                                    <span>@L.Pick(e.PrivateLesson.Subject.NameAr, e.PrivateLesson.Subject.NameEn)</span>
+                                }
+                                else
+                                {
+                                    <span class="text-ink-400">—</span>
+                                }
+                            </td>
+                            <td class="text-end text-xs">@L.Money(e.BaseAmount)</td>
+                            <td class="text-end text-xs">@L.Percent(e.SharePercent)</td>
+                            <td class="text-end text-sm font-bold text-brand-800">@L.Money(e.Amount)</td>
+                            <td>
+                                @if (e.IsPaid)
+                                {
+                                    <span class="badge badge-green">@L.T("Paid", "مدفوع")</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-amber">@L.T("Unpaid", "غير مدفوع")</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    <div class="space-y-5">
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <p class="section-title">@L.T("Last 6 months", "آخر 6 أشهر")</p>
+                    <p class="mt-0.5 text-xs text-ink-500">@L.T("Posted earnings per month", "المستحقات المحتسبة شهرياً")</p>
+                </div>
+            </div>
+            <div class="space-y-3 px-5 py-4">
+                @foreach (var m in Model.Months)
+                {
+                    var pct = Math.Max(2, m.Amount * 100 / maxMonth);
+                    <div>
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-ink-600">@m.Label</span>
+                            <span class="font-bold text-ink-800">@L.Money(m.Amount)</span>
+                        </div>
+                        <div class="progress mt-1.5"><span style="width:@pct%"></span></div>
+                        <p class="mt-0.5 text-[10px] text-ink-400">@L.Num(m.Count) @L.T("entries", "حركة")</p>
+                    </div>
+                }
+                @if (Model.Months.Count == 0)
+                {
+                    <p class="text-xs text-ink-500">@L.T("No monthly activity yet.", "لا توجد حركات شهرية بعد.")</p>
+                }
+            </div>
+        </div>
+
+        <div class="card card-pad">
+            <div class="flex items-center gap-3">
+                <span class="stat-icon bg-brand-50 text-brand-700"><svg class="h-5 w-5"><use href="#i-info"/></svg></span>
+                <div>
+                    <p class="text-sm font-bold text-brand-950">@L.T("How shares work", "كيف تُحتسب الحصة")</p>
+                    <p class="text-[11px] text-ink-500">@L.T("Course share is set on each course; private lessons follow the institute rate.", "نسبة حصة الدورة محددة لكل دورة، والدروس الخصوصية وفق نسبة المعهد.")</p>
+                </div>
+            </div>
+            <p class="mt-3 text-[11px] text-ink-500">
+                @L.T("For questions about a specific entry, contact the accounting department. Settlement is recorded by the accountant and appears here immediately.",
+                    "للاستفسار عن حركة معينة، تواصل مع قسم المحاسبة. يُسجل التسديد من المحاسب ويظهر هنا مباشرة.")
+            </p>
+            <div class="mt-4 flex flex-wrap gap-2">
+                <a asp-controller="Teachers" asp-action="Profile" asp-route-id="@(teacher?.Id ?? 0)" class="btn btn-outline btn-sm">@L.T("My public profile", "ملفي العام")</a>
+                <a asp-controller="Notifications" asp-action="Index" class="btn btn-ghost btn-sm">@L.T("Notifications", "الإشعارات")</a>
+            </div>
+        </div>
+    </div>
+</div>

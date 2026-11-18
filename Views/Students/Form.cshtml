@@ -1,0 +1,342 @@
+@model StudentFormViewModel
+@{
+    var isEdit = Model.Id > 0;
+    ViewData["Title"] = isEdit ? L.T("Edit student", "تعديل طالب") : L.T("Register student", "تسجيل طالب");
+    var grades = ViewBag.Grades as List<Grade> ?? new();
+    var parents = ViewBag.Parents as List<Parent> ?? new();
+    var courses = ViewBag.Courses as List<Course> ?? new();
+    var halls = ViewBag.Halls as List<Classroom> ?? new();
+    var subjects = ViewBag.Subjects as List<Subject> ?? new();
+    var teachers = ViewBag.Teachers as List<Teacher> ?? new();
+    var prefCourse = ViewBag.PrefCourse as int?;
+}
+<div class="page-head">
+    <div>
+        <div class="mb-1 flex items-center gap-2 text-xs text-ink-500">
+            <a asp-action="Index" class="hover:text-brand-700">@L.T("Students", "الطلاب")</a>
+            <svg class="h-3 w-3 flip-x"><use href="#i-chevron-down"/></svg>
+            <span>@(isEdit ? L.T("Edit", "تعديل") : L.T("New", "جديد"))</span>
+        </div>
+        <h1 class="page-title">@(isEdit ? L.T("Edit student record", "تعديل بيانات الطالب") : L.T("Register a new student", "تسجيل طالب جديد"))</h1>
+        <p class="page-sub">@L.T("Required fields are marked with an asterisk.", "الحقول المطلوبة محددة بنجمة.")</p>
+    </div>
+    @if (isEdit)
+    {
+        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline btn-sm">@L.T("Cancel", "إلغاء")</a>
+    }
+</div>
+
+<form method="post" enctype="multipart/form-data" asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@(isEdit ? Model.Id : (int?)null)" class="grid gap-5 lg:grid-cols-3">
+    <input type="hidden" asp-for="Id" />
+    <div asp-validation-summary="ModelOnly" class="alert alert-error lg:col-span-3 @(ViewData.ModelState.IsValid ? "hidden" : "")"></div>
+
+    <div class="space-y-5 lg:col-span-2">
+        <div class="card card-pad">
+            <h2 class="section-title mb-4">@L.T("Student identity", "هوية الطالب")</h2>
+            <div class="grid gap-4 sm:grid-cols-2">
+                @if (isEdit)
+                {
+                    <div class="sm:col-span-2">
+                        <label class="label">@L.T("Student number (permanent)", "رقم الطالب (دائم)")</label>
+                        <input class="input bg-sand-100 font-mono font-semibold" value="@Model.StudentNo" readonly dir="ltr" />
+                        <p class="help">@L.T("Issued automatically at registration and can never be changed.", "يُمنح تلقائياً عند التسجيل ولا يمكن تغييره أبداً.")</p>
+                    </div>
+                }
+                <div>
+                    <label asp-for="FullNameAr" class="label">@L.T("Full name (Arabic)", "الاسم الكامل (عربي)") *</label>
+                    <input asp-for="FullNameAr" class="input" placeholder="مثال: علي حسن محمد" />
+                    <span asp-validation-for="FullNameAr" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="FullNameEn" class="label">@L.T("Full name (English)", "الاسم الكامل (إنكليزي)") *</label>
+                    <input asp-for="FullNameEn" class="input" dir="ltr" placeholder="Ali Hassan Mohammed" />
+                    <span asp-validation-for="FullNameEn" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="NationalId" class="label">@L.T("National ID", "الرقم الوطني") *</label>
+                    <input asp-for="NationalId" class="input" dir="ltr" maxlength="30" autocomplete="off" placeholder="@L.T("Unique — duplicates are rejected", "فريد — لا يُقبل التكرار")" />
+                    <span asp-validation-for="NationalId" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="BirthDate" class="label">@L.T("Date of birth", "تاريخ الميلاد")</label>
+                    <input asp-for="BirthDate" type="date" class="input" />
+                    <span asp-validation-for="BirthDate" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="Gender" class="label">@L.T("Gender", "الجنس")</label>
+                    <select asp-for="Gender" class="select" asp-items="Html.GetEnumSelectList<Gender>()"></select>
+                </div>
+                <div>
+                    <label asp-for="Phone" class="label">@L.T("Mobile number", "رقم الهاتف")</label>
+                    <input asp-for="Phone" class="input" dir="ltr" placeholder="0770 000 0000" />
+                </div>
+                <div>
+                    <label asp-for="SchoolName" class="label">@L.T("School name", "اسم المدرسة")</label>
+                    <input asp-for="SchoolName" class="input" placeholder="@L.T("Current school", "المدرسة الحالية")" />
+                </div>
+                <div>
+                    <label asp-for="GradeId" class="label">@L.T("Grade", "الصف") *</label>
+                    <select asp-for="GradeId" class="select">
+                        <option value="0">@L.T("Select grade…", "اختر الصف…")</option>
+                        @foreach (var group in grades.GroupBy(g => g.Stage))
+                        {
+                            <optgroup label="@L.Pick(group.Key.NameAr, group.Key.NameEn)">
+                                @foreach (var g in group)
+                                {
+                                    <option value="@g.Id">@L.Pick(g.NameAr, g.NameEn)</option>
+                                }
+                            </optgroup>
+                        }
+                    </select>
+                    <span asp-validation-for="GradeId" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="HallId" class="label">@L.T("Hall name", "اسم القاعة")</label>
+                    <select asp-for="HallId" class="select">
+                        <option value="">@L.T("— No hall assigned —", "— بدون قاعة —")</option>
+                        @foreach (var h in halls)
+                        {
+                            <option value="@h.Id">@L.Pick(h.NameAr, h.NameEn) · @h.Number</option>
+                        }
+                    </select>
+                    <p class="help">@L.T("Loaded live from the halls register.", "تُحمّل مباشرة من سجل القاعات.")</p>
+                </div>
+                <div>
+                    <label asp-for="Status" class="label">@L.T("Status", "الحالة")</label>
+                    <select asp-for="Status" class="select" asp-items="Html.GetEnumSelectList<StudentStatus>()"></select>
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-pad">
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+                <h2 class="section-title">@L.T("Subjects & teachers", "المواد والمدرسون")</h2>
+                <span class="text-[11px] text-ink-500">@L.T("Linked live to the subjects and teachers registers", "مرتبطة مباشرة بسجل المواد وسجل المدرسين")</span>
+            </div>
+
+            <p class="label">@L.T("Subjects", "المواد")</p>
+            <div id="subjectGrid" class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                @foreach (var s in subjects)
+                {
+                    <label class="flex items-center gap-2 rounded-xl border border-sand-200 px-3 py-2 text-sm transition hover:border-brand-300">
+                        <input type="checkbox" name="SubjectIds" value="@s.Id" class="checkbox" checked="@Model.SubjectIds.Contains(s.Id)" />
+                        <span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background:@s.Color"></span>
+                        <span class="min-w-0 font-semibold text-ink-800">@L.Pick(s.NameAr, s.NameEn)</span>
+                        <span class="ms-auto text-[10px] text-ink-400" dir="ltr">@s.Code</span>
+                    </label>
+                }
+                @if (subjects.Count == 0)
+                {
+                    <p class="help sm:col-span-2 lg:col-span-3">@L.T("No active subjects yet. Add them from the Subjects page.", "لا توجد مواد نشطة بعد. أضفها من صفحة المواد.")</p>
+                }
+            </div>
+
+            <div class="mb-2 mt-5 flex flex-wrap items-center justify-between gap-2">
+                <p class="label !mb-0">@L.T("Teachers", "المدرسون")</p>
+                <span id="teacherHint" class="text-[11px] text-ink-500">@L.T("All active teachers. Select subjects to narrow the list.", "كل المدرسين النشطين. اختر المواد لتضييق القائمة.")</span>
+            </div>
+            <div id="teacherList" class="grid gap-2 transition-opacity sm:grid-cols-2 lg:grid-cols-3">
+                @foreach (var t in teachers)
+                {
+                    <label class="teacher-option flex items-center gap-2 rounded-xl border border-sand-200 px-3 py-2 text-sm transition hover:border-brand-300">
+                        <input type="checkbox" name="TeacherIds" value="@t.Id" class="checkbox" checked="@Model.TeacherIds.Contains(t.Id)" />
+                        <span class="min-w-0">
+                            <span class="block truncate font-semibold text-ink-800">@L.Pick(t.FullNameAr, t.FullNameEn)</span>
+                            <span class="block truncate text-[10px] text-ink-400">@string.Join(" · ", t.Subjects.Select(x => L.Pick(x.Subject.NameAr, x.Subject.NameEn)))</span>
+                        </span>
+                    </label>
+                }
+                @if (teachers.Count == 0)
+                {
+                    <p class="help sm:col-span-2 lg:col-span-3">@L.T("No active teachers yet. Add them from the Teachers page.", "لا يوجد مدرسون نشطون بعد. أضفهم من صفحة المدرسين.")</p>
+                }
+            </div>
+            <p id="teacherEmpty" class="help hidden">@L.T("No teacher teaches the selected subjects.", "لا يوجد مدرس يدرّس المواد المختارة.")</p>
+            <p class="help">@L.T("Only teachers who teach at least one selected subject can be assigned.", "يمكن إسناد المدرسين الذين يدرّسون مادة واحدة على الأقل من المواد المختارة فقط.")</p>
+        </div>
+
+        <div class="card card-pad">
+            <h2 class="section-title mb-4">@L.T("Guardian & contact", "ولي الأمر والتواصل")</h2>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div class="sm:col-span-2">
+                    <label asp-for="ParentId" class="label">@L.T("Existing guardian", "ولي أمر مسجل مسبقاً")</label>
+                    <select asp-for="ParentId" class="select">
+                        <option value="">@L.T("— New guardian below —", "— ولي أمر جديد أدناه —")</option>
+                        @foreach (var p in parents)
+                        {
+                            <option value="@p.Id">@L.Pick(p.FullNameAr, p.FullNameEn) · @p.Phone</option>
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label asp-for="GuardianName" class="label">@L.T("Guardian name", "اسم ولي الأمر")</label>
+                    <input asp-for="GuardianName" class="input" />
+                </div>
+                <div>
+                    <label asp-for="GuardianPhone" class="label">@L.T("Guardian phone", "هاتف ولي الأمر")</label>
+                    <input asp-for="GuardianPhone" class="input" dir="ltr" />
+                </div>
+                <div>
+                    <label asp-for="GuardianEmail" class="label">@L.T("Guardian email", "بريد ولي الأمر")</label>
+                    <input asp-for="GuardianEmail" class="input" dir="ltr" />
+                </div>
+                <div>
+                    <label asp-for="Area" class="label">@L.T("Area", "المنطقة")</label>
+                    <input asp-for="Area" class="input" placeholder="@L.T("e.g. Al-Masalla", "مثال: المصلى")" />
+                </div>
+                <div class="sm:col-span-2">
+                    <label asp-for="Address" class="label">@L.T("Residential address", "العنوان السكني")</label>
+                    <input asp-for="Address" class="input" />
+                </div>
+            </div>
+            <p class="help">@L.T("Leave the guardian selector empty to create a new guardian record from the fields above.", "اترك اختيار ولي الأمر فارغاً لإنشاء سجل ولي أمر جديد من الحقول أعلاه.")</p>
+        </div>
+
+        <div class="card card-pad">
+            <h2 class="section-title mb-4">@L.T("Additional notes", "ملاحظات إضافية")</h2>
+            <textarea asp-for="Notes" class="textarea" placeholder="@L.T("Discounts, health notes, referral…", "خصومات، ملاحظات صحية، جهة ترشيح…")"></textarea>
+        </div>
+    </div>
+
+    <div class="space-y-5">
+        <div class="card card-pad">
+            <h2 class="section-title mb-4">@L.T("Student photo", "صورة الطالب")</h2>
+            <div class="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-sand-300 bg-sand-50 p-5 text-center">
+                @if (!string.IsNullOrEmpty(Model.PhotoPath))
+                {
+                    <img src="@Model.PhotoPath" alt="" class="h-24 w-24 rounded-2xl object-cover" />
+                }
+                else
+                {
+                    <span class="flex h-20 w-20 items-center justify-center rounded-2xl bg-white text-brand-400 ring-1 ring-sand-200"><svg class="h-8 w-8"><use href="#i-user"/></svg></span>
+                }
+                <label class="btn btn-outline btn-sm cursor-pointer">
+                    <svg class="h-4 w-4"><use href="#i-upload"/></svg>@L.T("Upload photo", "رفع صورة")
+                    <input asp-for="Photo" type="file" accept="image/*" class="hidden" />
+                </label>
+                <p class="text-[11px] text-ink-500">@L.T("JPG, PNG or WebP · max 5 MB", "JPG أو PNG أو WebP · بحد أقصى 5 م.ب")</p>
+            </div>
+        </div>
+
+        @if (!isEdit && courses.Count > 0)
+        {
+            <div class="card card-pad">
+                <h2 class="section-title mb-1">@L.T("Initial course", "الدورة الأولى")</h2>
+                <p class="muted mb-3">@L.T("Optional — a due will be created automatically.", "اختياري — سيتم إنشاء قسط تلقائياً.")</p>
+                <select name="courseId" class="select">
+                    <option value="">@L.T("No course now", "بدون دورة الآن")</option>
+                    @foreach (var c in courses)
+                    {
+                        <option value="@c.Id" selected="@(prefCourse == c.Id)">@L.Pick(c.NameAr, c.NameEn) · @L.Money(c.Fee)</option>
+                    }
+                </select>
+            </div>
+        }
+
+        <div class="card card-pad">
+            <h2 class="section-title mb-3">@L.T("Registration summary", "ملخص التسجيل")</h2>
+            <dl class="space-y-2 text-sm">
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Registration date", "تاريخ التسجيل")</dt><dd class="font-semibold">@L.Date(DateTime.Today)</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Branch", "الفرع")</dt><dd class="font-semibold">@L.T("Main · Kirkuk", "الرئيسي · كركوك")</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Student number", "رقم الطالب")</dt><dd class="font-semibold" dir="ltr">@(isEdit ? Model.StudentNo : L.T("Automatic", "تلقائي"))</dd></div>
+            </dl>
+        </div>
+
+        <button class="btn btn-primary btn-lg w-full"><svg class="h-5 w-5"><use href="#i-check"/></svg>@(isEdit ? L.T("Save changes", "حفظ التغييرات") : L.T("Register student", "تسجيل الطالب"))</button>
+        <a asp-action="Index" class="btn btn-ghost w-full">@L.T("Back to list", "العودة للقائمة")</a>
+    </div>
+</form>
+
+@section Scripts {
+    <script>
+        (function () {
+            "use strict";
+
+            const subjectBoxes = Array.from(document.querySelectorAll('#subjectGrid input[name="SubjectIds"]'));
+            const teacherList = document.getElementById("teacherList");
+            const teacherEmpty = document.getElementById("teacherEmpty");
+            const teacherHint = document.getElementById("teacherHint");
+            if (!teacherList || subjectBoxes.length === 0) return;
+
+            const endpoint = "@Url.Action("TeachersForSubjects", "Students")";
+            const i18n = {
+                all: @Json.Serialize(L.T("All active teachers. Select subjects to narrow the list.", "كل المدرسين النشطين. اختر المواد لتضييق القائمة.")),
+                filtered: @Json.Serialize(L.T("Showing only teachers of the selected subjects.", "يظهر المدرسون الذين يدرّسون المواد المختارة فقط.")),
+                cleared: @Json.Serialize(L.T("Teacher selections that no longer match the subjects were cleared.", "تمت إزالة اختيارات المدرسين غير المطابقة للمواد المختارة.")),
+                empty: @Json.Serialize(L.T("No teacher teaches the selected subjects.", "لا يوجد مدرس يدرّس المواد المختارة.")),
+                error: @Json.Serialize(L.T("Could not refresh the teacher list. Reload the page and try again.", "تعذر تحديث قائمة المدرسين. أعد تحميل الصفحة وحاول مجدداً."))
+            };
+
+            let sequence = 0;
+
+            function checkedTeacherIds() {
+                return Array.from(teacherList.querySelectorAll('input[name="TeacherIds"]:checked')).map(x => String(x.value));
+            }
+
+            function buildOption(teacher, isChecked) {
+                const label = document.createElement("label");
+                label.className = "teacher-option flex items-center gap-2 rounded-xl border border-sand-200 px-3 py-2 text-sm transition hover:border-brand-300";
+
+                const checkbox = document.createElement("input");
+                checkbox.type = "checkbox";
+                checkbox.name = "TeacherIds";
+                checkbox.value = teacher.id;
+                checkbox.className = "checkbox";
+                checkbox.checked = isChecked;
+
+                const text = document.createElement("span");
+                text.className = "min-w-0";
+
+                const name = document.createElement("span");
+                name.className = "block truncate font-semibold text-ink-800";
+                name.textContent = teacher.name;
+
+                const meta = document.createElement("span");
+                meta.className = "block truncate text-[10px] text-ink-400";
+                meta.textContent = teacher.subjects || teacher.specialization || "";
+
+                text.append(name, meta);
+                label.append(checkbox, text);
+                return label;
+            }
+
+            async function refreshTeachers() {
+                const subjectIds = subjectBoxes.filter(x => x.checked).map(x => x.value);
+                const keep = new Set(checkedTeacherIds());
+                const requestId = ++sequence;
+
+                teacherList.style.opacity = "0.45";
+                const params = new URLSearchParams();
+                subjectIds.forEach(id => params.append("subjectIds", id));
+
+                try {
+                    const response = await fetch(endpoint + "?" + params.toString(), {
+                        headers: { "Accept": "application/json" }
+                    });
+                    if (!response.ok) throw new Error(String(response.status));
+                    const teachers = await response.json();
+                    if (requestId !== sequence) return;
+
+                    const returnedIds = new Set(teachers.map(t => String(t.id)));
+                    const dropped = Array.from(keep).some(id => !returnedIds.has(id));
+
+                    teacherList.replaceChildren();
+                    teachers.forEach(t => teacherList.appendChild(buildOption(t, keep.has(String(t.id)))));
+                    teacherEmpty.classList.toggle("hidden", teachers.length > 0);
+                    teacherHint.textContent = dropped
+                        ? i18n.cleared
+                        : (subjectIds.length > 0 ? i18n.filtered : i18n.all);
+                } catch (error) {
+                    if (requestId === sequence) teacherHint.textContent = i18n.error;
+                } finally {
+                    if (requestId === sequence) teacherList.style.opacity = "1";
+                }
+            }
+
+            subjectBoxes.forEach(box => box.addEventListener("change", refreshTeachers));
+
+            // On edit, start from the filtered list that matches the stored subject assignments.
+            if (subjectBoxes.some(box => box.checked)) refreshTeachers();
+        })();
+    </script>
+}

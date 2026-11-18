@@ -1,0 +1,97 @@
+@model List<Course>
+@{
+    ViewData["Title"] = L.T("Courses", "الدورات");
+    var grades = ViewBag.Grades as List<Grade> ?? new();
+    var q = ViewBag.Q as string;
+    var gradeId = ViewBag.GradeId as int?;
+    var status = ViewBag.Status as CourseStatus?;
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Course catalogue", "دليل الدورات")</h1>
+        <p class="page-sub">@L.Num((int)ViewBag.ActiveCount) @L.T("active courses", "دورة نشطة") · @L.Num((int)ViewBag.StudentCount) @L.T("enrolled students", "طالباً مشتركاً")</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <a asp-controller="Enrollments" asp-action="Create" class="btn btn-outline btn-sm"><svg class="h-4 w-4"><use href="#i-book"/></svg>@L.T("New enrollment", "اشتراك جديد")</a>
+        <a asp-action="Create" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-plus"/></svg>@L.T("New course", "دورة جديدة")</a>
+    </div>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-3">
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Active courses", "الدورات النشطة")</p><p class="kpi mt-1">@L.Num((int)ViewBag.ActiveCount)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Enrolled students", "الطلاب المشتركون")</p><p class="kpi mt-1">@L.Num((int)ViewBag.StudentCount)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Billed value", "قيمة الرسوم")</p><p class="kpi mt-1">@L.Money((long)ViewBag.Revenue)</p></div>
+</div>
+
+<form method="get" class="card card-pad !py-4 mt-5">
+    <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+        <div class="relative">
+            <span class="pointer-events-none absolute inset-y-0 start-3 flex items-center text-ink-500"><svg class="h-4 w-4"><use href="#i-search"/></svg></span>
+            <input name="q" value="@q" class="input !ps-9" placeholder="@L.T("Course, teacher or code…", "الدورة أو المدرّس أو الرمز…")" />
+        </div>
+        <select name="gradeId" class="select">
+            <option value="">@L.T("All grades", "كل الصفوف")</option>
+            @foreach (var g in grades)
+            {
+                <option value="@g.Id" selected="@(gradeId == g.Id)">@L.Pick(g.NameAr, g.NameEn)</option>
+            }
+        </select>
+        <select name="status" class="select">
+            <option value="">@L.T("All statuses", "كل الحالات")</option>
+            @foreach (var s in Enum.GetValues<CourseStatus>())
+            {
+                <option value="@s" selected="@(status == s)">@L.E(s)</option>
+            }
+        </select>
+        <div class="flex gap-2">
+            <button class="btn btn-primary flex-1"><svg class="h-4 w-4"><use href="#i-filter"/></svg>@L.T("Filter", "تصفية")</button>
+            <a asp-action="Index" class="btn btn-outline">@L.T("Reset", "مسح")</a>
+        </div>
+    </div>
+</form>
+
+<div class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+    @if (Model.Count == 0)
+    {
+        <div class="card empty md:col-span-2 xl:col-span-3"><svg class="h-10 w-10 text-brand-300"><use href="#i-book"/></svg><p>@L.T("No courses match the filter.", "لا توجد دورات مطابقة.")</p></div>
+    }
+    @foreach (var c in Model)
+    {
+        var enrolled = c.Sections.SelectMany(s => s.Enrollments).Select(e => e.StudentId).Distinct().Count();
+        var capacity = Math.Max(1, c.Capacity);
+        var fill = Math.Min(100, enrolled * 100 / capacity);
+        <div class="card flex flex-col p-5 transition hover:border-brand-200 hover:shadow-pop">
+            <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                    <div class="flex items-center gap-1.5">
+                        <span class="h-2 w-2 shrink-0 rounded-full" style="background:@c.Subject.Color"></span>
+                        <span class="truncate text-[11px] font-semibold text-ink-500">@L.Pick(c.Subject.NameAr, c.Subject.NameEn)</span>
+                    </div>
+                    <a asp-action="Details" asp-route-id="@c.Id" class="mt-1 block truncate text-base font-extrabold text-brand-950 hover:underline">@L.Pick(c.NameAr, c.NameEn)</a>
+                    <p class="text-[11px] text-ink-500">@c.Code · @L.Pick(c.Grade.NameAr, c.Grade.NameEn)</p>
+                </div>
+                <span class="badge @(c.Status == CourseStatus.Active ? "badge-green" : c.Status == CourseStatus.Draft ? "badge-amber" : "badge-gray")">@L.E(c.Status)</span>
+            </div>
+            <div class="mt-3 flex items-center gap-2 rounded-xl bg-sand-50 p-2.5 text-xs">
+                <span class="avatar h-7 w-7 text-[10px]">@L.Initials(c.Teacher.FullNameAr)</span>
+                <span class="min-w-0 flex-1 truncate font-semibold text-ink-700">@L.Pick(c.Teacher.FullNameAr, c.Teacher.FullNameEn)</span>
+            </div>
+            <div class="mt-3 grid grid-cols-3 gap-2 text-center text-[11px]">
+                <div class="rounded-lg border border-sand-200 py-1.5"><p class="font-bold text-brand-900">@L.Num(c.Sections.Count)</p><p class="text-ink-500">@L.T("sections", "شعب")</p></div>
+                <div class="rounded-lg border border-sand-200 py-1.5"><p class="font-bold text-brand-900">@L.Num(enrolled)</p><p class="text-ink-500">@L.T("students", "طلاب")</p></div>
+                <div class="rounded-lg border border-sand-200 py-1.5"><p class="font-bold text-brand-900">@L.Percent(c.TeacherSharePercent)</p><p class="text-ink-500">@L.T("teacher", "المدرّس")</p></div>
+            </div>
+            <div class="mt-3">
+                <div class="flex justify-between text-[10px] text-ink-500"><span>@L.T("Seats filled", "المقاعد المشغولة")</span><span>@enrolled / @c.Capacity</span></div>
+                <div class="progress mt-1"><span style="width:@fill%"></span></div>
+            </div>
+            <div class="mt-auto flex items-center justify-between gap-2 pt-4">
+                <span class="text-sm font-extrabold text-brand-800">@L.Money(c.Fee)</span>
+                <div class="flex gap-1">
+                    <a asp-action="Details" asp-route-id="@c.Id" class="btn btn-soft btn-xs">@L.T("Manage", "إدارة")</a>
+                    <a asp-action="Edit" asp-route-id="@c.Id" class="icon-btn !h-8 !w-8"><svg class="h-4 w-4"><use href="#i-edit"/></svg></a>
+                </div>
+            </div>
+        </div>
+    }
+</div>

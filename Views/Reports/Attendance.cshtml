@@ -1,0 +1,87 @@
+@model AttendanceReportViewModel
+@{
+    ViewData["Title"] = L.T("Attendance summary", "ملخص الحضور");
+}
+<div class="page-head">
+    <div>
+        <div class="mb-1 flex items-center gap-2 text-xs text-ink-500">
+            <a asp-action="Index" class="hover:text-brand-700">@L.T("Reports", "التقارير")</a>
+            <svg class="h-3 w-3 flip-x"><use href="#i-chevron-down"/></svg>
+            <span>@L.T("Attendance summary", "ملخص الحضور")</span>
+        </div>
+        <h1 class="page-title">@L.T("Attendance summary", "ملخص الحضور")</h1>
+        <p class="page-sub">@L.Date(Model.From) — @L.Date(Model.To)</p>
+    </div>
+    <div class="flex gap-2 no-print">
+        <a asp-action="Index" class="btn btn-outline btn-sm">@L.T("Back", "رجوع")</a>
+        <button type="button" class="btn btn-primary btn-sm" onclick="window.print()"><svg class="h-4 w-4"><use href="#i-printer"/></svg>@L.T("Print", "طباعة")</button>
+    </div>
+</div>
+
+<form method="get" class="card card-pad !py-4 no-print">
+    <div class="flex flex-wrap items-end gap-2">
+        <div><label class="label">@L.T("From", "من")</label><input type="date" name="from" value="@Model.From.ToString("yyyy-MM-dd")" class="input !py-2" /></div>
+        <div><label class="label">@L.T("To", "إلى")</label><input type="date" name="to" value="@Model.To.ToString("yyyy-MM-dd")" class="input !py-2" /></div>
+        <button class="btn btn-primary btn-sm">@L.T("Apply", "تطبيق")</button>
+    </div>
+</form>
+
+<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 mt-4">
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Attendance rate", "نسبة الحضور")</p><p class="kpi mt-1 text-emerald-700">@Model.Rate.ToString("0.#")%</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Sessions recorded", "حصص مسجلة")</p><p class="kpi mt-1">@L.Num(Model.Sessions)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Present", "حاضر")</p><p class="kpi mt-1 text-emerald-700">@L.Num(Model.Present)</p><p class="text-[10px] text-ink-500">@L.T("incl. late", "شاملاً المتأخرين")</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Absent", "غائب")</p><p class="kpi mt-1 text-red-600">@L.Num(Model.Absent)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Late / excused", "متأخر / بعذر")</p><p class="kpi mt-1 text-amber-600">@L.Num(Model.Late) <span class="text-sm font-normal text-ink-400">/ @L.Num(Model.Excused)</span></p></div>
+</div>
+
+<div class="card mt-4 overflow-hidden">
+    <div class="card-header">
+        <div>
+            <h2 class="section-title">@L.T("By section", "حسب الشعبة")</h2>
+            <p class="text-[11px] text-ink-500">@L.T("Sections with the lowest attendance appear first.", "تظهر الشعب الأدنى حضوراً أولاً.")</p>
+        </div>
+    </div>
+    <div class="table-wrap">
+        <table class="table-base min-w-[900px]">
+            <thead>
+                <tr>
+                    <th>@L.T("Section", "الشعبة")</th>
+                    <th>@L.T("Enrolled", "المشتركين")</th>
+                    <th>@L.T("Records", "السجلات")</th>
+                    <th>@L.T("Present", "حاضر")</th>
+                    <th>@L.T("Absent", "غائب")</th>
+                    <th>@L.T("Late", "متأخر")</th>
+                    <th>@L.T("Excused", "بعذر")</th>
+                    <th class="w-48">@L.T("Rate", "النسبة")</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (Model.Rows.Count == 0)
+            {
+                <tr><td colspan="8"><div class="empty">@L.T("No attendance records in this period.", "لا توجد سجلات حضور في هذه الفترة.")</div></td></tr>
+            }
+            @foreach (var row in Model.Rows)
+            {
+                <tr>
+                    <td>
+                        <p class="font-semibold text-ink-900">@row.Name</p>
+                        <p class="text-[11px] text-ink-500">@row.Meta</p>
+                    </td>
+                    <td class="text-xs">@L.Num(row.Enrolled)</td>
+                    <td class="text-xs">@L.Num(row.Sessions)</td>
+                    <td class="text-xs text-emerald-700">@L.Num(row.Present)</td>
+                    <td class="text-xs text-red-600">@L.Num(row.Absent)</td>
+                    <td class="text-xs text-amber-600">@L.Num(row.Late)</td>
+                    <td class="text-xs text-sky-600">@L.Num(row.Excused)</td>
+                    <td>
+                        <div class="flex items-center gap-2">
+                            <div class="progress w-24"><span class="@(row.Rate < 75 ? "!bg-amber-500" : "")" style="width:@(Math.Max(2, (int)row.Rate))%"></span></div>
+                            <span class="text-xs font-bold @(row.Rate >= 85 ? "text-emerald-700" : row.Rate >= 70 ? "text-amber-600" : "text-red-600")">@row.Rate.ToString("0.#")%</span>
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

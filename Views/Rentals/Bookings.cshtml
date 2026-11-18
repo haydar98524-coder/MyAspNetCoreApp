@@ -1,0 +1,85 @@
+@model List<ClassroomBooking>
+@{
+    ViewData["Title"] = L.T("Hall bookings", "حجوزات القاعات");
+    var from = (DateTime)ViewBag.From;
+    var to = (DateTime)ViewBag.To;
+    var status = ViewBag.Status as BookingPaymentStatus?;
+    var classroomId = ViewBag.ClassroomId as int?;
+    var classrooms = ViewBag.Classrooms as List<Classroom> ?? new List<Classroom>();
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Hall bookings", "حجوزات القاعات")</h1>
+        <p class="page-sub">@L.Date(from) — @L.Date(to) · @L.Num((int)ViewBag.Count) @L.T("bookings", "حجزاً")</p>
+    </div>
+    <div class="flex gap-2">
+        <a asp-action="Index" class="btn btn-outline btn-sm"><svg class="h-4 w-4 flip-x"><use href="#i-arrow-left"/></svg>@L.T("Rentals", "الإيجارات")</a>
+        <a asp-action="CreateBooking" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-plus"/></svg>@L.T("New booking", "حجز جديد")</a>
+    </div>
+</div>
+
+<div class="grid gap-3 sm:grid-cols-3">
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Booked value", "قيمة الحجوزات")</p><p class="kpi mt-1">@L.Money((long)ViewBag.Total)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Collected", "المقبوض")</p><p class="kpi mt-1 text-emerald-700">@L.Money((long)ViewBag.Paid)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Outstanding", "غير المقبوض")</p><p class="kpi mt-1 text-amber-700">@L.Money((long)ViewBag.Unpaid)</p></div>
+</div>
+
+<form method="get" class="card card-pad !py-4 mt-5">
+    <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+        <input type="date" name="from" value="@from.ToString("yyyy-MM-dd")" class="input" />
+        <input type="date" name="to" value="@to.ToString("yyyy-MM-dd")" class="input" />
+        <select name="classroomId" class="select">
+            <option value="">@L.T("All classrooms", "كل القاعات")</option>
+            @foreach (var room in classrooms)
+            {
+                <option value="@room.Id" selected="@(classroomId == room.Id)">@room.Number · @L.Pick(room.NameAr, room.NameEn)</option>
+            }
+        </select>
+        <select name="status" class="select">
+            <option value="">@L.T("All payments", "كل المدفوعات")</option>
+            @foreach (var st in Enum.GetValues<BookingPaymentStatus>()) { <option value="@st" selected="@(status == st)">@L.E(st)</option> }
+        </select>
+        <div class="flex gap-2"><button class="btn btn-primary flex-1">@L.T("Filter", "تصفية")</button><a asp-action="Bookings" class="btn btn-outline">@L.T("Reset", "مسح")</a></div>
+    </div>
+</form>
+
+<div class="card mt-4 overflow-hidden">
+    <div class="table-wrap">
+        <table class="table-base">
+            <thead><tr><th>@L.T("Tenant", "المستأجر")</th><th>@L.T("Classroom", "القاعة")</th><th>@L.T("Date & time", "التاريخ والوقت")</th><th>@L.T("Rate", "السعر/ساعة")</th><th>@L.T("Total", "الإجمالي")</th><th>@L.T("Payment", "الدفع")</th><th class="text-end">@L.T("Actions", "الإجراءات")</th></tr></thead>
+            <tbody>
+            @if (Model.Count == 0)
+            {
+                <tr><td colspan="7"><div class="empty">@L.T("No bookings match the filter.", "لا توجد حجوزات مطابقة.")</div></td></tr>
+            }
+            @foreach (var b in Model)
+            {
+                <tr>
+                    <td><p class="font-semibold text-ink-900">@b.TenantName</p><p class="text-[10px] text-ink-500">@b.Purpose</p></td>
+                    <td><span class="chip !px-2 !py-0.5">@b.Classroom.Number</span><p class="mt-1 text-[10px] text-ink-500">@L.Pick(b.Classroom.NameAr, b.Classroom.NameEn)</p></td>
+                    <td class="text-xs text-ink-600"><p class="font-semibold">@L.DateShort(b.Date)</p><p dir="ltr">@b.StartTime - @b.EndTime</p></td>
+                    <td class="text-xs text-ink-600">@L.Money(b.HourlyRate)</td>
+                    <td class="font-bold text-brand-900">@L.Money(b.TotalAmount)</td>
+                    <td><span class="badge @(b.PaymentStatus == BookingPaymentStatus.Paid ? "badge-green" : "badge-amber")">@L.E(b.PaymentStatus)</span></td>
+                    <td>
+                        <div class="flex justify-end">
+                            @if (b.PaymentStatus == BookingPaymentStatus.Unpaid)
+                            {
+                                <form asp-action="PayBooking" method="post" onsubmit="return confirm('@L.T("Collect this booking amount?", "هل تريد قبض مبلغ هذا الحجز؟")')">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@b.Id" />
+                                    <button class="btn btn-primary btn-xs"><svg class="h-3.5 w-3.5"><use href="#i-cash"/></svg>@L.T("Collect", "قبض")</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span class="text-[10px] text-ink-400">@L.T("Paid", "مقبوض")</span>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

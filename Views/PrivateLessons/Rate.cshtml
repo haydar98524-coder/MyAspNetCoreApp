@@ -1,0 +1,90 @@
+@model RateTeacherViewModel
+@{
+    ViewData["Title"] = L.T("Rate the teacher", "تقييم المدرّس");
+    var lesson = ViewBag.Lesson as PrivateLesson;
+    var criteria = new (string Name, string En, string Ar, int Value)[]
+    {
+        (nameof(Model.Explanation), "Explanation & clarity", "الشرح والوضوح", Model.Explanation),
+        (nameof(Model.Punctuality), "Punctuality", "الالتزام بالوقت", Model.Punctuality),
+        (nameof(Model.Interaction), "Interaction with the student", "التفاعل مع الطالب", Model.Interaction),
+        (nameof(Model.FollowUp), "Follow-up & homework", "المتابعة والواجبات", Model.FollowUp),
+        (nameof(Model.Overall), "Overall satisfaction", "الرضا العام", Model.Overall)
+    };
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Rate the teacher", "تقييم المدرّس")</h1>
+        <p class="page-sub">
+            @if (lesson is not null)
+            {
+                <span>@L.Pick(lesson.Teacher.FullNameAr, lesson.Teacher.FullNameEn) · @L.Pick(lesson.Subject.NameAr, lesson.Subject.NameEn) · @L.Date(lesson.Date)</span>
+            }
+            else
+            {
+                <span>@L.T("Your feedback helps us maintain teaching quality.", "ملاحظاتكم تساعدنا في الحفاظ على جودة التدريس.")</span>
+            }
+        </p>
+    </div>
+    @if (lesson is not null)
+    {
+        <a asp-action="Details" asp-route-id="@lesson.RequestId" class="btn btn-outline btn-sm"><svg class="h-4 w-4 flip-x"><use href="#i-arrow-left"/></svg>@L.T("Back to lesson", "العودة للدرس")</a>
+    }
+</div>
+
+<form asp-action="Rate" method="post" class="grid gap-4 lg:grid-cols-3">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="TeacherId" />
+    <input type="hidden" asp-for="LessonId" />
+    <div class="card card-pad lg:col-span-2">
+        <div asp-validation-summary="ModelOnly" class="alert alert-error mb-4 @(ViewData.ModelState.ErrorCount == 0 ? "hidden" : "")"></div>
+        <h2 class="section-title">@L.T("Evaluation criteria", "معايير التقييم")</h2>
+        <p class="mt-1 text-xs text-ink-500">@L.T("1 = poor, 5 = excellent", "1 = ضعيف، 5 = ممتاز")</p>
+        <div class="mt-4 space-y-3">
+            @foreach (var item in criteria)
+            {
+                <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-sand-200 p-3">
+                    <label class="text-sm font-semibold text-ink-800" for="@item.Name">@L.T(item.En, item.Ar)</label>
+                    <div class="flex items-center gap-1.5">
+                        @for (var score = 1; score <= 5; score++)
+                        {
+                            <label class="cursor-pointer">
+                                <input type="radio" name="@item.Name" value="@score" checked="@(item.Value == score)" class="peer sr-only" />
+                                <span class="flex h-9 w-9 items-center justify-center rounded-lg border border-sand-300 text-xs font-bold text-ink-500 transition peer-checked:border-brand-700 peer-checked:bg-brand-800 peer-checked:text-white hover:border-brand-400">@score</span>
+                            </label>
+                        }
+                    </div>
+                </div>
+            }
+            <div>
+                <label class="label">@L.T("Comment (optional)", "ملاحظة (اختياري)")</label>
+                <textarea asp-for="Comment" rows="3" class="input" maxlength="600" placeholder="@L.T("What went well? What could improve?", "ما الذي أعجبكم؟ وما الذي يمكن تحسينه؟")"></textarea>
+                <span asp-validation-for="Comment" class="field-error"></span>
+            </div>
+        </div>
+        <div class="mt-5 flex flex-wrap gap-2">
+            <button class="btn btn-primary"><svg class="h-4 w-4"><use href="#i-star"/></svg>@L.T("Submit rating", "إرسال التقييم")</button>
+            @if (lesson is not null)
+            {
+                <a asp-action="Details" asp-route-id="@lesson.RequestId" class="btn btn-outline">@L.T("Cancel", "إلغاء")</a>
+            }
+        </div>
+    </div>
+
+    <div class="card card-pad h-fit">
+        <h2 class="section-title">@L.T("Why rate?", "لماذا التقييم؟")</h2>
+        <ul class="mt-3 space-y-2 text-[11px] text-ink-600">
+            <li>@L.T("Ratings feed the matching score for future requests.", "تدخل التقييمات في احتساب المطابقة للطلبات القادمة.")</li>
+            <li>@L.T("Low ratings trigger a review by the academic supervisor.", "التقييمات المنخفضة تستدعي مراجعة من المشرف الأكاديمي.")</li>
+            <li>@L.T("Ratings are shown on the teacher's public profile (name hidden).", "تظهر التقييمات في ملف المدرّس العام (دون ذكر الاسم).")</li>
+        </ul>
+        @if (lesson is not null)
+        {
+            <div class="mt-4 rounded-xl bg-sand-50 p-3 text-xs">
+                <p class="font-bold text-ink-800">@L.T("Lesson", "الدرس")</p>
+                <p class="mt-1 text-ink-600">@L.Pick(lesson.Subject.NameAr, lesson.Subject.NameEn)</p>
+                <p class="text-ink-500">@L.Date(lesson.Date) · <span dir="ltr">@lesson.StartTime</span></p>
+                <p class="text-ink-500">@L.Pick(lesson.Teacher.FullNameAr, lesson.Teacher.FullNameEn)</p>
+            </div>
+        }
+    </div>
+</form>

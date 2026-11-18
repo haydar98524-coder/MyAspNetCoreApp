@@ -1,0 +1,179 @@
+@model RegisterEnrollmentViewModel
+@{
+    ViewData["Title"] = L.T("New enrollment", "اشتراك جديد");
+    var students = ViewBag.Students as List<Student> ?? new();
+    var courses = ViewBag.Courses as List<Course> ?? new();
+    var sections = ViewBag.Sections as List<CourseSection> ?? new();
+    var selected = ViewBag.SelectedStudent as Student;
+    var openShift = ViewBag.OpenShift as CashierShift;
+}
+<div class="page-head">
+    <div>
+        <div class="mb-1 flex items-center gap-2 text-xs text-ink-500">
+            <a asp-action="Index" class="hover:text-brand-700">@L.T("Enrollments", "الاشتراكات")</a>
+            <svg class="h-3 w-3 flip-x"><use href="#i-chevron-down"/></svg>
+            <span>@L.T("New", "جديد")</span>
+        </div>
+        <h1 class="page-title">@L.T("Enroll a student", "اشتراك طالب")</h1>
+        <p class="page-sub">@L.T("Select the course, apply any discount and receive an optional initial payment.", "اختر الدورة، طبق أي خصم، واستلم دفعة أولى اختيارية.")</p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline btn-sm">@L.T("Cancel", "إلغاء")</a>
+</div>
+
+<form method="post" class="grid gap-5 lg:grid-cols-3">
+    <div class="space-y-5 lg:col-span-2">
+        <div asp-validation-summary="ModelOnly" class="alert alert-error @(ViewData.ModelState.IsValid ? "hidden" : "")"></div>
+        <div class="card card-pad">
+            <h2 class="section-title mb-4">@L.T("Student & course", "الطالب والدورة")</h2>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div class="sm:col-span-2">
+                    <label asp-for="StudentId" class="label">@L.T("Student", "الطالب") *</label>
+                    <select asp-for="StudentId" class="select">
+                        <option value="0">@L.T("Select student…", "اختر الطالب…")</option>
+                        @foreach (var s in students)
+                        {
+                            <option value="@s.Id" data-grade="@s.GradeId">@L.Pick(s.FullNameAr, s.FullNameEn) · @s.StudentNo · @L.Pick(s.Grade.NameAr, s.Grade.NameEn)</option>
+                        }
+                    </select>
+                    <span asp-validation-for="StudentId" class="field-error"></span>
+                    @if (selected is not null)
+                    {
+                        <p class="help">@L.T("Guardian", "ولي الأمر"): @selected.Parent?.FullNameAr @selected.Parent?.Phone</p>
+                    }
+                </div>
+                <div class="sm:col-span-2">
+                    <label asp-for="CourseId" class="label">@L.T("Course", "الدورة") *</label>
+                    <select asp-for="CourseId" id="courseSelect" class="select">
+                        <option value="0" data-fee="0">@L.T("Select course…", "اختر الدورة…")</option>
+                        @foreach (var c in courses)
+                        {
+                            <option value="@c.Id" data-grade="@c.GradeId" data-fee="@c.Fee">@L.Pick(c.NameAr, c.NameEn) · @L.Pick(c.Grade.NameAr, c.Grade.NameEn) · @L.Money(c.Fee)</option>
+                        }
+                    </select>
+                    <span asp-validation-for="CourseId" class="field-error"></span>
+                </div>
+                <div class="sm:col-span-2">
+                    <label asp-for="SectionId" class="label">@L.T("Section", "الشعبة")</label>
+                    <select asp-for="SectionId" id="sectionSelect" class="select">
+                        <option value="">@L.T("No specific section", "بدون شعبة محددة")</option>
+                        @foreach (var sec in sections)
+                        {
+                            <option value="@sec.Id" data-course="@sec.CourseId">@sec.Name · @L.T("capacity", "السعة") @sec.Capacity</option>
+                        }
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-pad">
+            <h2 class="section-title mb-4">@L.T("Fees & payment", "الرسوم والدفع")</h2>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label asp-for="Discount" class="label">@L.T("Discount (IQD)", "الخصم (د.ع)")</label>
+                    <input asp-for="Discount" id="discountInput" type="number" step="1000" min="0" class="input" />
+                    <span asp-validation-for="Discount" class="field-error"></span>
+                    <p class="help">@L.T("Social case, sibling or staff discount.", "حالة اجتماعية أو خصم أشقاء أو كادر.")</p>
+                </div>
+                <div>
+                    <label asp-for="InitialPayment" class="label">@L.T("Initial payment (IQD)", "الدفعة الأولى (د.ع)")</label>
+                    <input asp-for="InitialPayment" id="initialInput" type="number" step="1000" min="0" class="input" />
+                    <span asp-validation-for="InitialPayment" class="field-error"></span>
+                    <p class="help">@L.T("Optional — a receipt is issued immediately.", "اختياري — يصدر سند قبض فوراً.")</p>
+                </div>
+                <div>
+                    <label asp-for="Method" class="label">@L.T("Payment method", "طريقة الدفع")</label>
+                    <select asp-for="Method" class="select" asp-items="Html.GetEnumSelectList<PaymentMethod>()"></select>
+                    <span asp-validation-for="Method" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="InstallmentCount" class="label">@L.T("Installments", "عدد الأقساط")</label>
+                    <input asp-for="InstallmentCount" id="installmentInput" type="number" min="1" max="36" step="1" class="input" />
+                    <span asp-validation-for="InstallmentCount" class="field-error"></span>
+                    <p class="help">@L.T("The net fee is split evenly; the remainder goes on the last installment.", "يُقسّم الصافي بالتساوي، ويُضاف الباقي إلى القسط الأخير.")</p>
+                </div>
+                <div class="sm:col-span-2">
+                    <label asp-for="DueDate" class="label">@L.T("First installment due date", "استحقاق القسط الأول")</label>
+                    <input asp-for="DueDate" type="date" class="input" />
+                </div>
+                <div class="sm:col-span-2">
+                    <label asp-for="Notes" class="label">@L.T("Notes on the agreement", "ملاحظات الاتفاق")</label>
+                    <textarea asp-for="Notes" class="textarea"></textarea>
+                </div>
+                @if (openShift is null)
+                {
+                    <div class="alert alert-warning sm:col-span-2">
+                        <svg class="h-4 w-4"><use href="#i-key"/></svg>
+                        <p>@L.T("Cash receipts require an open cashier shift. Open your drawer first, or choose a non-cash method.", "استلام النقد يتطلب وردية صندوق مفتوحة. افتح صندوقك أولاً أو اختر طريقة غير نقدية.")</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-success sm:col-span-2">
+                        <svg class="h-4 w-4"><use href="#i-check"/></svg>
+                        <p>@L.T("Cash drawer open", "صندوق النقد مفتوح") — <span class="font-mono">@openShift.ShiftNo</span> · @L.T("float", "الافتتاحي") @L.Money(openShift.OpeningFloat)</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="space-y-5">
+        <div class="card card-pad">
+            <h2 class="section-title mb-4">@L.T("Summary", "الملخص")</h2>
+            <dl class="space-y-2 text-sm">
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Course fee", "رسوم الدورة")</dt><dd id="feeOut" class="font-semibold">@L.Money(0)</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Discount", "الخصم")</dt><dd id="discountOut" class="font-semibold text-emerald-700">@L.Money(0)</dd></div>
+                <div class="flex justify-between border-t border-sand-200 pt-2"><dt class="font-bold text-ink-700">@L.T("Net fee", "الصافي")</dt><dd id="netOut" class="text-lg font-extrabold text-brand-950">@L.Money(0)</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Installments", "عدد الأقساط")</dt><dd id="countOut" class="font-semibold">1</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("First installment", "القسط الأول")</dt><dd id="firstOut" class="font-semibold">@L.Money(0)</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Last installment", "القسط الأخير")</dt><dd id="lastOut" class="font-semibold">@L.Money(0)</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Initial payment", "الدفعة الأولى")</dt><dd id="initialOut" class="font-semibold">@L.Money(0)</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Balance after collection", "المتبقي بعد التحصيل")</dt><dd id="remainingOut" class="font-semibold text-amber-700">@L.Money(0)</dd></div>
+            </dl>
+            <button class="btn btn-primary mt-5 w-full"><svg class="h-4 w-4"><use href="#i-check"/></svg>@L.T("Create enrollment", "إنشاء الاشتراك")</button>
+        </div>
+        <div class="card card-pad !bg-brand-50">
+            <p class="text-xs leading-6 text-brand-800">@L.T("A due is created automatically. Teacher share is posted to payables and the ledger on every receipt.", "ينشأ القسط تلقائياً. تُسجل حصة المدرّس في المستحقات والقيود مع كل سند قبض.")</p>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+<script>
+(() => {
+  const course = document.getElementById('courseSelect');
+  const section = document.getElementById('sectionSelect');
+  const discount = document.getElementById('discountInput');
+  const initial = document.getElementById('initialInput');
+  const installments = document.getElementById('installmentInput');
+  const fmt = n => new Intl.NumberFormat('en-US').format(Math.max(0, n));
+  function sync() {
+    const opt = course.options[course.selectedIndex];
+    const fee = Number(opt?.dataset.fee || 0);
+    const disc = Number(discount.value || 0);
+    const init = Number(initial.value || 0);
+    const net = Math.max(0, fee - disc);
+    const count = Math.min(36, Math.max(1, Number(installments.value || 1)));
+    const first = count === 1 ? net : Math.floor(net / count);
+    const last = net - first * (count - 1);
+    document.getElementById('feeOut').textContent = fmt(fee) + ' IQD';
+    document.getElementById('discountOut').textContent = fmt(disc) + ' IQD';
+    document.getElementById('netOut').textContent = fmt(net) + ' IQD';
+    document.getElementById('countOut').textContent = count;
+    document.getElementById('firstOut').textContent = fmt(first) + ' IQD';
+    document.getElementById('lastOut').textContent = fmt(last) + ' IQD';
+    document.getElementById('initialOut').textContent = fmt(init) + ' IQD';
+    document.getElementById('remainingOut').textContent = fmt(net - init) + ' IQD';
+    initial.max = first;
+    [...section.options].forEach(o => {
+      if (!o.dataset.course) return;
+      o.hidden = o.dataset.course !== course.value;
+    });
+    if (section.selectedOptions[0]?.hidden) section.value = '';
+  }
+  [course, discount, initial, installments].forEach(el => el.addEventListener('input', sync));
+  course.addEventListener('change', sync);
+  sync();
+})();
+</script>
+}

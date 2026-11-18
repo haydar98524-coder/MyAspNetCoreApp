@@ -1,0 +1,376 @@
+@{
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+    var action = ViewContext.RouteData.Values["action"]?.ToString() ?? "";
+    string Nav(string c) => string.Equals(controller, c, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+    string NavA(string c, string a) => string.Equals(controller, c, StringComparison.OrdinalIgnoreCase) && string.Equals(action, a, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+
+    var isAdmin = User.IsInRole(Roles.Administrator);
+    var isManager = User.IsInRole(Roles.Manager);
+    var isAccountant = User.IsInRole(Roles.Accountant);
+    var isRegistrar = User.IsInRole(Roles.Registrar);
+    var isHr = User.IsInRole(Roles.Hr);
+    var isTeacher = User.IsInRole(Roles.Teacher);
+    var isParent = User.IsInRole(Roles.Parent);
+    var isStudent = User.IsInRole(Roles.Student);
+    var isLeadership = isAdmin || isManager;
+    var isStaff = User.IsStaff();
+    var showAdmissions = isLeadership || isRegistrar || isAccountant;
+    var showAcademic = isLeadership || isRegistrar;
+    var showFinance = isLeadership || isAccountant;
+    var showHr = isLeadership || isHr;
+    var showReports = isLeadership || isAccountant || isHr || isRegistrar;
+    var showAdmin = isAdmin;
+    var showSettings = isLeadership;
+    var portalOnly = !isStaff && (isTeacher || isParent || isStudent);
+    var homeController = portalOnly ? (isTeacher ? "Teacher" : isParent ? "Parent" : "Student") : "Home";
+    var homeAction = portalOnly ? "Index" : "Dashboard";
+
+    var userId = User.CurrentUserId();
+    var unread = 0;
+    var pendingChange = 0;
+    var pendingLesson = 0;
+    if (!string.IsNullOrEmpty(userId))
+    {
+        unread = await Db.Notifications.CountAsync(n => !n.IsRead && n.UserId == userId);
+    }
+    if (isLeadership)
+    {
+        pendingChange = await Db.AttendanceChangeRequests.CountAsync(r => r.Status == ChangeRequestStatus.Pending);
+        pendingLesson = await Db.PrivateLessonRequests.CountAsync(r => r.Status == RequestStatus.Pending || r.Status == RequestStatus.Matched);
+    }
+
+    var settings = await Db.Settings.AsNoTracking().FirstOrDefaultAsync(s => s.Id == 1);
+    var fullName = User.DisplayName();
+    var primaryRole = new[] { Roles.Administrator, Roles.Manager, Roles.Accountant, Roles.Hr, Roles.Registrar, Roles.Teacher, Roles.Parent, Roles.Student }
+        .FirstOrDefault(User.IsInRole) ?? "";
+    var pageTitle = ViewData["Title"] as string ?? L.T("Dashboard", "لوحة التحكم");
+    var returnUrl = Context.Request.Path + Context.Request.QueryString;
+}
+<!DOCTYPE html>
+<html lang="@L.Lang" dir="@L.Dir">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#032b28" />
+    <title>@pageTitle · @L.T("Kirkuk National Institute", "معهد كركوك الأهلي")</title>
+    <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
+    <link rel="icon" href="~/favicon.svg" type="image/svg+xml" />
+    @await RenderSectionAsync("Head", required: false)
+</head>
+<body x-data="{ }" class="min-h-screen bg-sand-100">
+    @await Html.PartialAsync("_Icons")
+    <div class="flex min-h-screen">
+        <div id="sidebarBackdrop" class="app-backdrop hidden" data-sidebar-close></div>
+
+        <aside class="app-sidebar bg-gradient-to-b from-brand-950 via-brand-950 to-brand-900 shadow-2xl">
+            <div class="flex h-[76px] shrink-0 items-center justify-between border-b border-white/10 px-5">
+                <a asp-controller="@homeController" asp-action="@homeAction" class="block">@await Html.PartialAsync("_Logo", "dark")</a>
+                <button type="button" class="icon-btn text-brand-100 hover:bg-white/10 hover:text-white lg:hidden" data-sidebar-close aria-label="@L.T("Close menu", "إغلاق القائمة")">
+                    <svg class="h-5 w-5"><use href="#i-x"/></svg>
+                </button>
+            </div>
+
+            <div class="no-scrollbar flex-1 overflow-y-auto px-3 pb-4">
+                <div class="sidebar-label">@L.T("Workspace", "مساحة العمل")</div>
+                <nav class="space-y-1">
+                    @if (!portalOnly)
+                    {
+                        <a class="sidebar-link @NavA("Home", "Dashboard")" asp-controller="Home" asp-action="Dashboard">
+                            <span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-dashboard"/></svg></span>
+                            <span class="flex-1">@L.T("Dashboard", "لوحة التحكم")</span>
+                            @if (isLeadership || isAccountant)
+                            {
+                                <span class="nav-dot"></span>
+                            }
+                        </a>
+                    }
+                    @if (isStaff)
+                    {
+                        <a class="sidebar-link @Nav("Assistant")" asp-controller="Assistant" asp-action="Index">
+                            <span class="text-gold-300"><svg class="h-5 w-5"><use href="#i-sparkles"/></svg></span>
+                            <span class="flex-1">@L.T("AI assistant", "المساعد الذكي")</span>
+                            <span class="badge !bg-white/10 !text-[10px] !text-brand-100 !ring-0">@L.T("Read-only", "قراءة فقط")</span>
+                        </a>
+                    }
+
+                    @if (isTeacher)
+                    {
+                        <div class="sidebar-label">@L.T("Teacher portal", "بوابة المدرّس")</div>
+                        <a class="sidebar-link @NavA("Teacher", "Index")" asp-controller="Teacher" asp-action="Index"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-dashboard"/></svg></span><span>@L.T("My dashboard", "لوحة المدرّس")</span></a>
+                        <a class="sidebar-link @NavA("Teacher", "Schedule")" asp-controller="Teacher" asp-action="Schedule"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-calendar"/></svg></span><span>@L.T("Weekly schedule", "جدولي الأسبوعي")</span></a>
+                        <a class="sidebar-link @NavA("Teacher", "Attendance")" asp-controller="Teacher" asp-action="Attendance"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-clipboard"/></svg></span><span>@L.T("Take attendance", "تسجيل الحضور")</span></a>
+                        <a class="sidebar-link @NavA("Teacher", "Earnings")" asp-controller="Teacher" asp-action="Earnings"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-wallet"/></svg></span><span>@L.T("My earnings", "مستحقاتي")</span></a>
+                        <a class="sidebar-link @NavA("Teacher", "Requests")" asp-controller="Teacher" asp-action="Requests"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-book"/></svg></span><span>@L.T("Private requests", "طلبات الدروس")</span></a>
+                    }
+
+                    @if (isParent)
+                    {
+                        <div class="sidebar-label">@L.T("Guardian portal", "بوابة ولي الأمر")</div>
+                        <a class="sidebar-link @NavA("Parent", "Index")" asp-controller="Parent" asp-action="Index"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-dashboard"/></svg></span><span>@L.T("Overview", "نظرة عامة")</span></a>
+                        <a class="sidebar-link @NavA("Parent", "Children")" asp-controller="Parent" asp-action="Children"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-users"/></svg></span><span>@L.T("My children", "أبنائي")</span></a>
+                        <a class="sidebar-link @NavA("Parent", "Payments")" asp-controller="Parent" asp-action="Payments"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-receipt"/></svg></span><span>@L.T("Fees & payments", "الأقساط والمدفوعات")</span></a>
+                        <a class="sidebar-link @NavA("Parent", "Attendance")" asp-controller="Parent" asp-action="Attendance"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-clipboard"/></svg></span><span>@L.T("Attendance", "الحضور والغياب")</span></a>
+                        <a class="sidebar-link @NavA("Parent", "Results")" asp-controller="Parent" asp-action="Results"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-chart"/></svg></span><span>@L.T("Results", "النتائج")</span></a>
+                        <a class="sidebar-link @NavA("PrivateLessons", "Request")" asp-controller="PrivateLessons" asp-action="Request"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-book"/></svg></span><span>@L.T("Request a lesson", "طلب درس خصوصي")</span></a>
+                    }
+
+                    @if (isStudent)
+                    {
+                        <div class="sidebar-label">@L.T("Student portal", "بوابة الطالب")</div>
+                        <a class="sidebar-link @NavA("Student", "Index")" asp-controller="Student" asp-action="Index"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-dashboard"/></svg></span><span>@L.T("My profile", "ملفي")</span></a>
+                        <a class="sidebar-link @NavA("Student", "Schedule")" asp-controller="Student" asp-action="Schedule"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-calendar"/></svg></span><span>@L.T("My schedule", "جدولي")</span></a>
+                        <a class="sidebar-link @NavA("Student", "Attendance")" asp-controller="Student" asp-action="Attendance"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-clipboard"/></svg></span><span>@L.T("My attendance", "حضوري")</span></a>
+                        <a class="sidebar-link @NavA("Student", "Results")" asp-controller="Student" asp-action="Results"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-chart"/></svg></span><span>@L.T("My results", "نتائجي")</span></a>
+                        <a class="sidebar-link @NavA("Student", "Payments")" asp-controller="Student" asp-action="Payments"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-receipt"/></svg></span><span>@L.T("My fees", "أقساطي")</span></a>
+                    }
+
+                    @if (showAdmissions)
+                    {
+                        <div class="sidebar-label">@L.T("Admissions & students", "القبول والطلاب")</div>
+                        <a class="sidebar-link @Nav("Students")" asp-controller="Students" asp-action="Index"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-users"/></svg></span><span class="flex-1">@L.T("Students", "الطلاب")</span></a>
+                        @if (isLeadership || isRegistrar)
+                        {
+                            <a class="sidebar-link @Nav("Parents")" asp-controller="Parents" asp-action="Index"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-user"/></svg></span><span>@L.T("Parents", "أولياء الأمور")</span></a>
+                        }
+                        <a class="sidebar-link @Nav("Enrollments")" asp-controller="Enrollments" asp-action="Index"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-book"/></svg></span><span>@L.T("Enrollments", "الاشتراكات")</span></a>
+                        <a class="sidebar-link @Nav("Dues")" asp-controller="Dues" asp-action="Index"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-clipboard"/></svg></span><span>@L.T("Dues", "الأقساط")</span></a>
+                        <a class="sidebar-link @Nav("Payments")" asp-controller="Payments" asp-action="Index"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-receipt"/></svg></span><span>@L.T("Payments", "المدفوعات")</span></a>
+                        <a class="sidebar-link @Nav("TuitionContracts")" asp-controller="TuitionContracts" asp-action="Index"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-clipboard"/></svg></span><span>@L.T("Tuition contracts", "عقود الأقساط")</span></a>
+                        <a class="sidebar-link @Nav("Cashier")" asp-controller="Cashier" asp-action="Index"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-cash"/></svg></span><span>@L.T("Cashier shift", "وردية الصندوق")</span></a>
+                    }
+
+                    @if (showAcademic)
+                    {
+                        <div class="sidebar-label">@L.T("Academics", "الشؤون الأكاديمية")</div>
+                        <a class="sidebar-link @Nav("Courses")" asp-controller="Courses" asp-action="Index"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-book"/></svg></span><span>@L.T("Courses", "الدورات")</span></a>
+                        <a class="sidebar-link @Nav("Subjects")" asp-controller="Subjects" asp-action="Index"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-sparkles"/></svg></span><span>@L.T("Subjects", "المواد")</span></a>
+                        <a class="sidebar-link @Nav("Grades")" asp-controller="Grades" asp-action="Index"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-cap"/></svg></span><span>@L.T("Stages & grades", "المراحل والصفوف")</span></a>
+                        <a class="sidebar-link @Nav("Classrooms")" asp-controller="Classrooms" asp-action="Index"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-building"/></svg></span><span>@L.T("Classrooms", "القاعات")</span></a>
+                        <a class="sidebar-link @Nav("Exams")" asp-controller="Exams" asp-action="Index"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-chart"/></svg></span><span>@L.T("Exams & results", "الامتحانات والنتائج")</span></a>
+                    }
+
+                    @if (isStaff)
+                    {
+                        <div class="sidebar-label">@L.T("Attendance", "الحضور")</div>
+                        <a class="sidebar-link @NavA("Attendance", "Index")" asp-controller="Attendance" asp-action="Index"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-check"/></svg></span><span class="flex-1">@L.T("Attendance register", "سجل الحضور")</span></a>
+                        @if (isLeadership || isRegistrar)
+                        {
+                            <a class="sidebar-link @NavA("Attendance", "Requests")" asp-controller="Attendance" asp-action="Requests">
+                                <span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-clipboard"/></svg></span>
+                                <span class="flex-1">@L.T("Change requests", "طلبات التعديل")</span>
+                                @if (pendingChange > 0)
+                                {
+                                    <span class="badge badge-amber !px-2 !py-0.5">@L.Num(pendingChange)</span>
+                                }
+                            </a>
+                        }
+                    }
+
+                    @if (isLeadership || isRegistrar || isAccountant)
+                    {
+                        <div class="sidebar-label">@L.T("Private lessons", "الدروس الخصوصية")</div>
+                        <a class="sidebar-link @Nav("PrivateLessons")" asp-controller="PrivateLessons" asp-action="Index">
+                            <span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-book"/></svg></span>
+                            <span class="flex-1">@L.T("Requests & matching", "الطلبات والإسناد")</span>
+                            @if (pendingLesson > 0)
+                            {
+                                <span class="badge badge-gold !px-2 !py-0.5">@L.Num(pendingLesson)</span>
+                            }
+                        </a>
+                        <a class="sidebar-link @NavA("Teachers", "Directory")" asp-controller="Teachers" asp-action="Directory"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-star"/></svg></span><span>@L.T("Teacher directory", "دليل المدرسين")</span></a>
+                    }
+
+                    @if (showFinance)
+                    {
+                        <div class="sidebar-label">@L.T("Finance & accounting", "المالية والمحاسبة")</div>
+                        <a class="sidebar-link @NavA("Finance", "Index")" asp-controller="Finance" asp-action="Index"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-chart"/></svg></span><span>@L.T("Financial overview", "الملخص المالي")</span></a>
+                        <a class="sidebar-link @NavA("Finance", "Journal")" asp-controller="Finance" asp-action="Journal"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-clipboard"/></svg></span><span>@L.T("Journal entries", "القيود اليومية")</span></a>
+                        <a class="sidebar-link @NavA("Finance", "Expenses")" asp-controller="Finance" asp-action="Expenses"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-receipt"/></svg></span><span>@L.T("Expenses", "المصروفات")</span></a>
+                        <a class="sidebar-link @NavA("Finance", "Incomes")" asp-controller="Finance" asp-action="Incomes"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-cash"/></svg></span><span>@L.T("Other income", "الإيرادات")</span></a>
+                        <a class="sidebar-link @NavA("Finance", "Funds")" asp-controller="Finance" asp-action="Funds"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-bank"/></svg></span><span>@L.T("Funds & accounts", "الصناديق والحسابات")</span></a>
+                        <a class="sidebar-link @Nav("TeacherSettlements")" asp-controller="TeacherSettlements" asp-action="Index"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-wallet"/></svg></span><span>@L.T("Teacher settlements", "تسويات المدرسين")</span></a>
+                        <a class="sidebar-link @NavA("Finance", "TeacherPayables")" asp-controller="Finance" asp-action="TeacherPayables"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-clipboard"/></svg></span><span>@L.T("Teacher payables", "مستحقات المدرسين")</span></a>
+                    }
+
+                    @if (showFinance || isRegistrar)
+                    {
+                        <div class="sidebar-label">@L.T("Rentals", "الإيجارات")</div>
+                        <a class="sidebar-link @NavA("Rentals", "Index")" asp-controller="Rentals" asp-action="Index"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-building"/></svg></span><span>@L.T("Rental overview", "نظرة عامة")</span></a>
+                        <a class="sidebar-link @NavA("Rentals", "Bookings")" asp-controller="Rentals" asp-action="Bookings"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-calendar"/></svg></span><span>@L.T("Hall bookings", "حجوزات القاعات")</span></a>
+                        <a class="sidebar-link @NavA("Rentals", "Cafeteria")" asp-controller="Rentals" asp-action="Cafeteria"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-cash"/></svg></span><span>@L.T("Cafeteria contract", "الكافتيريا")</span></a>
+                        <a class="sidebar-link @NavA("Rentals", "TeacherRent")" asp-controller="Rentals" asp-action="TeacherRent"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-key"/></svg></span><span>@L.T("Teacher room rent", "إيجار مدرسي السادس")</span></a>
+                    }
+
+                    @if (showHr)
+                    {
+                        <div class="sidebar-label">@L.T("Human resources", "الموارد البشرية")</div>
+                        @if (isLeadership || isHr || isRegistrar)
+                        {
+                            <a class="sidebar-link @Nav("Teachers")" asp-controller="Teachers" asp-action="Index"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-cap"/></svg></span><span>@L.T("Teachers", "المدرسون")</span></a>
+                        }
+                        <a class="sidebar-link @Nav("Hr")" asp-controller="Hr" asp-action="Index"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-briefcase"/></svg></span><span>@L.T("Employees", "الموظفون")</span></a>
+                        <a class="sidebar-link @NavA("Hr", "Attendance")" asp-controller="Hr" asp-action="Attendance"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-clipboard"/></svg></span><span>@L.T("Staff attendance", "حضور الموظفين")</span></a>
+                        <a class="sidebar-link @NavA("Hr", "Payroll")" asp-controller="Hr" asp-action="Payroll"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-cash"/></svg></span><span>@L.T("Payroll", "الرواتب")</span></a>
+                    }
+
+                    @if (showReports)
+                    {
+                        <div class="sidebar-label">@L.T("Reports & admin", "التقارير والإدارة")</div>
+                        <a class="sidebar-link @Nav("Reports")" asp-controller="Reports" asp-action="Index"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-chart"/></svg></span><span>@L.T("Reports", "التقارير")</span></a>
+                        @if (showSettings)
+                        {
+                            <a class="sidebar-link @NavA("Admin", "Settings")" asp-controller="Admin" asp-action="Settings"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-settings"/></svg></span><span>@L.T("Settings", "الإعدادات")</span></a>
+                        }
+                        @if (showAdmin)
+                        {
+                            <a class="sidebar-link @NavA("Admin", "Users")" asp-controller="Admin" asp-action="Users"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-key"/></svg></span><span>@L.T("Users & roles", "المستخدمون والصلاحيات")</span></a>
+                            <a class="sidebar-link @NavA("Admin", "Audit")" asp-controller="Admin" asp-action="Audit"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-shield"/></svg></span><span>@L.T("Audit trail", "سجل التدقيق")</span></a>
+                            <a class="sidebar-link @NavA("Admin", "Backup")" asp-controller="Admin" asp-action="Backup"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-database"/></svg></span><span>@L.T("Backup & API", "النسخ الاحتياطي والـ API")</span></a>
+                        }
+                        <a class="sidebar-link @NavA("Admin", "Compliance")" asp-controller="Admin" asp-action="Compliance"><span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-info"/></svg></span><span>@L.T("Compliance & docs", "الامتثال والتوثيق")</span></a>
+                    }
+
+                    <div class="sidebar-label">@L.T("Communication", "التواصل")</div>
+                    <a class="sidebar-link @Nav("Notifications")" asp-controller="Notifications" asp-action="Index">
+                        <span class="text-brand-200"><svg class="h-5 w-5"><use href="#i-bell"/></svg></span>
+                        <span class="flex-1">@L.T("Notifications", "الإشعارات")</span>
+                        @if (unread > 0)
+                        {
+                            <span class="badge !bg-gold-400 !text-brand-950 !ring-0">@L.Num(unread)</span>
+                        }
+                    </a>
+                </nav>
+            </div>
+
+            <div class="shrink-0 border-t border-white/10 p-3">
+                <div class="flex items-center gap-3 rounded-xl bg-white/5 p-3 ring-1 ring-white/10">
+                    <span class="avatar h-9 w-9 shrink-0 bg-gold-400/90 text-sm text-brand-950">@L.Initials(fullName)</span>
+                    <div class="min-w-0 flex-1 leading-tight">
+                        <p class="truncate text-xs font-bold text-white">@fullName</p>
+                        <p class="truncate text-[10px] text-brand-200/70">@L.Role(primaryRole)</p>
+                    </div>
+                    <form asp-controller="Account" asp-action="Logout" method="post">
+                        <button class="icon-btn text-brand-200 hover:bg-white/10 hover:text-white" title="@L.T("Sign out", "تسجيل الخروج")">
+                            <svg class="h-4 w-4 flip-x"><use href="#i-logout"/></svg>
+                        </button>
+                    </form>
+                </div>
+                <p class="mt-2 px-1 text-center text-[10px] text-brand-200/40">@L.T("Academic year", "العام الدراسي") @settings?.AcademicYear</p>
+            </div>
+        </aside>
+
+        <div class="flex min-w-0 flex-1 flex-col">
+            <header class="app-header sticky top-0 z-20 border-b border-sand-200/80 bg-sand-50/85 backdrop-blur-lg">
+                <div class="flex h-[76px] items-center gap-2 px-4 sm:gap-3 sm:px-6 lg:px-8">
+                    <button type="button" class="icon-btn lg:hidden" data-sidebar-open aria-label="@L.T("Open menu", "فتح القائمة")">
+                        <svg class="h-5 w-5"><use href="#i-menu"/></svg>
+                    </button>
+                    <div class="min-w-0 flex-1">
+                        <p class="truncate text-[15px] font-bold text-brand-950 sm:text-base">@pageTitle</p>
+                        <p class="hidden truncate text-[11px] text-ink-500 sm:block">@L.Date(DateTime.Today) · @L.Day(DateTime.Today.DayOfWeek) · @settings?.AcademicYear</p>
+                    </div>
+
+                    @if (isStaff)
+                    {
+                        <form asp-controller="Students" asp-action="Index" method="get" class="hidden xl:block">
+                            <div class="relative">
+                                <span class="pointer-events-none absolute inset-y-0 start-3 flex items-center text-ink-500">
+                                    <svg class="h-4 w-4"><use href="#i-search"/></svg>
+                                </span>
+                                <input name="q" class="input !w-60 !rounded-full !bg-white !ps-9 !py-2" placeholder="@L.T("Search students…", "ابحث عن طالب…")" />
+                            </div>
+                        </form>
+                    }
+
+                    <a asp-controller="Account" asp-action="SetLanguage" asp-route-lang="@L.OtherLang" asp-route-returnUrl="@returnUrl"
+                       class="btn btn-outline !hidden !rounded-full !px-3 !py-2 sm:!inline-flex" title="@L.T("Switch language", "تغيير اللغة")">
+                        <svg class="h-4 w-4"><use href="#i-globe"/></svg>
+                        <span class="text-xs font-bold">@(L.IsArabic ? "English" : "العربية")</span>
+                    </a>
+
+                    <div class="relative">
+                        <button type="button" class="icon-btn relative" data-dropdown-toggle="notifMenu" aria-label="@L.T("Notifications", "الإشعارات")">
+                            <svg class="h-5 w-5"><use href="#i-bell"/></svg>
+                            @if (unread > 0)
+                            {
+                                <span class="absolute -top-0.5 end-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">@unread</span>
+                            }
+                        </button>
+                        <div id="notifMenu" data-dropdown class="absolute end-0 mt-2 hidden w-80 origin-top-right rounded-2xl border border-sand-200 bg-white p-3 shadow-pop">
+                            <div class="flex items-center justify-between px-1 pb-2">
+                                <p class="text-sm font-bold text-brand-950">@L.T("Notifications", "الإشعارات")</p>
+                                <a asp-controller="Notifications" asp-action="Index" class="text-xs link">@L.T("View all", "عرض الكل")</a>
+                            </div>
+                            <a asp-controller="Notifications" asp-action="Index" class="portal-tile !p-3">
+                                <span class="stat-icon bg-brand-50 text-brand-700"><svg class="h-5 w-5"><use href="#i-bell"/></svg></span>
+                                <span>
+                                    <span class="block text-sm font-bold text-brand-950">@L.Num(unread) @L.T("unread", "غير مقروء")</span>
+                                    <span class="block text-xs text-ink-500">@L.T("Open your notification center", "افتح مركز الإشعارات")</span>
+                                </span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="relative">
+                        <button type="button" class="flex items-center gap-2 rounded-full p-1 transition hover:bg-brand-50" data-dropdown-toggle="userMenu">
+                            <span class="avatar h-9 w-9 text-sm">@L.Initials(fullName)</span>
+                            <svg class="hidden h-4 w-4 text-ink-500 sm:block"><use href="#i-chevron-down"/></svg>
+                        </button>
+                        <div id="userMenu" data-dropdown class="absolute end-0 mt-2 hidden w-64 origin-top-right rounded-2xl border border-sand-200 bg-white p-2 shadow-pop">
+                            <div class="border-b border-sand-200 px-3 py-3">
+                                <p class="truncate text-sm font-bold text-brand-950">@fullName</p>
+                                <p class="truncate text-xs text-ink-500">@User.Identity?.Name · @L.Role(primaryRole)</p>
+                            </div>
+                            <a asp-controller="Account" asp-action="Profile" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-ink-700 hover:bg-sand-100"><svg class="h-4 w-4"><use href="#i-user"/></svg>@L.T("My profile", "ملفي الشخصي")</a>
+                            <a asp-controller="Account" asp-action="ChangePassword" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-ink-700 hover:bg-sand-100"><svg class="h-4 w-4"><use href="#i-key"/></svg>@L.T("Change password", "تغيير كلمة المرور")</a>
+                            <a asp-controller="Account" asp-action="SetLanguage" asp-route-lang="@L.OtherLang" asp-route-returnUrl="@returnUrl" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-ink-700 hover:bg-sand-100 sm:hidden"><svg class="h-4 w-4"><use href="#i-globe"/></svg>@(L.IsArabic ? "English" : "العربية")</a>
+                            <div class="my-1 border-t border-sand-200"></div>
+                            <form asp-controller="Account" asp-action="Logout" method="post">
+                                @Html.AntiForgeryToken()
+                                <button class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"><svg class="h-4 w-4 flip-x"><use href="#i-logout"/></svg>@L.T("Sign out", "تسجيل الخروج")</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <main class="mx-auto w-full max-w-[1600px] flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+                @if (TempData["Success"] is string success)
+                {
+                    <div class="alert alert-success mb-5" role="status">
+                        <svg class="mt-0.5 h-5 w-5 shrink-0"><use href="#i-check"/></svg>
+                        <p>@success</p>
+                    </div>
+                }
+                @if (TempData["Error"] is string error)
+                {
+                    <div class="alert alert-error mb-5" role="alert">
+                        <svg class="mt-0.5 h-5 w-5 shrink-0"><use href="#i-alert"/></svg>
+                        <p>@error</p>
+                    </div>
+                }
+                @if (TempData["Warning"] is string warning)
+                {
+                    <div class="alert alert-warning mb-5" role="status">
+                        <svg class="mt-0.5 h-5 w-5 shrink-0"><use href="#i-alert"/></svg>
+                        <p>@warning</p>
+                    </div>
+                }
+                @RenderBody()
+            </main>
+
+            <footer class="mx-auto flex w-full max-w-[1600px] flex-wrap items-center justify-between gap-2 border-t border-sand-200 px-4 py-4 text-[11px] text-ink-500 sm:px-6 lg:px-8">
+                <p>© @DateTime.Today.Year @L.T("Kirkuk National Institute for Tutoring", "معهد كركوك الأهلي لدورات التقوية") · @L.T("All rights reserved", "جميع الحقوق محفوظة")</p>
+                <p class="flex items-center gap-3">
+                    <span>@L.T("License", "إجازة") @settings?.LicenseNo</span>
+                    <span class="dot bg-brand-400"></span>
+                    <span>@L.T("Version 1.0", "الإصدار 1.0")</span>
+                </p>
+            </footer>
+        </div>
+    </div>
+
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

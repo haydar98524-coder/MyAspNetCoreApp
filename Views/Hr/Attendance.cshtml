@@ -1,0 +1,119 @@
+@model StaffAttendanceViewModel
+@{
+    ViewData["Title"] = L.T("Staff attendance", "حضور الموظفين");
+    var yesterday = Model.Date.AddDays(-1);
+    var tomorrow = Model.Date.AddDays(1) > DateTime.Today ? DateTime.Today : Model.Date.AddDays(1);
+}
+<div class="page-head">
+    <div>
+        <div class="mb-1 flex items-center gap-2 text-xs text-ink-500">
+            <a asp-action="Index" class="hover:text-brand-700">@L.T("Employees", "الموظفون")</a>
+            <svg class="h-3 w-3 flip-x"><use href="#i-chevron-down"/></svg>
+            <span>@L.T("Staff attendance", "حضور الموظفين")</span>
+        </div>
+        <h1 class="page-title">@L.T("Staff attendance", "حضور الموظفين")</h1>
+        <p class="page-sub">@L.Date(Model.Date) · @L.Day(Model.Date.DayOfWeek)</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <a asp-action="Attendance" asp-route-date="@yesterday.ToString("yyyy-MM-dd")" class="btn btn-outline btn-sm"><svg class="h-4 w-4 flip-x"><use href="#i-chevron-down"/></svg>@L.T("Previous day", "اليوم السابق")</a>
+        <a asp-action="Attendance" class="btn btn-outline btn-sm">@L.T("Today", "اليوم")</a>
+        <a asp-action="Attendance" asp-route-date="@tomorrow.ToString("yyyy-MM-dd")" class="btn btn-outline btn-sm">@L.T("Next day", "اليوم التالي")<svg class="h-4 w-4"><use href="#i-chevron-down"/></svg></a>
+        <a asp-action="Payroll" class="btn btn-soft btn-sm"><svg class="h-4 w-4"><use href="#i-cash"/></svg>@L.T("Payroll", "الرواتب")</a>
+    </div>
+</div>
+
+<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("On duty", "حاضر")</p><p class="kpi mt-1 text-emerald-700">@L.Num(Model.Present)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Late", "متأخر")</p><p class="kpi mt-1 text-amber-600">@L.Num(Model.Late)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Absent", "غائب")</p><p class="kpi mt-1 text-red-600">@L.Num(Model.Absent)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Excused", "بعذر")</p><p class="kpi mt-1 text-sky-600">@L.Num(Model.Excused)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Staff members", "الموظفون")</p><p class="kpi mt-1">@L.Num(Model.Rows.Count)</p></div>
+</div>
+
+@if (Model.AlreadyRecorded)
+{
+    <div class="alert alert-info mt-4">
+        <svg class="mt-0.5 h-5 w-5 shrink-0"><use href="#i-info"/></svg>
+        <p>@L.T("Attendance for this date already exists. You may correct it and save again; every change is audited.", "حضور هذا اليوم مسجل مسبقاً. يمكنك تصحيحه والحفظ مجدداً؛ تُسجل كل عملية تدقيقياً.")</p>
+    </div>
+}
+
+<form method="post" asp-action="SaveAttendance" class="card mt-4 overflow-hidden">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Date" />
+    <div class="card-header flex-wrap gap-2 no-print">
+        <div>
+            <h2 class="section-title">@L.T("Daily sheet", "الكشف اليومي")</h2>
+            <p class="text-[11px] text-ink-500">@L.T("Working hours are 08:00–14:00. Friday is the weekly rest day.", "ساعات الدوام 08:00–14:00 والجمعة عطلة أسبوعية.")</p>
+        </div>
+        <div class="flex gap-2">
+            <button type="button" class="btn btn-soft btn-xs" data-all-status="Present">@L.T("All present", "الكل حاضر")</button>
+            <button type="button" class="btn btn-soft btn-xs" data-all-status="Absent">@L.T("All absent", "الكل غائب")</button>
+        </div>
+    </div>
+    <div class="table-wrap">
+        <table class="table-base min-w-[1000px]">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>@L.T("Employee", "الموظف")</th>
+                    <th>@L.T("Attendance", "الحضور")</th>
+                    <th>@L.T("Check-in", "الدخول")</th>
+                    <th>@L.T("Check-out", "الخروج")</th>
+                    <th>@L.T("Note", "ملاحظة")</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (Model.Rows.Count == 0)
+            {
+                <tr><td colspan="6"><div class="empty">@L.T("No employees to record.", "لا يوجد موظفون للتسجيل.")</div></td></tr>
+            }
+            @for (var i = 0; i < Model.Rows.Count; i++)
+            {
+                var row = Model.Rows[i];
+                <tr data-staff-row>
+                    <td class="text-xs text-ink-400">@(i + 1)</td>
+                    <td>
+                        <input type="hidden" name="Rows[@i].EmployeeId" value="@row.EmployeeId" />
+                        <p class="font-semibold text-ink-900">@L.Pick(row.Employee.FullNameAr, row.Employee.FullNameEn)</p>
+                        <p class="text-[11px] text-ink-500">@row.Employee.Department · @L.Pick(row.Employee.JobTitleAr, row.Employee.JobTitleEn)</p>
+                    </td>
+                    <td>
+                        <div class="flex flex-wrap gap-1.5">
+                            @foreach (var status in Enum.GetValues<AttendanceStatus>())
+                            {
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="Rows[@i].Status" value="@status" class="peer sr-only" checked="@(row.Status == status)" />
+                                    <span class="badge cursor-pointer peer-checked:!bg-brand-800 peer-checked:!text-white peer-checked:!ring-brand-800">
+                                        @L.E(status)
+                                    </span>
+                                </label>
+                            }
+                        </div>
+                    </td>
+                    <td><input name="Rows[@i].CheckIn" value="@row.CheckIn" type="time" class="input !w-28 !py-1.5 text-xs" /></td>
+                    <td><input name="Rows[@i].CheckOut" value="@row.CheckOut" type="time" class="input !w-28 !py-1.5 text-xs" /></td>
+                    <td><input name="Rows[@i].Notes" value="@row.Notes" class="input !py-1.5 text-xs" placeholder="@L.T("Optional…", "اختياري…")" /></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    <div class="flex flex-wrap items-center justify-between gap-3 border-t border-sand-200 bg-sand-50 px-5 py-4 no-print">
+        <p class="text-[11px] text-ink-500">@L.T("Absences feed directly into the monthly payroll deduction.", "تُستخدم حالات الغياب مباشرة في خصومات الرواتب الشهرية.")</p>
+        <button class="btn btn-primary"><svg class="h-4 w-4"><use href="#i-check"/></svg>@L.T("Save attendance", "حفظ الحضور")</button>
+    </div>
+</form>
+
+@section Scripts {
+<script>
+    document.querySelectorAll('[data-all-status]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            var status = button.dataset.allStatus;
+            document.querySelectorAll('[data-staff-row] input[type=radio]').forEach(function (radio) {
+                radio.checked = radio.value === status;
+            });
+        });
+    });
+</script>
+}

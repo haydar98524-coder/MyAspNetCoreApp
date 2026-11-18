@@ -1,0 +1,61 @@
+@model List<Income>
+@{
+    ViewData["Title"] = L.T("Other income", "الإيرادات الأخرى");
+    var accountId = ViewBag.AccountId as int?;
+    var from = (DateTime)ViewBag.From;
+    var to = (DateTime)ViewBag.To;
+    var accounts = ViewBag.Accounts as List<Account> ?? new List<Account>();
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Other income", "الإيرادات الأخرى")</h1>
+        <p class="page-sub">@L.Date(from) — @L.Date(to) · @L.Money((long)ViewBag.Total)</p>
+    </div>
+    <div class="flex gap-2">
+        <a asp-action="Index" class="btn btn-outline btn-sm"><svg class="h-4 w-4 flip-x"><use href="#i-arrow-left"/></svg>@L.T("Finance", "المالية")</a>
+        <a asp-action="CreateIncome" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-plus"/></svg>@L.T("New income", "إيراد جديد")</a>
+    </div>
+</div>
+
+<form method="get" class="card card-pad !py-4">
+    <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+        <input type="date" name="from" value="@from.ToString("yyyy-MM-dd")" class="input" />
+        <input type="date" name="to" value="@to.ToString("yyyy-MM-dd")" class="input" />
+        <select name="accountId" class="select">
+            <option value="">@L.T("All revenue accounts", "كل حسابات الإيراد")</option>
+            @foreach (var account in accounts)
+            {
+                <option value="@account.Id" selected="@(accountId == account.Id)">@account.Code · @L.Pick(account.NameAr, account.NameEn)</option>
+            }
+        </select>
+        <div class="flex gap-2"><button class="btn btn-primary flex-1">@L.T("Filter", "تصفية")</button><a asp-action="Incomes" class="btn btn-outline">@L.T("Reset", "مسح")</a></div>
+    </div>
+</form>
+
+<div class="card mt-4 overflow-hidden">
+    <div class="table-wrap">
+        <table class="table-base">
+            <thead><tr><th>@L.T("Income", "الإيراد")</th><th>@L.T("Account", "الحساب")</th><th>@L.T("Fund", "الصندوق")</th><th>@L.T("Method", "الطريقة")</th><th>@L.T("Amount", "المبلغ")</th><th>@L.T("Recorded by", "سجّله")</th></tr></thead>
+            <tbody>
+            @if (Model.Count == 0)
+            {
+                <tr><td colspan="6"><div class="empty">@L.T("No income records match the filter.", "لا توجد إيرادات مطابقة.")</div></td></tr>
+            }
+            @foreach (var income in Model)
+            {
+                <tr>
+                    <td>
+                        <p class="font-semibold text-ink-900">@income.Source</p>
+                        <p class="text-[10px] text-ink-500"><span class="font-mono">@income.IncomeNo</span> · @L.DateShort(income.Date) · @income.Description</p>
+                    </td>
+                    <td class="text-xs text-ink-600"><span class="font-mono text-ink-400">@income.Account.Code</span> @L.Pick(income.Account.NameAr, income.Account.NameEn)</td>
+                    <td class="text-xs text-ink-600">@(income.Fund is null ? "—" : L.Pick(income.Fund.NameAr, income.Fund.NameEn))</td>
+                    <td><span class="badge badge-gray">@L.E(income.Method)</span></td>
+                    <td class="font-bold text-emerald-700">@L.Money(income.Amount)</td>
+                    <td class="text-xs text-ink-500">@income.CreatedByName</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

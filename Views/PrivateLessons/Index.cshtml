@@ -1,0 +1,203 @@
+@model List<PrivateLessonRequest>
+@{
+    ViewData["Title"] = L.T("Private lessons", "الدروس الخصوصية");
+    var subjects = ViewBag.Subjects as List<Subject> ?? new List<Subject>();
+    var q = ViewBag.Q as string;
+    var statusFilter = (RequestStatus?)ViewBag.Status;
+    var modeFilter = (TeachingMode?)ViewBag.Mode;
+    var subjectFilter = (int?)ViewBag.SubjectId;
+    var pending = (int)(ViewBag.Pending ?? 0);
+    var matched = (int)(ViewBag.Matched ?? 0);
+    var completed = (int)(ViewBag.Completed ?? 0);
+    var openLessons = (int)(ViewBag.OpenLessons ?? 0);
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Private & home lessons", "الدروس الخصوصية والمنزلية")</h1>
+        <p class="page-sub">@L.T("Requests, teacher matching, scheduling and fee collection", "الطلبات ومطابقة المدرسين والجدولة وقبض الأجور")</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <a asp-action="Request" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-plus"/></svg>@L.T("New request", "طلب جديد")</a>
+        <a asp-controller="Teachers" asp-action="Index" class="btn btn-outline btn-sm"><svg class="h-4 w-4"><use href="#i-users"/></svg>@L.T("Teachers", "المدرسون")</a>
+    </div>
+</div>
+
+<div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="stat-card">
+        <div class="flex items-start justify-between">
+            <div>
+                <p class="text-xs text-ink-500">@L.T("New requests", "طلبات جديدة")</p>
+                <p class="kpi mt-2 text-blue-700">@L.Num(pending)</p>
+                <p class="mt-1 text-[11px] text-ink-500">@L.T("awaiting a teacher", "بانتظار إسناد مدرّس")</p>
+            </div>
+            <span class="stat-icon bg-blue-50 text-blue-700"><svg class="h-5 w-5"><use href="#i-clipboard"/></svg></span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="flex items-start justify-between">
+            <div>
+                <p class="text-xs text-ink-500">@L.T("Matched / accepted", "تم الإسناد / مقبول")</p>
+                <p class="kpi mt-2 text-brand-900">@L.Num(matched)</p>
+                <p class="mt-1 text-[11px] text-ink-500">@L.T("in progress", "قيد المتابعة")</p>
+            </div>
+            <span class="stat-icon bg-gold-50 text-gold-700"><svg class="h-5 w-5"><use href="#i-sparkles"/></svg></span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="flex items-start justify-between">
+            <div>
+                <p class="text-xs text-ink-500">@L.T("Scheduled lessons", "دروس مجدولة")</p>
+                <p class="kpi mt-2 text-violet-700">@L.Num(openLessons)</p>
+                <p class="mt-1 text-[11px] text-ink-500">@L.T("not yet delivered", "لم تُنفّذ بعد")</p>
+            </div>
+            <span class="stat-icon bg-violet-50 text-violet-700"><svg class="h-5 w-5"><use href="#i-calendar"/></svg></span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="flex items-start justify-between">
+            <div>
+                <p class="text-xs text-ink-500">@L.T("Completed requests", "طلبات مكتملة")</p>
+                <p class="kpi mt-2 text-emerald-700">@L.Num(completed)</p>
+                <p class="mt-1 text-[11px] text-ink-500">@L.T("delivered and closed", "منفّذة ومغلقة")</p>
+            </div>
+            <span class="stat-icon bg-emerald-50 text-emerald-700"><svg class="h-5 w-5"><use href="#i-check"/></svg></span>
+        </div>
+    </div>
+</div>
+
+<div class="mt-5 card">
+    <div class="card-header">
+        <h2 class="section-title">@L.T("Lesson requests", "طلبات الدروس")</h2>
+        <span class="chip">@L.Num(Model.Count) @L.T("shown", "معروض")</span>
+    </div>
+    <div class="border-t border-sand-200 px-4 py-3 sm:px-5">
+        <form method="get" class="flex flex-wrap items-end gap-2">
+            <div class="min-w-[190px] flex-1">
+                <label class="label !mb-1 !text-[11px]">@L.T("Search", "بحث")</label>
+                <input type="search" name="q" value="@q" class="input !py-2" placeholder="@L.T("Guardian, phone or student", "ولي الأمر أو الهاتف أو الطالب")" />
+            </div>
+            <div>
+                <label class="label !mb-1 !text-[11px]">@L.T("Status", "الحالة")</label>
+                <select name="status" class="select !py-2">
+                    <option value="">@L.T("All statuses", "كل الحالات")</option>
+                    @foreach (var s in Enum.GetValues<RequestStatus>())
+                    {
+                        <option value="@s" selected="@(statusFilter == s)">@L.E(s)</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="label !mb-1 !text-[11px]">@L.T("Mode", "النمط")</label>
+                <select name="mode" class="select !py-2">
+                    <option value="">@L.T("All modes", "كل الأنماط")</option>
+                    @foreach (var m in Enum.GetValues<TeachingMode>())
+                    {
+                        <option value="@m" selected="@(modeFilter == m)">@L.E(m)</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="label !mb-1 !text-[11px]">@L.T("Subject", "المادة")</label>
+                <select name="subjectId" class="select !py-2">
+                    <option value="">@L.T("All subjects", "كل المواد")</option>
+                    @foreach (var subject in subjects)
+                    {
+                        <option value="@subject.Id" selected="@(subjectFilter == subject.Id)">@L.Pick(subject.NameAr, subject.NameEn)</option>
+                    }
+                </select>
+            </div>
+            <button class="btn btn-primary !py-2"><svg class="h-4 w-4"><use href="#i-filter"/></svg>@L.T("Filter", "تصفية")</button>
+            @if (!string.IsNullOrWhiteSpace(q) || statusFilter.HasValue || modeFilter.HasValue || subjectFilter.HasValue)
+            {
+                <a asp-action="Index" class="btn btn-outline !py-2">@L.T("Reset", "إعادة ضبط")</a>
+            }
+        </form>
+    </div>
+
+    @if (Model.Count == 0)
+    {
+        <div class="empty">
+            <svg class="h-10 w-10 text-sand-300"><use href="#i-book"/></svg>
+            <p>@L.T("No private lesson requests match these filters.", "لا توجد طلبات دروس خصوصية مطابقة لهذه التصفية.")</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="table-base min-w-[1080px]">
+                <thead>
+                    <tr>
+                        <th>@L.T("Requester", "مقدّم الطلب")</th>
+                        <th>@L.T("Subject & grade", "المادة والصف")</th>
+                        <th>@L.T("Mode & area", "النمط والمنطقة")</th>
+                        <th>@L.T("Preference", "التفضيل")</th>
+                        <th>@L.T("Teacher", "المدرّس")</th>
+                        <th>@L.T("Lessons", "الدروس")</th>
+                        <th>@L.T("Status", "الحالة")</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model)
+                    {
+                        var tone = r.Status switch
+                        {
+                            RequestStatus.Pending => "badge-blue",
+                            RequestStatus.Matched => "badge-gold",
+                            RequestStatus.Accepted => "badge-violet",
+                            RequestStatus.Completed => "badge-green",
+                            RequestStatus.Rejected => "badge-red",
+                            _ => "badge-gray"
+                        };
+                        var paidLessons = r.Lessons.Count(l => l.IsPaid);
+                        var scheduleLabel = r.DaysPerWeek == 1 ? L.T("1 day/week", "يوم/أسبوع") : $"{r.DaysPerWeek} {L.T("days/week", "أيام/أسبوع")}";
+                        <tr>
+                            <td>
+                                <p class="font-semibold text-ink-900">@r.GuardianName</p>
+                                <p class="whitespace-nowrap text-[11px] text-ink-500" dir="ltr">@r.GuardianPhone</p>
+                                @if (r.Student is not null)
+                                {
+                                    <p class="mt-0.5 text-[10px] text-ink-400">@L.Pick(r.Student.FullNameAr, r.Student.FullNameEn)</p>
+                                }
+                            </td>
+                            <td>
+                                <p class="text-xs font-semibold text-ink-900">@L.Pick(r.Subject.NameAr, r.Subject.NameEn)</p>
+                                <p class="text-[11px] text-ink-500">@L.Pick(r.Grade.NameAr, r.Grade.NameEn) · @L.Pick(r.Grade.Stage.NameAr, r.Grade.Stage.NameEn)</p>
+                            </td>
+                            <td>
+                                <span class="badge badge-gray">@L.E(r.Mode)</span>
+                                <p class="mt-1 text-[11px] text-ink-500">@r.Area</p>
+                            </td>
+                            <td class="text-[11px] text-ink-600">
+                                <p>@scheduleLabel</p>
+                                <p dir="ltr">@r.PreferredTime</p>
+                                <p>@L.Money(r.OfferedFee)</p>
+                            </td>
+                            <td>
+                                @if (r.MatchedTeacher is not null)
+                                {
+                                    <span class="text-xs font-semibold text-ink-900">@L.Pick(r.MatchedTeacher.FullNameAr, r.MatchedTeacher.FullNameEn)</span>
+                                }
+                                else if (r.PreferredTeacher is not null)
+                                {
+                                    <span class="text-[11px] text-ink-500">@L.T("Preferred:", "مفضّل:") @L.Pick(r.PreferredTeacher.FullNameAr, r.PreferredTeacher.FullNameEn)</span>
+                                }
+                                else
+                                {
+                                    <span class="text-[11px] text-ink-400">@L.T("Anyone", "أي مدرّس")</span>
+                                }
+                            </td>
+                            <td class="text-[11px] text-ink-600">
+                                <p>@L.Num(r.Lessons.Count) @L.T("total", "إجمالاً")</p>
+                                <p class="text-emerald-700">@L.Num(paidLessons) @L.T("paid", "مدفوع")</p>
+                            </td>
+                            <td><span class="badge @tone">@L.E(r.Status)</span></td>
+                            <td><a asp-action="Details" asp-route-id="@r.Id" class="btn btn-outline btn-xs">@L.T("Open", "فتح")</a></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

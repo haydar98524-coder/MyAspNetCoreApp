@@ -1,0 +1,88 @@
+@model ExamFormViewModel
+@{
+    var isEdit = Model.Id > 0;
+    ViewData["Title"] = isEdit ? L.T("Edit exam", "تعديل امتحان") : L.T("New exam", "امتحان جديد");
+    var courses = ViewBag.Courses as List<Course> ?? new();
+}
+<div class="page-head">
+    <div>
+        <div class="mb-1 flex items-center gap-2 text-xs text-ink-500">
+            <a asp-action="Index" class="hover:text-brand-700">@L.T("Exams & results", "الامتحانات والنتائج")</a>
+            <svg class="h-3 w-3 flip-x"><use href="#i-chevron-down"/></svg>
+            <span>@(isEdit ? L.T("Edit", "تعديل") : L.T("New", "جديد"))</span>
+        </div>
+        <h1 class="page-title">@(isEdit ? L.T("Edit exam", "تعديل الامتحان") : L.T("Schedule a new exam", "جدولة امتحان جديد"))</h1>
+        <p class="page-sub">@L.T("Marks are entered against the course roster and visible to guardians immediately.", "تُدخل الدرجات على قائمة طلاب الدورة وتظهر لأولياء الأمور مباشرة.")</p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline btn-sm">@L.T("Cancel", "إلغاء")</a>
+</div>
+
+<form method="post" asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@(isEdit ? Model.Id : (int?)null)" class="grid gap-5 lg:grid-cols-3">
+    <input type="hidden" asp-for="Id" />
+    <div class="space-y-5 lg:col-span-2">
+        <div asp-validation-summary="ModelOnly" class="alert alert-error @(ViewData.ModelState.IsValid ? "hidden" : "")"></div>
+        <div class="card card-pad">
+            <h2 class="section-title mb-4">@L.T("Exam details", "بيانات الامتحان")</h2>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div class="sm:col-span-2">
+                    <label asp-for="CourseId" class="label">@L.T("Course", "الدورة") *</label>
+                    <select asp-for="CourseId" class="select">
+                        <option value="">@L.T("Choose a course…", "اختر الدورة…")</option>
+                        @foreach (var c in courses)
+                        {
+                            <option value="@c.Id">@L.Pick(c.NameAr, c.NameEn) · @L.Pick(c.Grade.NameAr, c.Grade.NameEn) · @L.Pick(c.Teacher.FullNameAr, c.Teacher.FullNameEn)</option>
+                        }
+                    </select>
+                    <span asp-validation-for="CourseId" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="NameAr" class="label">@L.T("Exam name (Arabic)", "اسم الامتحان (عربي)") *</label>
+                    <input asp-for="NameAr" class="input" placeholder="@L.T("First monthly exam", "الامتحان الشهري الأول")" />
+                    <span asp-validation-for="NameAr" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="NameEn" class="label">@L.T("Exam name (English)", "اسم الامتحان (إنكليزي)") *</label>
+                    <input asp-for="NameEn" class="input" dir="ltr" placeholder="First monthly exam" />
+                    <span asp-validation-for="NameEn" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="Type" class="label">@L.T("Exam type", "نوع الامتحان")</label>
+                    <select asp-for="Type" class="select" asp-items="Html.GetEnumSelectList<ExamType>()"></select>
+                </div>
+                <div>
+                    <label asp-for="Date" class="label">@L.T("Exam date", "تاريخ الامتحان")</label>
+                    <input asp-for="Date" type="date" class="input" />
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-pad">
+            <h2 class="section-title mb-4">@L.T("Marking", "التصحيح")</h2>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label asp-for="MaxMark" class="label">@L.T("Maximum mark", "الدرجة العظمى")</label>
+                    <input asp-for="MaxMark" type="number" min="1" max="1000" class="input" />
+                    <span asp-validation-for="MaxMark" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="PassMark" class="label">@L.T("Pass mark", "درجة النجاح")</label>
+                    <input asp-for="PassMark" type="number" min="0" max="1000" class="input" />
+                    <span asp-validation-for="PassMark" class="field-error"></span>
+                    <p class="help">@L.T("Iraqi schools commonly use 50 out of 100 as the pass mark.", "المدارس العراقية تعتمد عادةً 50 من 100 كدرجة نجاح.")</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="space-y-5">
+        <div class="card card-pad !bg-brand-50">
+            <p class="flex items-start gap-2 text-xs text-brand-800">
+                <svg class="mt-0.5 h-4 w-4 shrink-0"><use href="#i-info"/></svg>
+                <span>@L.T("Only students enrolled in the course appear on the marking sheet. Blank marks are removed when you save.", "يظهر في ورقة التصحيح طلاب الدورة المسجلون فقط. تُحذف الدرجات الفارغة عند الحفظ.")</span>
+            </p>
+        </div>
+        <button class="btn btn-primary btn-lg w-full">
+            <svg class="h-5 w-5"><use href="#i-check"/></svg>@(isEdit ? L.T("Save changes", "حفظ التغييرات") : L.T("Create exam", "إنشاء الامتحان"))
+        </button>
+    </div>
+</form>

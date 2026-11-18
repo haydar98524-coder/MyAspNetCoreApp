@@ -1,0 +1,377 @@
+@model LandingViewModel
+@{
+    Layout = "_PublicLayout";
+    ViewData["Title"] = L.T("Home", "الرئيسية");
+    var avgRating = Model.FeaturedTeachers.Where(t => t.RatingCount > 0).Select(t => t.RatingAvg).DefaultIfEmpty(0).Average();
+    string StageDesc(StageType t) => t switch
+    {
+        StageType.Primary => L.T("Building strong foundations in reading, mathematics and science for grades 1–6, with daily follow-up and small groups.",
+            "تأسيس قوي في القراءة والرياضيات والعلوم للصفوف 1–6، مع متابعة يومية ومجاميع صغيرة."),
+        StageType.Intermediate => L.T("Subject-by-subject support for grades 1–3 intermediate, exam readiness and continuous revision.",
+            "دعم مادةً بمادة للصفوف الأول إلى الثالث المتوسط، والاستعداد للامتحانات مع مراجعة مستمرة."),
+        _ => L.T("Focused scientific and literary streams for the 4th–6th preparatory years, including the sixth-grade intensive programme.",
+            "مسارات علمي وأدبي للرابع حتى السادس الإعدادي، مع برنامج مكثف للسادس الإعدادي.")
+    };
+    string StageAccent(StageType t) => t switch
+    {
+        StageType.Primary => "bg-emerald-50 text-emerald-700 ring-emerald-200",
+        StageType.Intermediate => "bg-blue-50 text-blue-700 ring-blue-200",
+        _ => "bg-gold-50 text-gold-700 ring-gold-200"
+    };
+}
+<section class="relative overflow-hidden bg-brand-950">
+    <div class="pointer-events-none absolute -top-32 start-1/4 h-[480px] w-[480px] rounded-full bg-brand-700/30 blur-3xl"></div>
+    <div class="pointer-events-none absolute -bottom-40 end-0 h-[420px] w-[420px] rounded-full bg-gold-500/10 blur-3xl"></div>
+    <div class="pointer-events-none absolute inset-0 opacity-[0.05]" style="background-image: radial-gradient(#fff 1px, transparent 1px); background-size: 28px 28px;"></div>
+
+    <div class="relative mx-auto grid max-w-7xl items-center gap-12 px-4 py-14 sm:px-6 lg:grid-cols-[1.1fr_.9fr] lg:px-8 lg:py-20">
+        <div>
+            <div class="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-[11px] font-bold text-brand-100">
+                <span class="dot bg-gold-400"></span>
+                @L.T("Licensed institute · Kirkuk, Iraq", "معهد مجاز · كركوك، العراق")
+                <span class="text-brand-200/40">|</span>
+                @Model.Settings.AcademicYear
+            </div>
+            <h1 class="mt-6 max-w-2xl text-balance text-4xl font-extrabold leading-[1.25] text-white sm:text-5xl lg:text-[52px]">
+                @L.T("Your child's future starts with the", "مستقبل أبنائكم يبدأ بـ")
+                <span class="relative inline-block text-gold-300">
+                    @L.T("right academic step", "الخطوة الدراسية الصحيحة")
+                    <span class="absolute -bottom-1 start-0 h-1.5 w-full rounded-full bg-gold-400/30"></span>
+                </span>
+            </h1>
+            <p class="mt-6 max-w-xl text-[15px] leading-8 text-brand-100/70">
+                @L.T("A specialised tutoring institute following the Iraqi curriculum, with qualified teachers, small groups, daily attendance records and a transparent parent portal.",
+                    "معهد تقوية متخصص يواكب المنهج العراقي، بمدرسين مؤهلين ومجاميع صغيرة وسجل حضور يومي وبوابة شفافة لأولياء الأمور.")
+            </p>
+            <div class="mt-8 flex flex-wrap items-center gap-3">
+                <a asp-controller="Home" asp-action="Register" class="btn btn-gold btn-lg">
+                    @L.T("Register your child", "سجّل ابنك الآن")
+                    <svg class="h-4 w-4 flip-x"><use href="#i-arrow-right"/></svg>
+                </a>
+                <a href="#programs" class="btn btn-lg border border-white/20 bg-white/5 text-white hover:bg-white/10">
+                    <svg class="h-4 w-4"><use href="#i-book"/></svg>
+                    @L.T("Explore programmes", "استعرض البرامج")
+                </a>
+            </div>
+            <div class="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-xs font-semibold text-brand-100/60">
+                <span class="flex items-center gap-1.5"><svg class="h-4 w-4 text-gold-400"><use href="#i-check"/></svg>@L.T("Iraqi curriculum", "المنهج العراقي")</span>
+                <span class="flex items-center gap-1.5"><svg class="h-4 w-4 text-gold-400"><use href="#i-check"/></svg>@L.T("Small groups", "مجاميع صغيرة")</span>
+                <span class="flex items-center gap-1.5"><svg class="h-4 w-4 text-gold-400"><use href="#i-check"/></svg>@L.T("Daily follow-up", "متابعة يومية")</span>
+                <span class="flex items-center gap-1.5"><svg class="h-4 w-4 text-gold-400"><use href="#i-check"/></svg>@L.T("Parent portal", "بوابة أولياء الأمور")</span>
+            </div>
+            <div class="mt-10 grid max-w-xl grid-cols-2 gap-3 sm:grid-cols-4">
+                <div class="rounded-2xl border border-white/10 bg-white/[.04] px-4 py-3">
+                    <p class="text-2xl font-extrabold text-gold-300">@L.Num(Model.StudentCount)<span class="text-sm">+</span></p>
+                    <p class="mt-0.5 text-[11px] text-brand-100/60">@L.T("Students", "طالب")</p>
+                </div>
+                <div class="rounded-2xl border border-white/10 bg-white/[.04] px-4 py-3">
+                    <p class="text-2xl font-extrabold text-gold-300">@L.Num(Model.TeacherCount)</p>
+                    <p class="mt-0.5 text-[11px] text-brand-100/60">@L.T("Teachers", "مدرّس")</p>
+                </div>
+                <div class="rounded-2xl border border-white/10 bg-white/[.04] px-4 py-3">
+                    <p class="text-2xl font-extrabold text-gold-300">@L.Num(Model.CourseCount)</p>
+                    <p class="mt-0.5 text-[11px] text-brand-100/60">@L.T("Courses", "دورة")</p>
+                </div>
+                <div class="rounded-2xl border border-white/10 bg-white/[.04] px-4 py-3">
+                    <p class="text-2xl font-extrabold text-gold-300">@L.Num(Model.GradeCount)</p>
+                    <p class="mt-0.5 text-[11px] text-brand-100/60">@L.T("Grades", "صف دراسي")</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="relative mx-auto w-full max-w-md lg:max-w-none">
+            <div class="absolute -inset-3 rounded-[2rem] bg-gradient-to-br from-gold-400/25 via-white/5 to-transparent blur-xl"></div>
+            <div class="relative overflow-hidden rounded-[2rem] border border-white/15 shadow-2xl">
+                <img src="~/images/hero.png" alt="@L.T("Students at the Kirkuk National Institute", "طلاب في معهد كركوك الأهلي")" class="aspect-[4/3] w-full object-cover" />
+                <div class="absolute inset-0 bg-gradient-to-t from-brand-950/60 via-transparent to-transparent"></div>
+                <div class="absolute bottom-4 start-4 end-4 flex items-center justify-between gap-3 rounded-xl border border-white/20 bg-brand-950/70 px-4 py-3 backdrop-blur">
+                    <div class="flex items-center gap-2">
+                        <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-gold-400 text-brand-950"><svg class="h-5 w-5"><use href="#i-cap"/></svg></span>
+                        <div class="leading-tight">
+                            <p class="text-xs font-bold text-white">@L.T("All school stages", "جميع المراحل الدراسية")</p>
+                            <p class="text-[10px] text-brand-100/60">@L.T("Primary · Intermediate · Preparatory", "ابتدائي · متوسط · إعدادي")</p>
+                        </div>
+                    </div>
+                    <span class="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold text-gold-300">@L.T("Curriculum-aligned", "مطابق للمنهج")</span>
+                </div>
+            </div>
+            <div class="absolute -top-5 -start-4 hidden rounded-2xl border border-white/20 bg-white p-3 shadow-pop sm:block">
+                <div class="flex items-center gap-2">
+                    <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-gold-50 text-gold-600"><svg class="h-5 w-5"><use href="#i-star-fill"/></svg></span>
+                    <div class="leading-tight">
+                        <p class="text-sm font-extrabold text-brand-950">@(avgRating > 0 ? avgRating.ToString("0.0", CultureInfo.InvariantCulture) : "4.8")<span class="text-[10px] text-ink-500">/5</span></p>
+                        <p class="text-[10px] text-ink-500">@L.T("Parent & student rating", "تقييم الأهالي والطلاب")</p>
+                    </div>
+                </div>
+            </div>
+            <div class="absolute -bottom-5 -end-3 hidden rounded-2xl border border-sand-200 bg-white p-3 shadow-pop sm:block">
+                <div class="flex items-center gap-2">
+                    <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand-700"><svg class="h-5 w-5"><use href="#i-users"/></svg></span>
+                    <div class="leading-tight">
+                        <p class="text-xs font-extrabold text-brand-950">@L.T("Guardian follow-up", "متابعة ولي الأمر")</p>
+                        <p class="text-[10px] text-ink-500">@L.T("Attendance & results online", "الحضور والنتائج إلكترونياً")</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section id="programs" class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+    <div class="mx-auto max-w-2xl text-center">
+        <span class="chip !border-brand-200 !bg-brand-50 !text-brand-800">@L.T("Academic programmes", "البرامج الدراسية")</span>
+        <h2 class="mt-4 text-3xl font-extrabold text-brand-950">@L.T("Support for every stage of school", "دعم لكل مرحلة دراسية")</h2>
+        <p class="mt-3 text-sm leading-7 text-ink-500">@L.T("From first primary to sixth preparatory, our courses follow the official Iraqi curriculum and the pacing of each school term.", "من الأول الابتدائي حتى السادس الإعدادي، تسير دوراتنا وفق المنهج العراقي الرسمي وتوقيت الفصل الدراسي.")</p>
+    </div>
+    <div class="mt-10 grid gap-5 md:grid-cols-3">
+        @foreach (var stage in Model.Stages)
+        {
+            var gradeNames = stage.Grades.GroupBy(g => g.Level).OrderBy(g => g.Key)
+                .Select(g => L.Pick(g.First().NameAr, g.First().NameEn)).ToList();
+            <article class="card group relative overflow-hidden p-6 transition hover:-translate-y-1 hover:shadow-pop">
+                <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand-500 to-gold-400 opacity-0 transition group-hover:opacity-100"></div>
+                <div class="flex items-center justify-between">
+                    <span class="stat-icon @StageAccent(stage.Type)"><svg class="h-6 w-6"><use href="#i-cap"/></svg></span>
+                    <span class="badge @StageAccent(stage.Type)">@L.E(stage.Type)</span>
+                </div>
+                <h3 class="mt-4 text-lg font-extrabold">@L.Pick(stage.NameAr, stage.NameEn)</h3>
+                <p class="mt-2 min-h-[66px] text-[13px] leading-6 text-ink-500">@StageDesc(stage.Type)</p>
+                <div class="mt-4 flex flex-wrap gap-1.5">
+                    @foreach (var gradeName in gradeNames)
+                    {
+                        <span class="rounded-lg bg-sand-100 px-2 py-1 text-[10px] font-semibold text-ink-700 ring-1 ring-inset ring-sand-200">@gradeName</span>
+                    }
+                </div>
+                <a asp-controller="Home" asp-action="Register" class="mt-5 inline-flex items-center gap-1 text-xs font-bold text-brand-700 hover:text-brand-900">
+                    @L.T("Register in this stage", "التسجيل في هذه المرحلة")
+                    <svg class="h-3.5 w-3.5 flip-x"><use href="#i-arrow-right"/></svg>
+                </a>
+            </article>
+        }
+    </div>
+</section>
+
+<section class="bg-white py-16 lg:py-20">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="flex flex-wrap items-end justify-between gap-4">
+            <div>
+                <span class="chip !border-gold-200 !bg-gold-50 !text-gold-700">@L.T("Featured courses", "دورات مميزة")</span>
+                <h2 class="mt-4 text-3xl font-extrabold text-brand-950">@L.T("Currently open for registration", "مفتوحة للتسجيل حالياً")</h2>
+                <p class="mt-2 text-sm text-ink-500">@L.T("Seats are limited. Registration is confirmed by the registrar after reviewing the student's grade and level.", "المقاعد محدودة. يُثبّت التسجيل من قبل مسؤول التسجيل بعد مراجعة صف الطالب ومستواه.")</p>
+            </div>
+            <a asp-controller="Home" asp-action="Register" class="btn btn-outline">@L.T("View registration form", "استمارة التسجيل")<svg class="h-4 w-4 flip-x"><use href="#i-arrow-right"/></svg></a>
+        </div>
+        <div class="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            @foreach (var course in Model.FeaturedCourses)
+            {
+                var seats = Math.Max(0, course.Capacity - course.Enrollments.Count(e => e.Status == EnrollmentStatus.Active));
+                var schedule = course.Sections.Where(s => s.IsActive).SelectMany(s => s.Schedules).OrderBy(s => s.DayOfWeek).FirstOrDefault();
+                <article class="card group overflow-hidden transition hover:-translate-y-1 hover:shadow-pop">
+                    <div class="h-1.5 w-full" style="background-color:@course.Subject.Color"></div>
+                    <div class="p-5">
+                        <div class="flex items-start justify-between gap-2">
+                            <span class="badge" style="background-color:@(course.Subject.Color)14;color:@course.Subject.Color;box-shadow:inset 0 0 0 1px @(course.Subject.Color)33">@L.Pick(course.Subject.NameAr, course.Subject.NameEn)</span>
+                            @if (seats == 0)
+                            {
+                                <span class="badge badge-red">@L.T("Full", "مكتمل")</span>
+                            }
+                            else if (seats <= 5)
+                            {
+                                <span class="badge badge-amber">@L.T($"{seats} seats left", $"متبقي {seats} مقعد")</span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-green">@L.T("Open", "متاح")</span>
+                            }
+                        </div>
+                        <h3 class="mt-3 text-[17px] font-extrabold leading-6 text-brand-950">@L.Pick(course.NameAr, course.NameEn)</h3>
+                        <p class="mt-1 text-xs font-semibold text-ink-500">@L.Pick(course.Grade.NameAr, course.Grade.NameEn)</p>
+                        <div class="mt-4 space-y-2 text-xs text-ink-500">
+                            <p class="flex items-center gap-2"><svg class="h-4 w-4 text-brand-500"><use href="#i-user"/></svg>@L.Pick(course.Teacher.FullNameAr, course.Teacher.FullNameEn)</p>
+                            @if (schedule is not null)
+                            {
+                                <p class="flex items-center gap-2"><svg class="h-4 w-4 text-brand-500"><use href="#i-calendar"/></svg>@L.Day(schedule.DayOfWeek) · <span dir="ltr">@schedule.StartTime – @schedule.EndTime</span></p>
+                            }
+                            <p class="flex items-center gap-2"><svg class="h-4 w-4 text-brand-500"><use href="#i-users"/></svg>@L.T("Capacity", "السعة") @course.Capacity</p>
+                        </div>
+                        <div class="mt-4 flex items-center justify-between border-t border-sand-200 pt-4">
+                            <div>
+                                <p class="text-[10px] font-semibold text-ink-500">@L.T("Course fee", "رسوم الدورة")</p>
+                                <p class="text-lg font-extrabold text-brand-900">@(Model.Settings.TuitionEnabled ? L.Money(course.Fee) : L.T("Free", "مجاني"))</p>
+                            </div>
+                            <a asp-controller="Home" asp-action="Register" asp-route-courseId="@course.Id" class="btn btn-primary btn-sm">
+                                @L.T("Register", "سجّل")
+                                <svg class="h-3.5 w-3.5 flip-x"><use href="#i-arrow-right"/></svg>
+                            </a>
+                        </div>
+                    </div>
+                </article>
+            }
+        </div>
+    </div>
+</section>
+
+<section class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+    <div class="grid gap-10 lg:grid-cols-[.9fr_1.1fr] lg:items-center">
+        <div>
+            <span class="chip !border-brand-200 !bg-brand-50 !text-brand-800">@L.T("Why our institute", "لماذا معهدنا")</span>
+            <h2 class="mt-4 text-3xl font-extrabold leading-tight text-brand-950">@L.T("Discipline, clarity and follow-up — not just extra lessons.", "انضباط ووضوح ومتابعة — وليس مجرد دروس إضافية.")</h2>
+            <p class="mt-4 text-sm leading-7 text-ink-500">@L.T("Every course is planned around the school calendar, with attendance recorded by the teacher, results tracked in the system, and guardians informed at every step.", "كل دورة مخططة وفق التقويم الدراسي، بحضور يسجله المدرّس ونتائج متتبعة في النظام، مع إشعار أولياء الأمور بكل خطوة.")</p>
+            <div class="mt-6 space-y-3">
+                <div class="flex items-start gap-3"><span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700"><svg class="h-4 w-4"><use href="#i-check"/></svg></span><div><p class="text-sm font-bold text-brand-950">@L.T("Attendance you can trust", "حضور موثوق")</p><p class="text-xs text-ink-500">@L.T("Teachers record attendance; any correction goes through management approval and is logged.", "المدرّس يسجل الحضور، وأي تعديل يمر بموافقة الإدارة ويُسجّل في سجل التدقيق.")</p></div></div>
+                <div class="flex items-start gap-3"><span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700"><svg class="h-4 w-4"><use href="#i-check"/></svg></span><div><p class="text-sm font-bold text-brand-950">@L.T("Transparent finances", "مالية واضحة")</p><p class="text-xs text-ink-500">@L.T("Official receipts, due schedules and a printed account statement for each student.", "وصولات رسمية وجدول أقساط وكشف حساب مطبوع لكل طالب.")</p></div></div>
+                <div class="flex items-start gap-3"><span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700"><svg class="h-4 w-4"><use href="#i-check"/></svg></span><div><p class="text-sm font-bold text-brand-950">@L.T("Qualified teachers", "مدرسون مؤهلون")</p><p class="text-xs text-ink-500">@L.T("Profiles include qualifications, subjects, experience and verified parent ratings.", "ملفات تشمل المؤهلات والمواد والخبرة وتقييمات موثقة من الأهالي.")</p></div></div>
+            </div>
+        </div>
+        <div class="grid gap-4 sm:grid-cols-2">
+            <div class="card p-5">
+                <span class="stat-icon bg-brand-50 text-brand-700"><svg class="h-6 w-6"><use href="#i-clipboard"/></svg></span>
+                <h3 class="mt-3 text-sm font-bold">@L.T("Daily attendance", "حضور يومي")</h3>
+                <p class="mt-1 text-xs leading-5 text-ink-500">@L.T("Marked section by section, with late and excused statuses.", "يُسجل شعبةً بشعبة، مع حالات التأخر والغياب بعذر.")</p>
+            </div>
+            <div class="card p-5">
+                <span class="stat-icon bg-gold-50 text-gold-600"><svg class="h-6 w-6"><use href="#i-chart"/></svg></span>
+                <h3 class="mt-3 text-sm font-bold">@L.T("Exam results", "نتائج الامتحانات")</h3>
+                <p class="mt-1 text-xs leading-5 text-ink-500">@L.T("Marks and pass status published directly to the parent portal.", "الدرجات وحالة النجاح تظهر مباشرة في بوابة ولي الأمر.")</p>
+            </div>
+            <div class="card p-5">
+                <span class="stat-icon bg-blue-50 text-blue-700"><svg class="h-6 w-6"><use href="#i-wallet"/></svg></span>
+                <h3 class="mt-3 text-sm font-bold">@L.T("Instalment plans", "تقسيط مريح")</h3>
+                <p class="mt-1 text-xs leading-5 text-ink-500">@L.T("Course fees can be divided into scheduled instalments with printed receipts.", "يمكن تقسيم رسوم الدورة إلى أقساط مجدولة مع وصولات مطبوعة.")</p>
+            </div>
+            <div class="card p-5">
+                <span class="stat-icon bg-violet-50 text-violet-700"><svg class="h-6 w-6"><use href="#i-cap"/></svg></span>
+                <h3 class="mt-3 text-sm font-bold">@L.T("Private tutoring", "دروس خصوصية")</h3>
+                <p class="mt-1 text-xs leading-5 text-ink-500">@L.T("At the institute or at home, matched to the right teacher by subject and area.", "في المعهد أو المنزل، مع إسناد المدرّس المناسب حسب المادة والمنطقة.")</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="bg-white py-16 lg:py-20">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="flex flex-wrap items-end justify-between gap-4">
+            <div>
+                <span class="chip !border-gold-200 !bg-gold-50 !text-gold-700">@L.T("Our teachers", "هيئة التدريس")</span>
+                <h2 class="mt-4 text-3xl font-extrabold text-brand-950">@L.T("Experienced teachers, chosen with care", "مدرسون بخبرة، اختيروا بعناية")</h2>
+                <p class="mt-2 text-sm text-ink-500">@L.T("Profiles are public so families can review specialisation, experience and ratings before registering.", "الملفات متاحة للاطلاع حتى تتمكن العائلات من مراجعة التخصص والخبرة والتقييمات قبل التسجيل.")</p>
+            </div>
+            <a asp-controller="Teachers" asp-action="Directory" class="btn btn-outline">@L.T("Full teacher directory", "دليل المدرسين كاملاً")<svg class="h-4 w-4 flip-x"><use href="#i-arrow-right"/></svg></a>
+        </div>
+        <div class="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            @foreach (var teacher in Model.FeaturedTeachers)
+            {
+                <a asp-controller="Teachers" asp-action="Details" asp-route-id="@teacher.Id" class="card group p-5 transition hover:-translate-y-1 hover:shadow-pop">
+                    <div class="flex items-center gap-3">
+                        <span class="avatar h-14 w-14 bg-gradient-to-br from-brand-700 to-brand-900 text-lg text-white ring-2 ring-gold-300/40">@L.Initials(L.Pick(teacher.FullNameAr, teacher.FullNameEn))</span>
+                        <div class="min-w-0">
+                            <h3 class="truncate text-sm font-bold text-brand-950">@L.Pick(teacher.FullNameAr, teacher.FullNameEn)</h3>
+                            <p class="truncate text-[11px] text-ink-500">@teacher.Specialization</p>
+                            <div class="mt-1 flex items-center gap-1.5">
+                                <div class="flex">
+                                    @for (var i = 1; i <= 5; i++)
+                                    {
+                                        <svg class="h-3.5 w-3.5 @(i <= Math.Round(teacher.RatingAvg) ? "text-gold-500" : "text-sand-300")"><use href="#i-star-fill"/></svg>
+                                    }
+                                </div>
+                                <span class="text-[10px] font-semibold text-ink-500">@(teacher.RatingCount > 0 ? teacher.RatingAvg.ToString("0.0", CultureInfo.InvariantCulture) : L.T("New", "جديد"))</span>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="mt-4 line-clamp-2 min-h-[36px] text-xs leading-5 text-ink-500">@L.Pick(teacher.BioAr, teacher.BioEn)</p>
+                    <div class="mt-3 flex flex-wrap gap-1">
+                        @foreach (var subject in teacher.Subjects.Take(3))
+                        {
+                            <span class="rounded-md bg-sand-100 px-1.5 py-0.5 text-[10px] font-semibold text-ink-700">@L.Pick(subject.Subject.NameAr, subject.Subject.NameEn)</span>
+                        }
+                    </div>
+                    <div class="mt-4 flex items-center justify-between border-t border-sand-200 pt-3 text-[11px] text-ink-500">
+                        <span>@teacher.ExperienceYears @L.T("years experience", "سنة خبرة")</span>
+                        <span class="font-bold text-brand-700 group-hover:text-brand-900">@L.E(teacher.TeachingMode)</span>
+                    </div>
+                </a>
+            }
+        </div>
+    </div>
+</section>
+
+<section class="relative overflow-hidden bg-brand-950 py-16 lg:py-20">
+    <div class="pointer-events-none absolute -end-24 top-0 h-80 w-80 rounded-full bg-gold-500/10 blur-3xl"></div>
+    <div class="pointer-events-none absolute -start-20 bottom-0 h-72 w-72 rounded-full bg-brand-600/30 blur-3xl"></div>
+    <div class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="grid gap-10 lg:grid-cols-[1fr_.9fr] lg:items-center">
+            <div>
+                <span class="chip !border-white/20 !bg-white/10 !text-gold-300">@L.T("Private & home lessons", "الدروس الخصوصية والمنزلية")</span>
+                <h2 class="mt-4 text-3xl font-extrabold leading-tight text-white">@L.T("Need focused help in one subject? We match the right teacher.", "تحتاج دعماً مركزاً في مادة معينة؟ نُسند لك المدرّس المناسب.")</h2>
+                <p class="mt-4 max-w-xl text-sm leading-7 text-brand-100/65">@L.T("Individual lessons at the institute or at home, for all grades and subjects. Tell us the grade, subject and preferred area, and the administration will contact you with suitable teachers and fees.", "دروس فردية في المعهد أو في المنزل، لجميع الصفوف والمواد. أخبرنا بالصف والمادة والمنطقة المفضلة، وستتواصل معك الإدارة بالمدرسين المناسبين والأجور.")</p>
+                <div class="mt-7 grid max-w-2xl grid-cols-2 gap-3 sm:grid-cols-4">
+                    @foreach (var (icon, title) in new[] { ("i-book", L.T("Request", "اطلب")), ("i-users", L.T("Matching", "الإسناد")), ("i-calendar", L.T("Lesson", "الدرس")), ("i-star", L.T("Rating", "التقييم")) })
+                    {
+                        <div class="rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-center">
+                            <svg class="mx-auto h-5 w-5 text-gold-400"><use href="#@icon"/></svg>
+                            <p class="mt-1.5 text-[11px] font-bold text-brand-100">@title</p>
+                        </div>
+                    }
+                </div>
+                <a asp-controller="PrivateLessons" asp-action="Request" class="btn btn-gold btn-lg mt-7">
+                    @L.T("Request a private lesson", "اطلب درساً خصوصياً")
+                    <svg class="h-4 w-4 flip-x"><use href="#i-arrow-right"/></svg>
+                </a>
+            </div>
+            <div class="rounded-3xl border border-white/10 bg-white/[.04] p-6">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-bold text-white">@L.T("What we need from you", "ما نحتاجه منكم")</h3>
+                    <span class="text-[10px] text-brand-100/50">@L.T("Takes 2 minutes", "يستغرق دقيقتين")</span>
+                </div>
+                <ul class="mt-5 space-y-4">
+                    <li class="flex gap-3"><span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gold-400/15 text-xs font-bold text-gold-300">1</span><div><p class="text-xs font-bold text-brand-100">@L.T("Student details", "بيانات الطالب")</p><p class="text-[11px] leading-5 text-brand-100/50">@L.T("Name, grade and school.", "الاسم والصف والمدرسة.")</p></div></li>
+                    <li class="flex gap-3"><span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gold-400/15 text-xs font-bold text-gold-300">2</span><div><p class="text-xs font-bold text-brand-100">@L.T("Subject and location", "المادة والمكان")</p><p class="text-[11px] leading-5 text-brand-100/50">@L.T("At the institute or at home, with your area.", "في المعهد أو المنزل، مع تحديد المنطقة.")</p></div></li>
+                    <li class="flex gap-3"><span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gold-400/15 text-xs font-bold text-gold-300">3</span><div><p class="text-xs font-bold text-brand-100">@L.T("Preferred schedule", "الوقت المفضل")</p><p class="text-[11px] leading-5 text-brand-100/50">@L.T("Days per week and a suitable time.", "عدد الأيام في الأسبوع والوقت المناسب.")</p></div></li>
+                    <li class="flex gap-3"><span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gold-400/15 text-xs font-bold text-gold-300">4</span><div><p class="text-xs font-bold text-brand-100">@L.T("Your phone number", "رقم هاتفكم")</p><p class="text-[11px] leading-5 text-brand-100/50">@L.T("So the administration can confirm the teacher and fee.", "لتؤكد الإدارة المدرّس والأجر.")</p></div></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+    <div class="grid gap-5 md:grid-cols-3">
+        <div class="card card-pad">
+            <span class="stat-icon bg-brand-50 text-brand-700"><svg class="h-6 w-6"><use href="#i-pin"/></svg></span>
+            <h3 class="mt-3 text-sm font-bold">@L.T("Visit us", "زورونا")</h3>
+            <p class="mt-2 text-sm leading-6 text-ink-500">@L.Pick(Model.Settings.AddressAr, Model.Settings.AddressEn)</p>
+            <p class="mt-2 text-xs text-ink-500">@L.T("Near the main street · parking available", "قرب الشارع الرئيسي · تتوفر مواقف")</p>
+        </div>
+        <div class="card card-pad">
+            <span class="stat-icon bg-emerald-50 text-emerald-700"><svg class="h-6 w-6"><use href="#i-phone"/></svg></span>
+            <h3 class="mt-3 text-sm font-bold">@L.T("Call or message", "اتصل أو راسلنا")</h3>
+            <p class="mt-2 text-sm font-semibold text-brand-800" dir="ltr">@Model.Settings.Phone</p>
+            <p class="mt-1 text-sm font-semibold text-brand-800" dir="ltr">@Model.Settings.Email</p>
+            <p class="mt-2 text-xs text-ink-500">@L.T("We reply during working hours.", "نرد خلال ساعات الدوام.")</p>
+        </div>
+        <div class="card card-pad">
+            <span class="stat-icon bg-gold-50 text-gold-600"><svg class="h-6 w-6"><use href="#i-clock"/></svg></span>
+            <h3 class="mt-3 text-sm font-bold">@L.T("Working hours", "أوقات الدوام")</h3>
+            <div class="mt-2 space-y-1.5 text-sm text-ink-700">
+                <div class="flex justify-between"><span>@L.T("Saturday – Thursday", "السبت – الخميس")</span><span class="font-semibold" dir="ltr">14:00 – 21:00</span></div>
+                <div class="flex justify-between text-ink-500"><span>@L.T("Friday", "الجمعة")</span><span class="font-semibold">@L.T("Closed", "مغلق")</span></div>
+            </div>
+            <p class="mt-2 text-xs text-ink-500">@L.T("Registrar available 16:00 – 20:00.", "مسؤول التسجيل متواجد من 4:00 إلى 8:00 مساءً.")</p>
+        </div>
+    </div>
+</section>
+
+<section class="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
+    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-l from-brand-900 via-brand-800 to-brand-700 px-6 py-10 shadow-pop sm:px-10 lg:flex lg:items-center lg:justify-between lg:py-12">
+        <div class="pointer-events-none absolute -end-16 -top-16 h-64 w-64 rounded-full bg-gold-400/15 blur-2xl"></div>
+        <div class="relative max-w-2xl">
+            <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-gold-300">@L.T("Registration open", "التسجيل مفتوح")</p>
+            <h2 class="mt-2 text-2xl font-extrabold text-white sm:text-3xl">@L.T("Reserve a seat before the next term starts.", "احجز مقعداً قبل بداية الفصل القادم.")</h2>
+            <p class="mt-2 text-sm text-brand-100/70">@L.T("Submit the online form and our registrar will call you to complete the paperwork.", "أرسل الاستمارة الإلكترونية وسيتصل بك مسؤول التسجيل لاستكمال الإجراءات.")</p>
+        </div>
+        <div class="relative mt-6 flex flex-wrap gap-3 lg:mt-0">
+            <a asp-controller="Home" asp-action="Register" class="btn btn-gold btn-lg">@L.T("Register now", "سجّل الآن")<svg class="h-4 w-4 flip-x"><use href="#i-arrow-right"/></svg></a>
+            <a asp-controller="Account" asp-action="Login" class="btn btn-lg border border-white/25 bg-white/5 text-white hover:bg-white/10">@L.T("Portal sign in", "دخول البوابات")</a>
+        </div>
+    </div>
+</section>

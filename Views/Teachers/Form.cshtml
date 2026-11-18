@@ -1,0 +1,177 @@
+@model TeacherFormViewModel
+@{
+    var isEdit = Model.Id > 0;
+    ViewData["Title"] = isEdit ? L.T("Edit teacher", "تعديل مدرّس") : L.T("Add teacher", "إضافة مدرّس");
+    var subjects = ViewBag.Subjects as List<Subject> ?? new();
+    var grades = ViewBag.Grades as List<Grade> ?? new();
+}
+<div class="page-head">
+    <div>
+        <div class="mb-1 flex items-center gap-2 text-xs text-ink-500">
+            <a asp-action="Index" class="hover:text-brand-700">@L.T("Teachers", "المدرسون")</a>
+            <svg class="h-3 w-3 flip-x"><use href="#i-chevron-down"/></svg>
+            <span>@(isEdit ? L.T("Edit", "تعديل") : L.T("New", "جديد"))</span>
+        </div>
+        <h1 class="page-title">@(isEdit ? L.T("Edit teaching profile", "تعديل الملف التدريسي") : L.T("Add a teacher", "إضافة مدرّس"))</h1>
+    </div>
+    @if (isEdit)
+    {
+        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline btn-sm">@L.T("Cancel", "إلغاء")</a>
+    }
+</div>
+
+<form method="post" enctype="multipart/form-data" asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@(isEdit ? Model.Id : (int?)null)" class="grid gap-5 lg:grid-cols-3">
+    <input type="hidden" asp-for="Id" />
+    <input type="hidden" asp-for="PhotoPath" />
+    <div class="space-y-5 lg:col-span-2">
+        <div asp-validation-summary="ModelOnly" class="alert alert-error @(ViewData.ModelState.IsValid ? "hidden" : "")"></div>
+        <div class="card card-pad">
+            <h2 class="section-title mb-4">@L.T("Personal details", "البيانات الشخصية")</h2>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label asp-for="FullNameAr" class="label">@L.T("Full name (Arabic)", "الاسم الكامل (عربي)") *</label>
+                    <input asp-for="FullNameAr" class="input" />
+                    <span asp-validation-for="FullNameAr" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="FullNameEn" class="label">@L.T("Full name (English)", "الاسم الكامل (إنكليزي)") *</label>
+                    <input asp-for="FullNameEn" class="input" dir="ltr" />
+                    <span asp-validation-for="FullNameEn" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="Gender" class="label">@L.T("Gender", "الجنس")</label>
+                    <select asp-for="Gender" class="select" asp-items="Html.GetEnumSelectList<Gender>()"></select>
+                </div>
+                <div>
+                    <label asp-for="Phone" class="label">@L.T("Phone", "الهاتف") *</label>
+                    <input asp-for="Phone" class="input" dir="ltr" />
+                    <span asp-validation-for="Phone" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="Email" class="label">@L.T("Email", "البريد الإلكتروني")</label>
+                    <input asp-for="Email" class="input" dir="ltr" />
+                </div>
+                <div>
+                    <label asp-for="Areas" class="label">@L.T("Areas covered", "المناطق المغطاة")</label>
+                    <input asp-for="Areas" class="input" placeholder="@L.T("Al-Masalla, Al-Wasiti, Shorja…", "المصلى، الواسطي، شورجة…")" />
+                    <p class="help">@L.T("Comma-separated areas used for home lesson matching.", "مناطق مفصولة بفواصل تستخدم لمطابقة الدروس المنزلية.")</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-pad">
+            <h2 class="section-title mb-4">@L.T("Academic background", "المؤهل العلمي")</h2>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label asp-for="Specialization" class="label">@L.T("Specialization", "التخصص") *</label>
+                    <input asp-for="Specialization" class="input" placeholder="@L.T("Mathematics, Physics…", "الرياضيات، الفيزياء…")" />
+                    <span asp-validation-for="Specialization" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="Certificate" class="label">@L.T("Certificate", "الشهادة")</label>
+                    <input asp-for="Certificate" class="input" placeholder="@L.T("B.Sc., M.Sc., Diploma…", "بكالوريوس، ماجستير، دبلوم…")" />
+                </div>
+                <div>
+                    <label asp-for="University" class="label">@L.T("University / institute", "الجامعة / المعهد")</label>
+                    <input asp-for="University" class="input" />
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label asp-for="GraduationYear" class="label">@L.T("Graduation", "سنة التخرج")</label>
+                        <input asp-for="GraduationYear" type="number" class="input" />
+                    </div>
+                    <div>
+                        <label asp-for="ExperienceYears" class="label">@L.T("Experience", "الخبرة")</label>
+                        <input asp-for="ExperienceYears" type="number" class="input" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-pad">
+            <h2 class="section-title mb-4">@L.T("Teaching assignment", "الإسناد التدريسي")</h2>
+            <p class="label">@L.T("Subjects", "المواد")</p>
+            <div class="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                @foreach (var s in subjects)
+                {
+                    <label class="flex items-center gap-2 rounded-xl border border-sand-200 px-3 py-2 text-sm transition hover:border-brand-300">
+                        <input type="checkbox" name="SubjectIds" value="@s.Id" class="checkbox" checked="@Model.SubjectIds.Contains(s.Id)" />
+                        <span class="font-semibold text-ink-800">@L.Pick(s.NameAr, s.NameEn)</span>
+                    </label>
+                }
+            </div>
+            <p class="label">@L.T("Grades", "الصفوف")</p>
+            <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                @foreach (var g in grades)
+                {
+                    <label class="flex items-center gap-2 rounded-xl border border-sand-200 px-3 py-2 text-sm transition hover:border-brand-300">
+                        <input type="checkbox" name="GradeIds" value="@g.Id" class="checkbox" checked="@Model.GradeIds.Contains(g.Id)" />
+                        <span class="font-semibold text-ink-800">@L.Pick(g.NameAr, g.NameEn)</span>
+                        <span class="ms-auto text-[10px] text-ink-400">@L.E(g.Stage.Type)</span>
+                    </label>
+                }
+            </div>
+        </div>
+
+        <div class="card card-pad">
+            <h2 class="section-title mb-4">@L.T("Public profile", "الملف العام")</h2>
+            <div class="grid gap-4">
+                <div>
+                    <label asp-for="BioAr" class="label">@L.T("Biography (Arabic)", "نبذة (عربي)")</label>
+                    <textarea asp-for="BioAr" class="textarea" placeholder="@L.T("Short introduction shown in the teacher directory…", "نبذة قصيرة تظهر في دليل المدرسين…")"></textarea>
+                </div>
+                <div>
+                    <label asp-for="BioEn" class="label">@L.T("Biography (English)", "نبذة (إنكليزي)")</label>
+                    <textarea asp-for="BioEn" class="textarea" dir="ltr"></textarea>
+                </div>
+                <label class="flex items-center gap-2 text-sm font-semibold text-ink-700">
+                    <input asp-for="IsPublic" class="checkbox" />@L.T("Show profile in the public teacher directory", "عرض الملف في دليل المدرسين العام")
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div class="space-y-5">
+        <div class="card card-pad">
+            <h2 class="section-title mb-4">@L.T("Photo", "الصورة")</h2>
+            <div class="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-sand-300 bg-sand-50 p-5">
+                @if (!string.IsNullOrEmpty(Model.PhotoPath))
+                {
+                    <img src="@Model.PhotoPath" alt="" class="h-24 w-24 rounded-full object-cover" />
+                }
+                else { <span class="avatar h-20 w-20 text-xl">@L.Initials(Model.FullNameAr)</span> }
+                <label class="btn btn-outline btn-sm cursor-pointer">
+                    <svg class="h-4 w-4"><use href="#i-upload"/></svg>@L.T("Upload photo", "رفع صورة")
+                    <input asp-for="Photo" type="file" accept="image/*" class="hidden" />
+                </label>
+            </div>
+        </div>
+
+        <div class="card card-pad">
+            <h2 class="section-title mb-4">@L.T("Employment", "التوظيف")</h2>
+            <div class="space-y-4">
+                <div>
+                    <label asp-for="TeachingMode" class="label">@L.T("Teaching mode", "نمط التدريس")</label>
+                    <select asp-for="TeachingMode" class="select" asp-items="Html.GetEnumSelectList<TeachingMode>()"></select>
+                </div>
+                <div>
+                    <label asp-for="HireDate" class="label">@L.T("Hire date", "تاريخ التعيين")</label>
+                    <input asp-for="HireDate" type="date" class="input" />
+                </div>
+                <div>
+                    <label asp-for="FixedMonthlySalary" class="label">@L.T("Fixed monthly salary", "راتب شهري ثابت")</label>
+                    <input asp-for="FixedMonthlySalary" type="number" step="1000" class="input" placeholder="0" />
+                </div>
+                <label class="flex items-center gap-2 text-sm font-semibold text-ink-700">
+                    <input asp-for="IsActive" class="checkbox" />@L.T("Active teacher", "مدرّس نشط")
+                </label>
+            </div>
+        </div>
+
+        <div class="card card-pad !bg-brand-50">
+            <p class="flex items-start gap-2 text-xs text-brand-800"><svg class="mt-0.5 h-4 w-4 shrink-0"><use href="#i-info"/></svg><span>@L.T("Teacher shares are configured per course (default 55%), private lessons 60%. Rent for 6th preparatory rooms is tracked separately.", "حصص المدرّس تحدد لكل دورة (الافتراضي 55%)، والدروس الخصوصية 60%. إيجار غرف السادس الإعدادي يتابع بشكل منفصل.")</span></p>
+        </div>
+
+        <button class="btn btn-primary btn-lg w-full"><svg class="h-5 w-5"><use href="#i-check"/></svg>@(isEdit ? L.T("Save changes", "حفظ التغييرات") : L.T("Add teacher", "إضافة المدرّس"))</button>
+    </div>
+</form>

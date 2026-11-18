@@ -1,0 +1,148 @@
+@model List<AttendanceSectionRow>
+@{
+    ViewData["Title"] = L.T("Attendance register", "سجل الحضور");
+    var day = (DateTime)(ViewBag.Date ?? DateTime.Today);
+    var teacher = ViewBag.Teacher as Teacher;
+    var pending = (int)(ViewBag.PendingRequests ?? 0);
+    var enrolled = Model.Sum(r => r.Enrolled);
+    var recorded = Model.Sum(r => r.Recorded);
+    var absent = Model.Sum(r => r.Absent);
+    var scheduled = Model.Count(r => r.IsScheduled);
+}
+<div class="page-head">
+    <div>
+        <div class="flex items-center gap-2 text-xs text-ink-500">
+            <a asp-action="Index" class="link">@L.T("Teacher dashboard", "لوحة المدرّس")</a>
+            <svg class="h-3.5 w-3.5"><use href="#i-chevron-down"/></svg>
+            <span>@L.T("Attendance", "الحضور")</span>
+        </div>
+        <h1 class="page-title mt-1">@L.T("Attendance register", "سجل الحضور")</h1>
+        <p class="page-sub">@(teacher is null ? "" : L.Pick(teacher.FullNameAr, teacher.FullNameEn)) · @L.Date(day) · @L.Day(day.DayOfWeek)</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+        <form asp-action="Attendance" method="get" class="flex items-center gap-2">
+            <input type="date" name="date" value="@day.ToString("yyyy-MM-dd")" max="@DateTime.Today.ToString("yyyy-MM-dd")" class="input !w-auto !py-2 !text-xs" />
+            <button class="btn btn-outline btn-sm"><svg class="h-4 w-4"><use href="#i-filter"/></svg>@L.T("Show", "عرض")</button>
+        </form>
+        <a asp-action="Schedule" class="btn btn-outline btn-sm"><svg class="h-4 w-4"><use href="#i-calendar"/></svg>@L.T("Schedule", "الجدول")</a>
+    </div>
+</div>
+
+@if (pending > 0)
+{
+    <div class="alert alert-info mb-5">
+        <svg class="mt-0.5 h-5 w-5 shrink-0"><use href="#i-info"/></svg>
+        <p>@L.T($"You have {pending} attendance change request(s) awaiting manager approval.", $"لديك {pending} طلب تعديل حضور بانتظار موافقة الإدارة.")</p>
+    </div>
+}
+
+<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="stat-card">
+        <p class="text-xs font-semibold text-ink-500">@L.T("Sections scheduled", "الشُعب المجدولة")</p>
+        <p class="kpi mt-2">@L.Num(scheduled)</p>
+        <p class="mt-1 text-[11px] text-ink-500">@L.T("of", "من") @L.Num(Model.Count) @L.T("assigned sections", "شعبة مسندة")</p>
+    </div>
+    <div class="stat-card">
+        <p class="text-xs font-semibold text-ink-500">@L.T("Enrolled students", "الطلاب المسجلون")</p>
+        <p class="kpi mt-2">@L.Num(enrolled)</p>
+        <p class="mt-1 text-[11px] text-ink-500">@L.T("Across my sections", "في جميع شُعبي")</p>
+    </div>
+    <div class="stat-card">
+        <p class="text-xs font-semibold text-ink-500">@L.T("Records saved", "السجلات المحفوظة")</p>
+        <p class="kpi mt-2">@L.Num(recorded)</p>
+        <p class="mt-1 text-[11px] text-ink-500">@L.T("For", "ليوم") @L.DateShort(day)</p>
+    </div>
+    <div class="stat-card">
+        <p class="text-xs font-semibold text-ink-500">@L.T("Absences", "الغيابات")</p>
+        <p class="kpi mt-2 @(absent > 0 ? "text-amber-700" : "")">@L.Num(absent)</p>
+        <p class="mt-1 text-[11px] text-ink-500">@L.T("Guardians are notified automatically", "يُشعر أولياء الأمور تلقائياً")</p>
+    </div>
+</div>
+
+<div class="card mt-5 overflow-hidden">
+    <div class="card-header">
+        <div>
+            <p class="section-title">@L.T("My sections", "شُعبي")</p>
+            <p class="mt-0.5 text-xs text-ink-500">@L.T("Attendance can be recorded once per section and date; later corrections need approval.", "يمكن تسجيل الحضور مرة واحدة لكل شعبة وتاريخ، وأي تعديل لاحق يحتاج موافقة.")</p>
+        </div>
+    </div>
+    <div class="table-wrap">
+        <table class="table-base">
+            <thead>
+                <tr>
+                    <th>@L.T("Section", "الشعبة")</th>
+                    <th>@L.T("Time & room", "الوقت والقاعة")</th>
+                    <th class="text-center">@L.T("Enrolled", "المسجلون")</th>
+                    <th class="text-center">@L.T("Recorded", "المسجل")</th>
+                    <th class="text-center">@L.T("Present", "حاضر")</th>
+                    <th class="text-center">@L.T("Absent", "غائب")</th>
+                    <th>@L.T("Status", "الحالة")</th>
+                    <th class="text-end">@L.T("Action", "الإجراء")</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var row in Model)
+            {
+                <tr>
+                    <td>
+                        <p class="font-semibold text-ink-900">@L.Pick(row.Section.Course.Subject.NameAr, row.Section.Course.Subject.NameEn)</p>
+                        <p class="text-xs text-ink-500">@L.Pick(row.Section.Course.Grade.NameAr, row.Section.Course.Grade.NameEn) · @row.Section.Name</p>
+                    </td>
+                    <td>
+                        @if (row.IsScheduled)
+                        {
+                            <p class="text-xs font-semibold text-ink-800">@row.Time</p>
+                            <p class="text-[11px] text-ink-500">@row.Room</p>
+                        }
+                        else
+                        {
+                            <span class="text-[11px] text-ink-400">@L.T("No session today", "لا حصة اليوم")</span>
+                        }
+                    </td>
+                    <td class="text-center text-xs">@L.Num(row.Enrolled)</td>
+                    <td class="text-center text-xs font-semibold">@L.Num(row.Recorded)</td>
+                    <td class="text-center"><span class="badge badge-green">@L.Num(row.Present)</span></td>
+                    <td class="text-center"><span class="badge @(row.Absent > 0 ? "badge-red" : "badge-gray")">@L.Num(row.Absent)</span></td>
+                    <td>
+                        @if (row.Recorded > 0)
+                        {
+                            <span class="badge badge-blue">@L.T("Recorded", "مسجل")</span>
+                        }
+                        else if (row.IsScheduled)
+                        {
+                            <span class="badge badge-amber">@L.T("Pending", "بانتظار التسجيل")</span>
+                        }
+                        else
+                        {
+                            <span class="badge badge-gray">@L.T("Not scheduled", "غير مجدول")</span>
+                        }
+                    </td>
+                    <td class="text-end">
+                        <a asp-action="Take" asp-route-sectionId="@row.Section.Id" asp-route-date="@day.ToString("yyyy-MM-dd")"
+                           class="btn @(row.Recorded > 0 ? "btn-soft" : "btn-primary") btn-xs">
+                            @if (row.Recorded > 0)
+                            {
+                                <svg class="h-3.5 w-3.5"><use href="#i-eye"/></svg><span>@L.T("Review", "مراجعة")</span>
+                            }
+                            else
+                            {
+                                <svg class="h-3.5 w-3.5"><use href="#i-clipboard"/></svg><span>@L.T("Register", "تسجيل")</span>
+                            }
+                        </a>
+                    </td>
+                </tr>
+            }
+            @if (Model.Count == 0)
+            {
+                <tr><td colspan="8"><div class="empty">@L.T("No sections are assigned to you yet.", "لا توجد شُعب مسندة إليك بعد.")</div></td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<p class="mt-4 flex items-center gap-2 text-[11px] text-ink-500">
+    <svg class="h-4 w-4 text-brand-600"><use href="#i-shield"/></svg>
+    @L.T("Saved attendance is immutable. Use a change request with a reason to correct a record; a manager must approve it.",
+        "سجل الحضور المحفوظ غير قابل للتعديل المباشر. استخدم طلب تعديل مع ذكر السبب، ويجب أن يعتمده المدير.")
+</p>

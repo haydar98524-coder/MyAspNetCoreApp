@@ -1,0 +1,83 @@
+@model List<Fund>
+@{
+    ViewData["Title"] = L.T("Funds & accounts", "الصناديق والحسابات");
+    var accounts = ViewBag.Accounts as List<AccountBalanceRow> ?? new List<AccountBalanceRow>();
+    var groups = new[] { AccountType.Asset, AccountType.Liability, AccountType.Equity, AccountType.Revenue, AccountType.Expense };
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Funds & chart of accounts", "الصناديق ودليل الحسابات")</h1>
+        <p class="page-sub">@L.T("Cash positions and ledger balances as of today.", "الأرصدة النقدية وأرصدة الحسابات حتى اليوم.")</p>
+    </div>
+    <div class="flex gap-2">
+        <a asp-action="Index" class="btn btn-outline btn-sm"><svg class="h-4 w-4 flip-x"><use href="#i-arrow-left"/></svg>@L.T("Finance", "المالية")</a>
+        <a asp-action="Journal" class="btn btn-soft btn-sm"><svg class="h-4 w-4"><use href="#i-clipboard"/></svg>@L.T("Journal", "القيود")</a>
+    </div>
+</div>
+
+<div class="grid gap-3 sm:grid-cols-3">
+    <div class="stat-card"><div class="flex items-start justify-between"><div><p class="text-xs text-ink-500">@L.T("Cash on hand", "النقد بالصندوق")</p><p class="kpi mt-2 text-emerald-700">@L.Money((long)ViewBag.Cash)</p></div><span class="stat-icon bg-emerald-50 text-emerald-700"><svg class="h-5 w-5"><use href="#i-cash"/></svg></span></div></div>
+    <div class="stat-card"><div class="flex items-start justify-between"><div><p class="text-xs text-ink-500">@L.T("Bank balances", "أرصدة المصارف")</p><p class="kpi mt-2 text-blue-700">@L.Money((long)ViewBag.Bank)</p></div><span class="stat-icon bg-blue-50 text-blue-700"><svg class="h-5 w-5"><use href="#i-bank"/></svg></span></div></div>
+    <div class="stat-card"><div class="flex items-start justify-between"><div><p class="text-xs text-ink-500">@L.T("Journal entries", "القيود المرحّلة")</p><p class="kpi mt-2">@L.Num((int)ViewBag.JournalCount)</p></div><span class="stat-icon bg-brand-50 text-brand-700"><svg class="h-5 w-5"><use href="#i-clipboard"/></svg></span></div></div>
+</div>
+
+<div class="mt-5 grid gap-5 lg:grid-cols-2">
+    @foreach (var fund in Model)
+    {
+        <div class="card">
+            <div class="card-header">
+                <div class="flex items-center gap-3">
+                    <span class="stat-icon @(fund.Type == FundType.Cash ? "bg-emerald-50 text-emerald-700" : "bg-blue-50 text-blue-700")">
+                        <svg class="h-5 w-5"><use href="@(fund.Type == FundType.Cash ? "#i-cash" : "#i-bank")"/></svg>
+                    </span>
+                    <div>
+                        <h2 class="section-title">@L.Pick(fund.NameAr, fund.NameEn)</h2>
+                        <p class="text-xs text-ink-500">@L.E(fund.Type) · <span class="font-mono">@fund.Account.Code</span> @L.Pick(fund.Account.NameAr, fund.Account.NameEn)</p>
+                    </div>
+                </div>
+                <span class="badge @(fund.IsActive ? "badge-green" : "badge-gray")">@(fund.IsActive ? L.T("Active", "نشط") : L.T("Inactive", "غير نشط"))</span>
+            </div>
+            <div class="card-pad">
+                <p class="kpi text-3xl">@L.Money(fund.CurrentBalance)</p>
+                <p class="mt-1 text-xs text-ink-500">@L.T("Opening balance", "الرصيد الافتتاحي"): @L.Money(fund.OpeningBalance)</p>
+                <div class="mt-4 grid gap-2 text-xs sm:grid-cols-2">
+                    <div class="rounded-xl bg-sand-50 p-3"><p class="text-[10px] uppercase tracking-wide text-ink-400">@L.T("Bank", "المصرف")</p><p class="mt-1 font-semibold text-ink-800">@(string.IsNullOrWhiteSpace(fund.BankName) ? "—" : fund.BankName)</p></div>
+                    <div class="rounded-xl bg-sand-50 p-3"><p class="text-[10px] uppercase tracking-wide text-ink-400">@L.T("Account number", "رقم الحساب")</p><p class="mt-1 font-mono font-semibold text-ink-800">@(string.IsNullOrWhiteSpace(fund.AccountNumber) ? "—" : fund.AccountNumber)</p></div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="card mt-5 overflow-hidden">
+    <div class="card-header">
+        <div>
+            <h2 class="section-title">@L.T("Chart of accounts", "دليل الحسابات")</h2>
+            <p class="mt-0.5 text-xs text-ink-500">@L.T("Balances are derived from posted journal lines (debit − credit).", "الأرصدة مستخرجة من سطور القيود المرحّلة (مدين − دائن).")</p>
+        </div>
+    </div>
+    <div class="table-wrap">
+        <table class="table-base">
+            <thead><tr><th>@L.T("Code", "الرمز")</th><th>@L.T("Account", "الحساب")</th><th>@L.T("Type", "النوع")</th><th class="text-end">@L.T("Debit", "مدين")</th><th class="text-end">@L.T("Credit", "دائن")</th><th class="text-end">@L.T("Balance", "الرصيد")</th></tr></thead>
+            <tbody>
+            @foreach (var type in groups)
+            {
+                var rows = accounts.Where(a => a.Type == type).ToList();
+                if (rows.Count == 0) continue;
+                <tr class="bg-sand-100/70"><td colspan="6" class="!py-2 text-[11px] font-bold uppercase tracking-wide text-ink-500">@L.E(type)</td></tr>
+                foreach (var row in rows)
+                {
+                    <tr>
+                        <td class="font-mono text-xs text-ink-500">@row.Code</td>
+                        <td class="font-semibold text-ink-900">@L.Pick(row.NameAr, row.NameEn)</td>
+                        <td class="text-xs text-ink-500">@L.E(row.Type)</td>
+                        <td class="text-end tabular-nums text-ink-700">@(row.Debit == 0 ? "—" : L.Num(row.Debit))</td>
+                        <td class="text-end tabular-nums text-ink-700">@(row.Credit == 0 ? "—" : L.Num(row.Credit))</td>
+                        <td class="text-end font-bold tabular-nums @(row.Net < 0 ? "text-red-600" : "text-brand-900")">@L.Money(row.Net)</td>
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

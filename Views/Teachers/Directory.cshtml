@@ -1,0 +1,99 @@
+@model List<Teacher>
+@{
+    Layout = User.Identity?.IsAuthenticated == true ? "_Layout" : "_PublicLayout";
+    ViewData["Title"] = L.T("Teacher directory", "دليل المدرسين");
+    var subjects = ViewBag.Subjects as List<Subject> ?? new();
+    var grades = ViewBag.Grades as List<Grade> ?? new();
+    var q = ViewBag.Q as string;
+    var subjectId = ViewBag.SubjectId as int?;
+    var gradeId = ViewBag.GradeId as int?;
+    var mode = ViewBag.Mode as TeachingMode?;
+    var area = ViewBag.Area as string;
+}
+<section class="bg-gradient-to-b from-brand-950 to-brand-900 py-12 text-white">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <p class="text-xs font-bold uppercase tracking-[0.2em] text-gold-400">@L.T("Meet our teachers", "تعرّف على مدرسينا")</p>
+        <h1 class="mt-2 text-3xl font-extrabold sm:text-4xl">@L.T("Qualified Iraqi curriculum teachers", "مدرسون مؤهلون للمنهج العراقي")</h1>
+        <p class="mt-2 max-w-2xl text-sm leading-7 text-brand-100/80">@L.T("Browse profiles, subjects, grades and guardian ratings. Request a private lesson directly from any profile.", "تصفح الملفات والمواد والصفوف وتقييمات أولياء الأمور. اطلب درساً خصوصياً مباشرة من أي ملف.")</p>
+    </div>
+</section>
+
+<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <form method="get" class="card card-pad">
+        <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+            <div class="relative lg:col-span-2">
+                <span class="pointer-events-none absolute inset-y-0 start-3 flex items-center text-ink-500"><svg class="h-4 w-4"><use href="#i-search"/></svg></span>
+                <input name="q" value="@q" class="input !ps-9" placeholder="@L.T("Teacher name or area…", "اسم المدرّس أو المنطقة…")" />
+            </div>
+            <select name="subjectId" class="select">
+                <option value="">@L.T("All subjects", "كل المواد")</option>
+                @foreach (var s in subjects)
+                {
+                    <option value="@s.Id" selected="@(subjectId == s.Id)">@L.Pick(s.NameAr, s.NameEn)</option>
+                }
+            </select>
+            <select name="gradeId" class="select">
+                <option value="">@L.T("All grades", "كل الصفوف")</option>
+                @foreach (var g in grades)
+                {
+                    <option value="@g.Id" selected="@(gradeId == g.Id)">@L.Pick(g.NameAr, g.NameEn)</option>
+                }
+            </select>
+            <div class="flex gap-2">
+                <select name="mode" class="select">
+                    <option value="">@L.T("Any mode", "أي نمط")</option>
+                    <option value="Institute" selected="@(mode == TeachingMode.Institute)">@L.T("At institute", "داخل المعهد")</option>
+                    <option value="Home" selected="@(mode == TeachingMode.Home)">@L.T("At home", "في المنزل")</option>
+                </select>
+                <button class="btn btn-primary"><svg class="h-4 w-4"><use href="#i-filter"/></svg></button>
+            </div>
+        </div>
+    </form>
+
+    <div class="mt-5 flex items-center justify-between">
+        <p class="text-sm text-ink-500">@L.Num(Model.Count) @L.T("teachers available", "مدرّساً متاحاً")</p>
+        <a asp-action="Directory" class="text-xs link">@L.T("Reset filters", "إعادة التصفية")</a>
+    </div>
+
+    <div class="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        @if (Model.Count == 0)
+        {
+            <div class="card empty sm:col-span-2 lg:col-span-3 xl:col-span-4">
+                <svg class="h-10 w-10 text-brand-300"><use href="#i-users"/></svg>
+                <p>@L.T("No teachers match these filters.", "لا يوجد مدرسون مطابقون لهذه التصفية.")</p>
+            </div>
+        }
+        @foreach (var t in Model)
+        {
+            <div class="card overflow-hidden transition hover:-translate-y-1 hover:shadow-pop">
+                <div class="bg-gradient-to-br from-brand-950 to-brand-800 px-5 pb-8 pt-6 text-center text-white">
+                    @if (!string.IsNullOrEmpty(t.PhotoPath))
+                    {
+                        <img src="@t.PhotoPath" alt="" class="mx-auto h-20 w-20 rounded-full object-cover ring-4 ring-white/20" />
+                    }
+                    else { <span class="avatar mx-auto h-20 w-20 bg-gold-400 text-xl text-brand-950">@L.Initials(t.FullNameAr)</span> }
+                </div>
+                <div class="-mt-4 px-5 pb-5 text-center">
+                    <span class="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-gold-700 shadow-sm ring-1 ring-sand-200">
+                        <svg class="h-3 w-3"><use href="#i-star-fill"/></svg>@t.RatingAvg.ToString("0.0") <span class="font-normal text-ink-400">(@t.RatingCount)</span>
+                    </span>
+                    <h2 class="mt-2 truncate text-base font-extrabold text-brand-950">@L.Pick(t.FullNameAr, t.FullNameEn)</h2>
+                    <p class="text-xs text-ink-500">@t.Specialization</p>
+                    <div class="mt-3 flex flex-wrap justify-center gap-1">
+                        @foreach (var s in t.Subjects.Take(2))
+                        {
+                            <span class="chip !px-2 !py-0.5 !text-[10px]">@L.Pick(s.Subject.NameAr, s.Subject.NameEn)</span>
+                        }
+                    </div>
+                    <p class="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-ink-500">
+                        <svg class="h-3.5 w-3.5"><use href="#i-pin"/></svg>@(string.IsNullOrEmpty(t.Areas) ? L.T("Kirkuk", "كركوك") : t.Areas)
+                    </p>
+                    <div class="mt-4 flex gap-2">
+                        <a asp-action="Profile" asp-route-id="@t.Id" class="btn btn-outline btn-xs flex-1">@L.T("Profile", "الملف")</a>
+                        <a asp-controller="PrivateLessons" asp-action="Request" asp-route-teacherId="@t.Id" class="btn btn-gold btn-xs flex-1">@L.T("Request", "طلب")</a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>

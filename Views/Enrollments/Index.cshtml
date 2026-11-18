@@ -1,0 +1,96 @@
+@model List<Enrollment>
+@{
+    ViewData["Title"] = L.T("Enrollments", "الاشتراكات");
+    var courses = ViewBag.Courses as List<Course> ?? new();
+    var q = ViewBag.Q as string;
+    var courseId = ViewBag.CourseId as int?;
+    var status = ViewBag.Status as EnrollmentStatus?;
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Enrollments", "الاشتراكات")</h1>
+        <p class="page-sub">@L.Num((int)ViewBag.ActiveCount) @L.T("active enrollments", "اشتراك نشط") · @L.Money((long)ViewBag.Collected) @L.T("collected", "محصل")</p>
+    </div>
+    <a asp-action="Create" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-plus"/></svg>@L.T("New enrollment", "اشتراك جديد")</a>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-3">
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Active", "النشطة")</p><p class="kpi mt-1">@L.Num((int)ViewBag.ActiveCount)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Billed value", "قيمة الرسوم")</p><p class="kpi mt-1">@L.Money((long)ViewBag.TotalValue)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Collected", "المحصل")</p><p class="kpi mt-1 text-emerald-700">@L.Money((long)ViewBag.Collected)</p></div>
+</div>
+
+<form method="get" class="card card-pad !py-4 mt-5">
+    <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+        <div class="relative">
+            <span class="pointer-events-none absolute inset-y-0 start-3 flex items-center text-ink-500"><svg class="h-4 w-4"><use href="#i-search"/></svg></span>
+            <input name="q" value="@q" class="input !ps-9" placeholder="@L.T("Student or course…", "الطالب أو الدورة…")" />
+        </div>
+        <select name="courseId" class="select">
+            <option value="">@L.T("All courses", "كل الدورات")</option>
+            @foreach (var c in courses)
+            {
+                <option value="@c.Id" selected="@(courseId == c.Id)">@L.Pick(c.NameAr, c.NameEn)</option>
+            }
+        </select>
+        <select name="status" class="select">
+            <option value="">@L.T("All statuses", "كل الحالات")</option>
+            @foreach (var s in Enum.GetValues<EnrollmentStatus>())
+            {
+                <option value="@s" selected="@(status == s)">@L.E(s)</option>
+            }
+        </select>
+        <div class="flex gap-2">
+            <button class="btn btn-primary flex-1">@L.T("Filter", "تصفية")</button>
+            <a asp-action="Index" class="btn btn-outline">@L.T("Reset", "مسح")</a>
+        </div>
+    </div>
+</form>
+
+<div class="card mt-4 overflow-hidden">
+    <div class="table-wrap">
+        <table class="table-base">
+            <thead><tr><th>@L.T("Student", "الطالب")</th><th>@L.T("Course", "الدورة")</th><th>@L.T("Section", "الشعبة")</th><th>@L.T("Net fee", "الصافي")</th><th>@L.T("Outstanding", "المتبقي")</th><th>@L.T("Date", "التاريخ")</th><th>@L.T("Status", "الحالة")</th><th class="text-end">@L.T("Actions", "الإجراءات")</th></tr></thead>
+            <tbody>
+            @if (Model.Count == 0)
+            {
+                <tr><td colspan="8"><div class="empty">@L.T("No enrollments match the filter.", "لا توجد اشتراكات مطابقة.")</div></td></tr>
+            }
+            @foreach (var e in Model)
+            {
+                var outstanding = e.Dues.Where(d => d.Status != DueStatus.Paid && d.Status != DueStatus.Waived).Sum(d => d.Remaining);
+                <tr>
+                    <td>
+                        <a asp-controller="Students" asp-action="Details" asp-route-id="@e.StudentId" class="font-semibold text-brand-900 hover:underline">@L.Pick(e.Student.FullNameAr, e.Student.FullNameEn)</a>
+                        <p class="text-[11px] text-ink-500">@e.Student.StudentNo · @L.Pick(e.Student.Grade.NameAr, e.Student.Grade.NameEn)</p>
+                    </td>
+                    <td>
+                        <a asp-controller="Courses" asp-action="Details" asp-route-id="@e.CourseId" class="text-sm font-semibold text-ink-800 hover:text-brand-700">@L.Pick(e.Course.NameAr, e.Course.NameEn)</a>
+                        <p class="text-[11px] text-ink-500">@L.Pick(e.Course.Teacher.FullNameAr, e.Course.Teacher.FullNameEn)</p>
+                    </td>
+                    <td class="text-xs text-ink-500">@(e.Section?.Name ?? "—")</td>
+                    <td class="font-semibold">@L.Money(e.NetFee)@if (e.Discount > 0) { <span class="block text-[10px] text-emerald-600">-@L.Money(e.Discount)</span> }</td>
+                    <td class="@(outstanding > 0 ? "font-semibold text-amber-700" : "text-emerald-700")">@L.Money(outstanding)</td>
+                    <td class="text-xs text-ink-500">@L.DateShort(e.EnrollmentDate)</td>
+                    <td><span class="badge @(e.Status == EnrollmentStatus.Active ? "badge-green" : e.Status == EnrollmentStatus.Completed ? "badge-blue" : "badge-gray")">@L.E(e.Status)</span></td>
+                    <td>
+                        <div class="flex justify-end gap-1">
+                            @if (outstanding > 0 && e.Status == EnrollmentStatus.Active)
+                            {
+                                <a asp-controller="Payments" asp-action="Collect" asp-route-studentId="@e.StudentId" class="icon-btn" title="@L.T("Collect", "تحصيل")"><svg class="h-4 w-4"><use href="#i-cash"/></svg></a>
+                            }
+                            @if (e.Status == EnrollmentStatus.Active)
+                            {
+                                <form asp-action="Cancel" asp-route-id="@e.Id" method="post" data-confirm="@L.T("Cancel this enrollment and waive unpaid dues?", "إلغاء هذا الاشتراك وإعفاء الأقساط غير المدفوعة؟")">
+                                    @Html.AntiForgeryToken()
+                                    <button class="icon-btn text-red-500 hover:bg-red-50" title="@L.T("Cancel", "إلغاء")"><svg class="h-4 w-4"><use href="#i-x"/></svg></button>
+                                </form>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

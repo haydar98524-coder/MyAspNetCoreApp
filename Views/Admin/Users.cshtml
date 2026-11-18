@@ -1,0 +1,130 @@
+@model UsersIndexViewModel
+@{
+    ViewData["Title"] = L.T("Users & roles", "المستخدمون والصلاحيات");
+    string BadgeFor(string role) => role switch
+    {
+        Roles.Administrator => "badge-gold",
+        Roles.Manager => "badge-violet",
+        Roles.Accountant => "badge-blue",
+        Roles.Hr => "badge-amber",
+        Roles.Registrar => "badge-green",
+        Roles.Teacher => "badge-blue",
+        Roles.Parent => "badge-gray",
+        _ => "badge-gray"
+    };
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Users & roles", "المستخدمون والصلاحيات")</h1>
+        <p class="page-sub">@L.Num(Model.Total) @L.T("accounts", "حساباً") · @L.Num(Model.Staff) @L.T("staff", "موظف") · @L.Num(Model.Portal) @L.T("portal users", "مستخدم بوابة")</p>
+    </div>
+    <a asp-action="CreateUser" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-plus"/></svg>@L.T("Add user", "إضافة مستخدم")</a>
+</div>
+
+<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("All accounts", "كل الحسابات")</p><p class="kpi mt-1">@L.Num(Model.Total)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Active", "نشط")</p><p class="kpi mt-1 text-emerald-700">@L.Num(Model.Active)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Staff accounts", "حسابات الموظفين")</p><p class="kpi mt-1 text-brand-800">@L.Num(Model.Staff)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Portal accounts", "حسابات البوابات")</p><p class="kpi mt-1 text-blue-700">@L.Num(Model.Portal)</p></div>
+</div>
+
+<form method="get" class="card card-pad !py-4 mt-5">
+    <div class="flex flex-wrap gap-2">
+        <div class="relative min-w-60 flex-1">
+            <span class="pointer-events-none absolute inset-y-0 start-3 flex items-center text-ink-500"><svg class="h-4 w-4"><use href="#i-search"/></svg></span>
+            <input name="q" value="@Model.Q" class="input !ps-9" placeholder="@L.T("Name, email or linked record…", "الاسم أو البريد أو السجل المرتبط…")" />
+        </div>
+        <select name="role" class="select !w-auto">
+            <option value="">@L.T("All roles", "كل الصلاحيات")</option>
+            @foreach (var r in Model.RoleOptions)
+            {
+                <option value="@r" selected="@(Model.Role == r)">@L.Role(r)</option>
+            }
+        </select>
+        <select name="status" class="select !w-auto">
+            <option value="">@L.T("All statuses", "كل الحالات")</option>
+            <option value="active" selected="@(Model.Status == "active")">@L.T("Active", "نشط")</option>
+            <option value="inactive" selected="@(Model.Status == "inactive")">@L.T("Disabled", "معطّل")</option>
+        </select>
+        <button class="btn btn-primary">@L.T("Filter", "تصفية")</button>
+        <a asp-action="Users" class="btn btn-ghost">@L.T("Reset", "إعادة تعيين")</a>
+    </div>
+</form>
+
+<div class="card mt-4 overflow-hidden">
+    <div class="table-wrap">
+        <table class="table-base min-w-[960px]">
+            <thead>
+                <tr>
+                    <th>@L.T("User", "المستخدم")</th>
+                    <th>@L.T("Role", "الصلاحية")</th>
+                    <th>@L.T("Linked record", "السجل المرتبط")</th>
+                    <th>@L.T("Last sign-in", "آخر دخول")</th>
+                    <th>@L.T("Status", "الحالة")</th>
+                    <th class="text-end">@L.T("Actions", "الإجراءات")</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (Model.Users.Count == 0)
+            {
+                <tr><td colspan="6"><div class="empty">@L.T("No accounts match this search.", "لا توجد حسابات مطابقة.")</div></td></tr>
+            }
+            @foreach (var row in Model.Users)
+            {
+                <tr class="@(row.User.IsActive ? "" : "opacity-70")">
+                    <td>
+                        <div class="flex items-center gap-3">
+                            <span class="avatar h-9 w-9 text-xs">@L.Initials(row.User.FullName)</span>
+                            <div>
+                                <p class="font-semibold text-ink-900">@row.User.FullName</p>
+                                <p class="text-[11px] text-ink-500" dir="ltr">@row.User.Email</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="flex flex-wrap gap-1">
+                            @foreach (var role in row.Roles)
+                            {
+                                <span class="badge @BadgeFor(role)">@L.Role(role)</span>
+                            }
+                            @if (row.Roles.Count == 0)
+                            {
+                                <span class="badge badge-red">@L.T("No role", "بلا صلاحية")</span>
+                            }
+                        </div>
+                    </td>
+                    <td class="text-xs text-ink-600">@(string.IsNullOrEmpty(row.LinkedTo) ? "—" : row.LinkedTo)</td>
+                    <td class="text-xs text-ink-600">
+                        @if (row.LastLogin.HasValue)
+                        {
+                            <span>@L.DateTimeShort(row.LastLogin.Value.ToLocalTime())</span>
+                        }
+                        else
+                        {
+                            <span class="text-ink-400">@L.T("Never", "لم يسجل")</span>
+                        }
+                    </td>
+                    <td>
+                        <span class="badge @(row.User.IsActive ? "badge-green" : "badge-gray")">@(row.User.IsActive ? L.T("Active", "نشط") : L.T("Disabled", "معطّل"))</span>
+                    </td>
+                    <td>
+                        <div class="flex justify-end gap-1">
+                            <a asp-action="EditUser" asp-route-id="@row.User.Id" class="icon-btn" title="@L.T("Edit account", "تعديل الحساب")"><svg class="h-4 w-4"><use href="#i-edit"/></svg></a>
+                            <a asp-action="ResetPassword" asp-route-id="@row.User.Id" class="icon-btn" title="@L.T("Reset password", "إعادة تعيين كلمة المرور")"><svg class="h-4 w-4"><use href="#i-key"/></svg></a>
+                            <form asp-action="ToggleUser" asp-route-id="@row.User.Id" method="post" onsubmit="return confirm('@(row.User.IsActive ? L.T("Disable this account? Active sessions will be signed out.", "تعطيل هذا الحساب؟ ستُغلق الجلسات النشطة.") : L.T("Activate this account?", "تفعيل هذا الحساب؟"))')">
+                                @Html.AntiForgeryToken()
+                                <button class="icon-btn @(row.User.IsActive ? "text-red-600" : "text-emerald-600")" title="@(row.User.IsActive ? L.T("Disable", "تعطيل") : L.T("Activate", "تفعيل"))">
+                                    <svg class="h-4 w-4"><use href="@(row.User.IsActive ? "#i-ban" : "#i-check")"/></svg>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    <div class="border-t border-sand-200 px-5 py-3 text-xs text-ink-500">
+        @L.T("Administrator actions are recorded in the audit trail. Linked records keep teacher, guardian and student portals connected to the right person.", "تُسجل إجراءات مدير النظام في سجل التدقيق. تربط السجلات المرتبطة بوابات المدرّس وولي الأمر والطالب بالشخص الصحيح.")
+    </div>
+</div>

@@ -1,0 +1,147 @@
+@model Payment
+@{
+    Layout = null;
+    var settings = ViewBag.Settings as InstituteSettings ?? new InstituteSettings();
+    var journal = ViewBag.Journal as JournalEntry;
+    var course = Model.Enrollment?.Course;
+}
+<!DOCTYPE html>
+<html lang="@L.Lang" dir="@L.Dir">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@Model.ReceiptNo · @L.T("Payment receipt", "سند قبض")</title>
+    <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
+    <link rel="icon" href="~/favicon.svg" type="image/svg+xml" />
+</head>
+<body class="min-h-screen bg-sand-100 py-6 print:bg-white print:py-0">
+    <div class="mx-auto max-w-3xl px-4">
+        <div class="no-print mb-4 flex flex-wrap items-center justify-between gap-2">
+            <a asp-action="Index" class="btn btn-outline btn-sm"><svg class="h-4 w-4 flip-x"><use href="#i-arrow-left"/></svg>@L.T("Back to payments", "عودة للمدفوعات")</a>
+            <div class="flex gap-2">
+                <a asp-controller="Students" asp-action="Details" asp-route-id="@Model.StudentId" class="btn btn-outline btn-sm">@L.T("Student file", "ملف الطالب")</a>
+                <button onclick="window.print()" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-printer"/></svg>@L.T("Print receipt", "طباعة السند")</button>
+            </div>
+        </div>
+
+        <article class="relative overflow-hidden rounded-2xl border border-sand-200 bg-white shadow-card print:rounded-none print:border-0 print:shadow-none">
+            <div class="h-2 bg-gradient-to-r from-brand-800 via-brand-600 to-gold-500"></div>
+            <div class="p-7 sm:p-10">
+                <header class="flex flex-wrap items-start justify-between gap-4 border-b border-dashed border-sand-300 pb-6">
+                    <div>
+                        <div class="flex items-center gap-3">
+                            <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-950 text-gold-400">
+                                <svg class="h-6 w-6"><use href="#i-book"/></svg>
+                            </span>
+                            <div>
+                                <p class="text-base font-extrabold leading-tight text-brand-950">@L.Pick(settings.NameAr, settings.NameEn)</p>
+                                <p class="text-[11px] text-ink-500">@L.T("for Tutoring · Kirkuk · Iraq", "لدورات التقوية · كركوك · العراق")</p>
+                            </div>
+                        </div>
+                        <div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-ink-500">
+                            <span>@L.T("License", "إجازة"): @settings.LicenseNo</span>
+                            <span>@L.T("Ministry code", "رمز الوزارة"): @settings.MinistryCode</span>
+                            <span dir="ltr">@settings.Phone</span>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-gold-600">@L.T("Payment receipt", "سند قبض")</p>
+                        <p class="mt-1 font-mono text-lg font-extrabold text-brand-950" dir="ltr">@Model.ReceiptNo</p>
+                        <p class="text-[11px] text-ink-500">@L.Date(Model.Date)</p>
+                        <span class="mt-2 inline-flex badge badge-green">@L.T("PAID", "مدفوع")</span>
+                    </div>
+                </header>
+
+                <section class="mt-6 grid gap-5 sm:grid-cols-2">
+                    <div>
+                        <p class="text-[10px] font-bold uppercase tracking-wide text-ink-400">@L.T("Received from", "استلمنا من")</p>
+                        <p class="mt-1 text-sm font-bold text-brand-950">@L.Pick(Model.Student.FullNameAr, Model.Student.FullNameEn)</p>
+                        <p class="text-[11px] text-ink-500">@L.T("Student no.", "رقم الطالب"): @Model.Student.StudentNo</p>
+                        <p class="text-[11px] text-ink-500">@L.Pick(Model.Student.Grade.NameAr, Model.Student.Grade.NameEn) · @L.E(Model.Student.Grade.Stage.Type)</p>
+                        @if (Model.Student.Parent is not null)
+                        {
+                            <p class="mt-1 text-[11px] text-ink-500">@L.T("Guardian", "ولي الأمر"): @L.Pick(Model.Student.Parent.FullNameAr, Model.Student.Parent.FullNameEn) · <span dir="ltr">@Model.Student.Parent.Phone</span></p>
+                        }
+                    </div>
+                    <div class="sm:text-end">
+                        <p class="text-[10px] font-bold uppercase tracking-wide text-ink-400">@L.T("Payment method", "طريقة الدفع")</p>
+                        <p class="mt-1 text-sm font-bold text-ink-900">@L.E(Model.Method)</p>
+                        <p class="text-[11px] text-ink-500">@L.T("Received by", "المستلم"): @Model.ReceivedByName</p>
+                        @if (Model.CashierShift is not null)
+                        {
+                            <p class="text-[11px] text-ink-500">@L.T("Cashier shift", "وردية الصندوق"): <span class="font-mono">@Model.CashierShift.ShiftNo</span></p>
+                        }
+                        <p class="text-[11px] text-ink-500">@L.DateTimeShort(Model.CreatedAt.ToLocalTime())</p>
+                    </div>
+                </section>
+
+                <section class="mt-6 rounded-xl border border-sand-200 bg-sand-50 p-4">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <p class="text-[10px] font-bold uppercase tracking-wide text-ink-400">@L.T("Being payment for", "وذلك عن")</p>
+                            <p class="mt-0.5 text-sm font-semibold text-ink-900">@(course is null ? (Model.Due?.Description ?? L.T("General payment", "دفعة عامة")) : L.Pick(course.NameAr, course.NameEn))</p>
+                            @if (course is not null)
+                            {
+                                <p class="text-[11px] text-ink-500">@L.Pick(course.Teacher.FullNameAr, course.Teacher.FullNameEn)@if (Model.Enrollment?.Section is not null) { <span> · @Model.Enrollment.Section.Name</span> }</p>
+                            }
+                            @if (Model.Due is not null)
+                            {
+                                <p class="text-[11px] text-ink-500">@L.T("Remaining after this payment", "المتبقي بعد هذه الدفعة"): <span class="font-bold text-amber-700">@L.Money(Model.Due.Remaining)</span> / @L.Money(Model.Due.Amount)</p>
+                            }
+                        </div>
+                        <div class="text-end">
+                            <p class="text-[10px] font-bold uppercase tracking-wide text-ink-400">@L.T("Amount", "المبلغ")</p>
+                            <p class="text-2xl font-extrabold text-brand-900">@L.Money(Model.Amount)</p>
+                        </div>
+                    </div>
+                </section>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Notes))
+                {
+                    <p class="mt-4 text-[11px] leading-6 text-ink-500"><span class="font-bold text-ink-700">@L.T("Notes", "ملاحظات"):</span> @Model.Notes</p>
+                }
+
+                <section class="mt-10 grid grid-cols-2 gap-8 text-center text-[10px] text-ink-500">
+                    <div>
+                        <div class="mx-auto h-12 border-b border-dashed border-ink-300"></div>
+                        <p class="mt-2 font-semibold">@L.T("Registrar / Accountant", "المسجل / المحاسب")</p>
+                        <p>@Model.ReceivedByName</p>
+                    </div>
+                    <div>
+                        <div class="mx-auto h-12 border-b border-dashed border-ink-300"></div>
+                        <p class="mt-2 font-semibold">@L.T("Guardian signature", "توقيع ولي الأمر")</p>
+                        <p>@(Model.Student.Parent is null ? "—" : L.Pick(Model.Student.Parent.FullNameAr, Model.Student.Parent.FullNameEn))</p>
+                    </div>
+                </section>
+
+                <footer class="mt-8 border-t border-sand-200 pt-3 text-center text-[9px] leading-5 text-ink-400">
+                    <p>@L.T("This receipt is computer generated and valid without a handwritten stamp. Keep it for your records.", "هذا السند صادر إلكترونياً وصالح دون ختم يدوي. احتفظ به لسجلاتكم.")</p>
+                    <p>@L.Pick(settings.AddressAr, settings.AddressEn) · @settings.Email · @settings.Phone</p>
+                </footer>
+            </div>
+        </article>
+
+        @if (journal is not null && (User.IsInRole(Roles.Administrator) || User.IsInRole(Roles.Manager) || User.IsInRole(Roles.Accountant)))
+        {
+            <div class="no-print card mt-4 overflow-hidden">
+                <div class="card-header"><h2 class="section-title">@L.T("Accounting entry", "القيد المحاسبي")</h2><span class="font-mono text-xs text-ink-500">@journal.EntryNo</span></div>
+                <div class="table-wrap">
+                    <table class="table-base">
+                        <thead><tr><th>@L.T("Account", "الحساب")</th><th>@L.T("Debit", "مدين")</th><th>@L.T("Credit", "دائن")</th></tr></thead>
+                        <tbody>
+                        @foreach (var line in journal.Lines)
+                        {
+                            <tr>
+                                <td class="text-xs">@line.Account.Code · @L.Pick(line.Account.NameAr, line.Account.NameEn)</td>
+                                <td class="text-xs">@(line.Debit > 0 ? L.Money(line.Debit) : "—")</td>
+                                <td class="text-xs">@(line.Credit > 0 ? L.Money(line.Credit) : "—")</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    </div>
+</body>
+</html>

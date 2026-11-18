@@ -1,0 +1,108 @@
+@model List<TeacherRentContract>
+@{
+    ViewData["Title"] = L.T("Teacher room rent", "إيجار مدرسي السادس");
+    var teachers = ViewBag.Teachers as List<Teacher> ?? new List<Teacher>();
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Teacher room rent", "إيجار مدرسي السادس")</h1>
+        <p class="page-sub">@L.T("Monthly contracts for teachers using institute classrooms for private 6th-preparatory lessons.", "عقود شهرية للمدرسين الذين يستخدمون قاعات المعهد لدروس السادس الإعدادي الخصوصية.")</p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline btn-sm"><svg class="h-4 w-4 flip-x"><use href="#i-arrow-left"/></svg>@L.T("Rentals", "الإيجارات")</a>
+</div>
+
+<div class="grid gap-3 sm:grid-cols-3">
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Monthly contracted rent", "الإيجار الشهري المتعاقد")</p><p class="kpi mt-1">@L.Money((long)ViewBag.MonthlyTotal)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Collected this month", "المحصل هذا الشهر")</p><p class="kpi mt-1 text-emerald-700">@L.Money((long)ViewBag.CollectedThisMonth)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Unpaid instalments", "أقساط غير مدفوعة")</p><p class="kpi mt-1 text-amber-700">@L.Num((int)ViewBag.Unpaid)</p></div>
+</div>
+
+<div class="mt-5 space-y-5">
+@foreach (var contract in Model)
+{
+    var collected = contract.Payments.Where(p => p.IsPaid).Sum(p => p.Amount);
+    <div class="card">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-sand-200 p-5">
+            <div class="flex items-center gap-3">
+                <span class="avatar h-11 w-11 bg-brand-100 text-sm text-brand-800">@L.Initials(contract.Teacher.FullNameAr)</span>
+                <div>
+                    <h2 class="section-title">@L.Pick(contract.Teacher.FullNameAr, contract.Teacher.FullNameEn)</h2>
+                    <p class="text-xs text-ink-500">@contract.Teacher.Code · @L.DateShort(contract.StartDate) → @(contract.EndDate.HasValue ? L.DateShort(contract.EndDate.Value) : L.T("open-ended", "مفتوح"))</p>
+                </div>
+            </div>
+            <div class="text-end">
+                <p class="text-sm font-extrabold text-brand-900">@L.Money(contract.MonthlyAmount) <span class="text-xs font-normal text-ink-500">/ @L.T("month", "شهر")</span></p>
+                <p class="text-[11px] text-ink-500">@L.Money(collected) @L.T("collected to date", "محصل حتى الآن")</p>
+                <span class="badge @(contract.IsActive ? "badge-green" : "badge-gray") mt-1">@(contract.IsActive ? L.T("Active", "نشط") : L.T("Ended", "منتهي"))</span>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table class="table-base">
+                <thead><tr><th>@L.T("Month", "الشهر")</th><th>@L.T("Amount", "المبلغ")</th><th>@L.T("Status", "الحالة")</th><th>@L.T("Paid on", "تاريخ الدفع")</th><th>@L.T("Reference", "المرجع")</th><th class="text-end">@L.T("Action", "الإجراء")</th></tr></thead>
+                <tbody>
+                @if (contract.Payments.Count == 0)
+                {
+                    <tr><td colspan="6"><div class="empty !py-8">@L.T("No monthly rent recorded yet.", "لا يوجد إيجار شهري مسجل بعد.")</div></td></tr>
+                }
+                @foreach (var pay in contract.Payments.OrderByDescending(p => p.Month))
+                {
+                    <tr>
+                        <td class="font-semibold text-ink-900">@L.Month(pay.Month)</td>
+                        <td class="font-bold text-brand-900">@L.Money(pay.Amount)</td>
+                        <td><span class="badge @(pay.IsPaid ? "badge-green" : "badge-amber")">@(pay.IsPaid ? L.T("Paid", "مدفوع") : L.T("Unpaid", "غير مدفوع"))</span></td>
+                        <td class="text-xs text-ink-500">@(pay.PaidDate.HasValue ? L.DateShort(pay.PaidDate.Value) : "—")</td>
+                        <td class="font-mono text-[10px] text-ink-500">@(pay.Reference ?? "—")</td>
+                        <td>
+                            <div class="flex justify-end">
+                                @if (!pay.IsPaid)
+                                {
+                                    <form asp-action="PayTeacherRent" method="post" onsubmit="return confirm('@L.T("Collect this rent instalment?", "هل تريد قبض هذا القسط؟")')">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@pay.Id" />
+                                        <button class="btn btn-primary btn-xs"><svg class="h-3.5 w-3.5"><use href="#i-cash"/></svg>@L.T("Collect", "قبض")</button>
+                                    </form>
+                                }
+                                else { <span class="text-[10px] text-ink-400">@L.T("Settled", "مسدد")</span> }
+                            </div>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        <div class="border-t border-sand-200 bg-sand-50 p-4">
+            <form asp-action="AddRentMonth" method="post" class="flex flex-wrap items-end gap-2">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="contractId" value="@contract.Id" />
+                <div><label class="label">@L.T("Month", "الشهر")</label><input type="month" name="month" value="@DateTime.Today.ToString("yyyy-MM")" class="input !py-2" /></div>
+                <div><label class="label">@L.T("Amount (optional)", "المبلغ (اختياري)")</label><input type="number" name="amount" min="1" step="1000" placeholder="@contract.MonthlyAmount.ToString("N0")" class="input !py-2 !w-40 text-end" /></div>
+                <label class="flex items-center gap-2 pb-2 text-xs font-semibold text-ink-700"><input type="checkbox" name="payNow" value="true" class="h-4 w-4 rounded border-sand-300 text-brand-700" /> @L.T("Collect now", "قبض الآن")</label>
+                <button class="btn btn-outline btn-sm"><svg class="h-4 w-4"><use href="#i-plus"/></svg>@L.T("Add month", "إضافة شهر")</button>
+            </form>
+        </div>
+    </div>
+}
+</div>
+
+<div class="card mt-5">
+    <details>
+        <summary class="card-header cursor-pointer list-none">
+            <h2 class="section-title">@L.T("Add a teacher rent contract", "إضافة عقد إيجار مدرّس")</h2>
+            <svg class="h-4 w-4 text-ink-500"><use href="#i-plus"/></svg>
+        </summary>
+        <form asp-action="CreateRentContract" method="post" class="card-pad grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            @Html.AntiForgeryToken()
+            <div><label class="label">@L.T("Teacher", "المدرّس")</label>
+                <select name="TeacherId" class="select" required>
+                    <option value="0">@L.T("Select teacher…", "اختر المدرّس…")</option>
+                    @foreach (var t in teachers) { <option value="@t.Id">@t.Code · @L.Pick(t.FullNameAr, t.FullNameEn)</option> }
+                </select>
+            </div>
+            <div><label class="label">@L.T("Monthly amount (IQD)", "المبلغ الشهري (د.ع)")</label><input name="MonthlyAmount" type="number" min="1" step="1000" value="250000" class="input text-end" required /></div>
+            <div><label class="label">@L.T("Start date", "تاريخ البداية")</label><input name="StartDate" type="date" value="@DateTime.Today.ToString("yyyy-MM-dd")" class="input" required /></div>
+            <div><label class="label">@L.T("End date", "تاريخ النهاية")</label><input name="EndDate" type="date" value="@(new DateTime(DateTime.Today.Year + 1, 6, 30).ToString("yyyy-MM-dd"))" class="input" /></div>
+            <div class="sm:col-span-2"><label class="label">@L.T("Notes", "ملاحظات")</label><input name="Notes" class="input" placeholder="@L.T("e.g. 6th-preparatory private lesson room", "مثال: قاعة دروس السادس الإعدادي")" /></div>
+            <div class="sm:col-span-2 lg:col-span-3"><button class="btn btn-primary"><svg class="h-4 w-4"><use href="#i-check"/></svg>@L.T("Create contract", "إنشاء العقد")</button></div>
+        </form>
+    </details>
+</div>

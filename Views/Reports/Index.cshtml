@@ -1,0 +1,141 @@
+@model DashboardViewModel
+@{
+    ViewData["Title"] = L.T("Reports", "التقارير");
+    var attendanceRate = (decimal)(ViewBag.AttendanceRate ?? 0m);
+    var newEnrollments = (int)(ViewBag.NewEnrollments ?? 0);
+    var payrollMonth = (long)(ViewBag.PayrollMonth ?? 0L);
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Reports", "التقارير")</h1>
+        <p class="page-sub">@Model.PeriodLabel · @L.T("operational and financial analysis", "تحليل تشغيلي ومالي")</p>
+    </div>
+    <a asp-controller="Finance" asp-action="Index" class="btn btn-outline btn-sm"><svg class="h-4 w-4"><use href="#i-chart"/></svg>@L.T("Financial statements", "القوائم المالية")</a>
+</div>
+
+<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="stat-card !p-4">
+        <p class="text-xs text-ink-500">@L.T("Revenue this month", "إيراد الشهر")</p>
+        <p class="kpi mt-1 text-brand-900">@L.Money(Model.RevenueMonth)</p>
+        <p class="text-[10px] text-ink-500">@L.T("tuition, private lessons, rentals", "رسوم، دروس خصوصية، إيجارات")</p>
+    </div>
+    <div class="stat-card !p-4">
+        <p class="text-xs text-ink-500">@L.T("Costs this month", "الكلف الشهرية")</p>
+        <p class="kpi mt-1 text-red-600">@L.Money(Model.PeriodExpenses + Model.TeacherCostsPeriod + Model.PayrollPeriod)</p>
+        <p class="text-[10px] text-ink-500">@L.T("expenses, teacher shares, payroll", "مصروفات، حصص مدرسين، رواتب")</p>
+    </div>
+    <div class="stat-card !p-4">
+        <p class="text-xs text-ink-500">@L.T("Net profit", "الربح الصافي")</p>
+        <p class="kpi mt-1 @(Model.NetProfitPeriod >= 0 ? "text-emerald-700" : "text-red-600")">@L.Money(Model.NetProfitPeriod)</p>
+        <p class="text-[10px] text-ink-500">@L.T("after all direct costs", "بعد كل الكلف المباشرة")</p>
+    </div>
+    <div class="stat-card !p-4">
+        <p class="text-xs text-ink-500">@L.T("Outstanding dues", "الذمم غير المسددة")</p>
+        <p class="kpi mt-1 text-amber-600">@L.Money(Model.TotalDues)</p>
+        <p class="text-[10px] text-ink-500">@L.T("student receivables", "مستحقات على الطلاب")</p>
+    </div>
+</div>
+
+<div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <a asp-action="Profit" asp-route-groupBy="course" class="card card-pad transition hover:-translate-y-0.5 hover:shadow-pop">
+        <div class="flex items-start gap-3">
+            <span class="stat-icon bg-brand-50 text-brand-700"><svg class="h-5 w-5"><use href="#i-chart"/></svg></span>
+            <div>
+                <h2 class="text-sm font-bold text-brand-950">@L.T("Profit by course, teacher, subject & room", "الربح حسب الدورة والمدرّس والمادة والقاعة")</h2>
+                <p class="mt-1 text-xs text-ink-500">@L.T("True contribution after teacher shares and direct expenses.", "المساهمة الحقيقية بعد حصص المدرسين والمصروفات المباشرة.")</p>
+            </div>
+        </div>
+    </a>
+    <a asp-action="Attendance" class="card card-pad transition hover:-translate-y-0.5 hover:shadow-pop">
+        <div class="flex items-start gap-3">
+            <span class="stat-icon bg-emerald-50 text-emerald-700"><svg class="h-5 w-5"><use href="#i-check"/></svg></span>
+            <div>
+                <h2 class="text-sm font-bold text-brand-950">@L.T("Attendance summary", "ملخص الحضور")</h2>
+                <p class="mt-1 text-xs text-ink-500">@L.T("Attendance rate per section with absences and excuses.", "نسبة الحضور لكل شعبة مع الغياب والأعذار.")</p>
+            </div>
+        </div>
+    </a>
+    <a asp-action="Dues" class="card card-pad transition hover:-translate-y-0.5 hover:shadow-pop">
+        <div class="flex items-start gap-3">
+            <span class="stat-icon bg-amber-50 text-amber-700"><svg class="h-5 w-5"><use href="#i-wallet"/></svg></span>
+            <div>
+                <h2 class="text-sm font-bold text-brand-950">@L.T("Dues aging", "أعمار الذمم")</h2>
+                <p class="mt-1 text-xs text-ink-500">@L.T("Outstanding balances by student with overdue buckets.", "الأرصدة المتبقية لكل طالب حسب مدة التأخير.")</p>
+            </div>
+        </div>
+    </a>
+    <a asp-action="Payroll" class="card card-pad transition hover:-translate-y-0.5 hover:shadow-pop">
+        <div class="flex items-start gap-3">
+            <span class="stat-icon bg-sky-50 text-sky-700"><svg class="h-5 w-5"><use href="#i-cash"/></svg></span>
+            <div>
+                <h2 class="text-sm font-bold text-brand-950">@L.T("Payroll register", "سجل الرواتب")</h2>
+                <p class="mt-1 text-xs text-ink-500">@L.T("Monthly salaries, deductions and payment status.", "الرواتب الشهرية والخصومات وحالة الصرف.")</p>
+            </div>
+        </div>
+    </a>
+    <a asp-action="Enrollments" class="card card-pad transition hover:-translate-y-0.5 hover:shadow-pop">
+        <div class="flex items-start gap-3">
+            <span class="stat-icon bg-violet-50 text-violet-700"><svg class="h-5 w-5"><use href="#i-book"/></svg></span>
+            <div>
+                <h2 class="text-sm font-bold text-brand-950">@L.T("Enrollment & fee collection", "الاشتراكات والتحصيل")</h2>
+                <p class="mt-1 text-xs text-ink-500">@L.T("New enrollments, fees, collections and outstanding per course.", "الاشتراكات الجديدة والرسوم والتحصيل والمتبقي لكل دورة.")</p>
+            </div>
+        </div>
+    </a>
+    <a asp-controller="Finance" asp-action="TeacherPayables" class="card card-pad transition hover:-translate-y-0.5 hover:shadow-pop">
+        <div class="flex items-start gap-3">
+            <span class="stat-icon bg-gold-50 text-gold-700"><svg class="h-5 w-5"><use href="#i-users"/></svg></span>
+            <div>
+                <h2 class="text-sm font-bold text-brand-950">@L.T("Teacher payables", "مستحقات المدرسين")</h2>
+                <p class="mt-1 text-xs text-ink-500">@L.T("Unpaid shares and private lesson earnings by teacher.", "الحصص غير المدفوعة وأجور الدروس الخصوصية لكل مدرّس.")</p>
+            </div>
+        </div>
+    </a>
+</div>
+
+<div class="mt-5 grid gap-4 lg:grid-cols-2">
+    <div class="card card-pad">
+        <h2 class="section-title mb-3">@L.T("This month at a glance", "لمحة عن الشهر")</h2>
+        <div class="space-y-3 text-sm">
+            <div class="flex items-center justify-between rounded-xl bg-sand-50 px-4 py-3">
+                <span class="text-ink-600">@L.T("Student attendance rate", "نسبة حضور الطلاب")</span>
+                <span class="font-bold text-emerald-700">@attendanceRate.ToString("0.#")%</span>
+            </div>
+            <div class="flex items-center justify-between rounded-xl bg-sand-50 px-4 py-3">
+                <span class="text-ink-600">@L.T("New enrollments", "اشتراكات جديدة")</span>
+                <span class="font-bold text-brand-900">@L.Num(newEnrollments)</span>
+            </div>
+            <div class="flex items-center justify-between rounded-xl bg-sand-50 px-4 py-3">
+                <span class="text-ink-600">@L.T("Payroll total", "إجمالي الرواتب")</span>
+                <span class="font-bold text-brand-900">@L.Money(payrollMonth)</span>
+            </div>
+            <div class="flex items-center justify-between rounded-xl bg-sand-50 px-4 py-3">
+                <span class="text-ink-600">@L.T("Active students", "الطلاب المنتظمون")</span>
+                <span class="font-bold text-brand-900">@L.Num(Model.TotalStudents)</span>
+            </div>
+        </div>
+    </div>
+    <div class="card card-pad">
+        <h2 class="section-title mb-3">@L.T("Revenue sources this month", "مصادر الإيراد هذا الشهر")</h2>
+        @if (Model.RevenueSources.Count == 0)
+        {
+            <div class="empty">@L.T("No revenue recorded this month.", "لا يوجد إيراد مسجل هذا الشهر.")</div>
+        }
+        else
+        {
+            <div class="space-y-3">
+                @foreach (var source in Model.RevenueSources)
+                {
+                    var share = Model.RevenueMonth == 0 ? 0 : (int)Math.Round((double)source.Amount / Model.RevenueMonth * 100);
+                    <div>
+                        <div class="mb-1 flex items-center justify-between text-xs">
+                            <span class="font-semibold text-ink-700">@source.Label</span>
+                            <span class="text-ink-500">@L.Money(source.Amount) · @share%</span>
+                        </div>
+                        <div class="progress"><span style="width:@(Math.Max(2, share))%; background:@source.Color"></span></div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>

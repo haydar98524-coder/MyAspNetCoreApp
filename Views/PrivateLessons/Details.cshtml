@@ -1,0 +1,310 @@
+@model PrivateLessonRequest
+@{
+    ViewData["Title"] = L.T("Private lesson request", "طلب درس خصوصي");
+    var canManage = ViewBag.CanManage is true;
+    var canPay = ViewBag.CanPay is true;
+    var lessons = Model.Lessons.OrderBy(l => l.Date).ThenBy(l => l.StartTime).ToList();
+    var lessonTeacher = lessons.Select(l => l.Teacher).FirstOrDefault();
+    var effectiveTeacher = Model.MatchedTeacher ?? lessonTeacher ?? Model.PreferredTeacher;
+    var totalFees = lessons.Sum(l => l.Fee);
+    var paidFees = lessons.Where(l => l.IsPaid).Sum(l => l.Fee);
+    var tone = Model.Status switch
+    {
+        RequestStatus.Pending => "badge-blue",
+        RequestStatus.Matched => "badge-gold",
+        RequestStatus.Accepted => "badge-violet",
+        RequestStatus.Completed => "badge-green",
+        RequestStatus.Rejected => "badge-red",
+        _ => "badge-gray"
+    };
+}
+
+<div class="page-head">
+    <div>
+        <div class="flex flex-wrap items-center gap-2">
+            <h1 class="page-title">@L.Pick(Model.Subject.NameAr, Model.Subject.NameEn)</h1>
+            <span class="badge @tone">@L.E(Model.Status)</span>
+            <span class="badge badge-gray">@L.E(Model.Mode)</span>
+        </div>
+        <p class="page-sub">@Model.GuardianName · @L.Pick(Model.Grade.NameAr, Model.Grade.NameEn) · @L.Date(Model.CreatedAt.ToLocalTime())</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        @if (canManage && Model.MatchedTeacherId is null && (Model.Status is RequestStatus.Pending or RequestStatus.Rejected) && lessons.Count == 0)
+        {
+            <a asp-action="Match" asp-route-id="@Model.Id" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-sparkles"/></svg>@L.T("Match a teacher", "مطابقة مدرّس")</a>
+        }
+        @if (canManage && Model.MatchedTeacherId is not null)
+        {
+            <a asp-action="Schedule" asp-route-id="@Model.Id" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-calendar"/></svg>@L.T("Schedule a lesson", "جدولة درس")</a>
+        }
+        @if (User.IsStaff())
+        {
+            <a asp-action="Index" class="btn btn-outline btn-sm"><svg class="h-4 w-4 flip-x"><use href="#i-arrow-left"/></svg>@L.T("All requests", "كل الطلبات")</a>
+        }
+        else
+        {
+            <a asp-controller="Home" asp-action="Index" class="btn btn-outline btn-sm"><svg class="h-4 w-4 flip-x"><use href="#i-arrow-left"/></svg>@L.T("Dashboard", "الرئيسية")</a>
+        }
+    </div>
+</div>
+
+<div class="grid gap-5 lg:grid-cols-3">
+    <div class="card card-pad lg:col-span-2">
+        <h2 class="section-title">@L.T("Request details", "تفاصيل الطلب")</h2>
+        <dl class="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+                <dt class="text-[11px] font-semibold uppercase tracking-wide text-ink-400">@L.T("Guardian", "ولي الأمر")</dt>
+                <dd class="mt-1 text-sm font-semibold text-ink-900">@Model.GuardianName</dd>
+                <dd class="text-xs text-ink-500" dir="ltr">@Model.GuardianPhone</dd>
+            </div>
+            <div>
+                <dt class="text-[11px] font-semibold uppercase tracking-wide text-ink-400">@L.T("Student", "الطالب")</dt>
+                <dd class="mt-1 text-sm font-semibold text-ink-900">
+                    @(Model.Student is not null ? L.Pick(Model.Student.FullNameAr, Model.Student.FullNameEn) : L.T("Not linked to a registered student", "غير مرتبط بطالب مسجّل"))
+                </dd>
+                @if (Model.Student is not null)
+                {
+                    <dd class="text-xs text-ink-500">@Model.Student.StudentNo</dd>
+                }
+            </div>
+            <div>
+                <dt class="text-[11px] font-semibold uppercase tracking-wide text-ink-400">@L.T("Grade", "الصف")</dt>
+                <dd class="mt-1 text-sm font-semibold text-ink-900">@L.Pick(Model.Grade.NameAr, Model.Grade.NameEn)</dd>
+                <dd class="text-xs text-ink-500">@L.Pick(Model.Grade.Stage.NameAr, Model.Grade.Stage.NameEn)</dd>
+            </div>
+            <div>
+                <dt class="text-[11px] font-semibold uppercase tracking-wide text-ink-400">@L.T("Location", "الموقع")</dt>
+                <dd class="mt-1 text-sm font-semibold text-ink-900">@L.E(Model.Mode) · @Model.Area</dd>
+                @if (!string.IsNullOrWhiteSpace(Model.Address))
+                {
+                    <dd class="text-xs text-ink-500">@Model.Address</dd>
+                }
+            </div>
+            <div>
+                <dt class="text-[11px] font-semibold uppercase tracking-wide text-ink-400">@L.T("Preferred schedule", "الموعد المفضل")</dt>
+                <dd class="mt-1 text-sm font-semibold text-ink-900">@(Model.DaysPerWeek == 1 ? L.T("1 day per week", "يوم واحد أسبوعياً") : $"{Model.DaysPerWeek} {L.T("days per week", "أيام أسبوعياً")}")</dd>
+                <dd class="text-xs text-ink-500" dir="ltr">@Model.PreferredTime · @Model.DurationMinutes @L.T("min", "دقيقة")</dd>
+            </div>
+            <div>
+                <dt class="text-[11px] font-semibold uppercase tracking-wide text-ink-400">@L.T("Offered fee", "الأجر المعروض")</dt>
+                <dd class="mt-1 text-lg font-extrabold text-brand-900">@L.Money(Model.OfferedFee)</dd>
+                <dd class="text-xs text-ink-500">@L.T("per lesson", "للدرس الواحد")</dd>
+            </div>
+        </dl>
+
+        @if (!string.IsNullOrWhiteSpace(Model.Notes))
+        {
+            <div class="mt-4 rounded-xl bg-sand-50 p-3 text-xs text-ink-600">
+                <p class="font-bold text-ink-800">@L.T("Guardian notes", "ملاحظات ولي الأمر")</p>
+                <p class="mt-1">@Model.Notes</p>
+            </div>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.AdminNotes))
+        {
+            <div class="mt-3 rounded-xl border border-brand-100 bg-brand-50/60 p-3 text-xs text-brand-900">
+                <p class="font-bold">@L.T("Administration notes", "ملاحظات الإدارة")</p>
+                <p class="mt-1">@Model.AdminNotes</p>
+            </div>
+        }
+    </div>
+
+    <div class="card card-pad h-fit">
+        <h2 class="section-title">@L.T("Teacher", "المدرّس")</h2>
+        @if (effectiveTeacher is not null)
+        {
+            <div class="mt-4 flex items-center gap-3">
+                <span class="avatar h-12 w-12 text-sm">@L.Initials(L.Pick(effectiveTeacher.FullNameAr, effectiveTeacher.FullNameEn))</span>
+                <div class="min-w-0">
+                    <p class="truncate text-sm font-bold text-ink-900">@L.Pick(effectiveTeacher.FullNameAr, effectiveTeacher.FullNameEn)</p>
+                    <p class="truncate text-[11px] text-ink-500">@effectiveTeacher.Specialization</p>
+                    <p class="mt-0.5 text-[11px] font-semibold text-gold-700">★ @effectiveTeacher.RatingAvg.ToString("0.0", CultureInfo.InvariantCulture) (@L.Num(effectiveTeacher.RatingCount))</p>
+                </div>
+            </div>
+            <p class="mt-2 text-[11px] text-ink-500">
+                @if (Model.MatchedTeacher is not null)
+                {
+                    <span>@L.T("Assigned teacher", "المدرّس المسند")</span>
+                }
+                else if (lessonTeacher is not null)
+                {
+                    <span>@L.T("Teacher of the scheduled lessons", "مدرّس الدروس المجدولة")</span>
+                }
+                else
+                {
+                    <span>@L.T("Preferred by the guardian — not yet assigned", "مفضّل من ولي الأمر — لم يُسند بعد")</span>
+                }
+            </p>
+            <dl class="mt-3 space-y-2 text-xs">
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Experience", "الخبرة")</dt><dd class="font-semibold">@L.Num(effectiveTeacher.ExperienceYears) @L.T("years", "سنة")</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Phone", "الهاتف")</dt><dd class="font-semibold" dir="ltr">@effectiveTeacher.Phone</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Mode", "النمط")</dt><dd class="font-semibold">@L.E(effectiveTeacher.TeachingMode)</dd></div>
+            </dl>
+            @if (canManage && Model.MatchedTeacherId is not null)
+            {
+                <a asp-action="Schedule" asp-route-id="@Model.Id" class="btn btn-primary mt-4 w-full btn-sm">@L.T("Add a lesson", "إضافة درس")</a>
+            }
+            else if (canManage && lessons.Count == 0)
+            {
+                <p class="mt-3 rounded-xl bg-amber-50 p-3 text-[11px] text-amber-900">@L.T("A teacher must be assigned before scheduling lessons.", "يجب إسناد مدرّس قبل جدولة الدروس.")</p>
+                <a asp-action="Match" asp-route-id="@Model.Id" class="btn btn-primary mt-3 w-full btn-sm">@L.T("Match a teacher", "مطابقة مدرّس")</a>
+            }
+        }
+        else
+        {
+            <div class="empty !py-8">
+                <svg class="h-8 w-8 text-sand-300"><use href="#i-user"/></svg>
+                <p>@L.T("No teacher assigned yet.", "لم يُسند مدرّس بعد.")</p>
+            </div>
+            @if (canManage)
+            {
+                <a asp-action="Match" asp-route-id="@Model.Id" class="btn btn-primary w-full btn-sm">@L.T("Match a teacher", "مطابقة مدرّس")</a>
+            }
+        }
+        <div class="mt-5 border-t border-sand-200 pt-4">
+            <div class="flex items-center justify-between text-xs"><span class="text-ink-500">@L.T("Scheduled lessons", "الدروس المجدولة")</span><span class="font-bold">@L.Num(lessons.Count)</span></div>
+            <div class="mt-1 flex items-center justify-between text-xs"><span class="text-ink-500">@L.T("Fees billed", "الأجور المفوترة")</span><span class="font-bold">@L.Money(totalFees)</span></div>
+            <div class="mt-1 flex items-center justify-between text-xs"><span class="text-ink-500">@L.T("Collected", "المقبوض")</span><span class="font-bold text-emerald-700">@L.Money(paidFees)</span></div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-5 card">
+    <div class="card-header">
+        <div>
+            <h2 class="section-title">@L.T("Scheduled lessons", "الدروس المجدولة")</h2>
+            <p class="mt-0.5 text-xs text-ink-500">@L.T("Each lesson accrues the teacher share when the fee is collected.", "يُحتسب نصيب المدرّس عند قبض أجر كل درس.")</p>
+        </div>
+        @if (canManage && Model.MatchedTeacherId is not null)
+        {
+            <a asp-action="Schedule" asp-route-id="@Model.Id" class="btn btn-primary btn-xs"><svg class="h-3.5 w-3.5"><use href="#i-plus"/></svg>@L.T("Add lesson", "إضافة درس")</a>
+        }
+    </div>
+    @if (lessons.Count == 0)
+    {
+        <div class="empty">
+            <svg class="h-10 w-10 text-sand-300"><use href="#i-calendar"/></svg>
+            <p>@L.T("No lessons have been scheduled for this request yet.", "لم تُجدول أي دروس لهذا الطلب بعد.")</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="table-base">
+                <thead>
+                    <tr>
+                        <th>@L.T("Date & time", "التاريخ والوقت")</th>
+                        <th>@L.T("Teacher", "المدرّس")</th>
+                        <th>@L.T("Duration", "المدة")</th>
+                        <th>@L.T("Fee", "الأجر")</th>
+                        <th>@L.T("Teacher share", "حصة المدرّس")</th>
+                        <th>@L.T("Status", "الحالة")</th>
+                        <th>@L.T("Payment", "الدفع")</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var lesson in lessons)
+                    {
+                        var share = (long)Math.Round(lesson.Fee * lesson.TeacherSharePercent / 100m);
+                        var endTime = TimeSpan.TryParse(lesson.StartTime, out var start)
+                            ? start.Add(TimeSpan.FromMinutes(lesson.DurationMinutes)).ToString(@"hh\:mm")
+                            : "";
+                        var lessonTone = lesson.Status switch
+                        {
+                            PrivateLessonStatus.Scheduled => "badge-blue",
+                            PrivateLessonStatus.Completed => "badge-green",
+                            PrivateLessonStatus.Cancelled => "badge-red",
+                            _ => "badge-gray"
+                        };
+                        var canRate = lesson.Status == PrivateLessonStatus.Completed &&
+                                      (User.IsInRole(Roles.Parent) || User.IsInRole(Roles.Student) || canManage) &&
+                                      lesson.Ratings.All(r => r.RatedByUserId != User.CurrentUserId());
+                        <tr>
+                            <td>
+                                <p class="text-xs font-semibold text-ink-900">@L.Date(lesson.Date)</p>
+                                <p class="text-[11px] text-ink-500" dir="ltr">@lesson.StartTime - @endTime</p>
+                            </td>
+                            <td class="text-xs text-ink-700">@L.Pick(lesson.Teacher.FullNameAr, lesson.Teacher.FullNameEn)</td>
+                            <td class="text-xs text-ink-600">@L.Num(lesson.DurationMinutes) @L.T("min", "دقيقة")</td>
+                            <td class="font-semibold text-brand-900">@L.Money(lesson.Fee)</td>
+                            <td class="text-xs text-ink-600">@L.Money(share) <span class="text-[10px] text-ink-400">(@L.Percent(lesson.TeacherSharePercent))</span></td>
+                            <td><span class="badge @lessonTone">@L.E(lesson.Status)</span></td>
+                            <td>
+                                @if (lesson.IsPaid)
+                                {
+                                    <span class="badge badge-green">@L.T("Paid", "مدفوع")</span>
+                                    @if (lesson.PaidDate.HasValue)
+                                    {
+                                        <p class="mt-1 text-[10px] text-ink-400">@L.DateShort(lesson.PaidDate.Value)</p>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="badge badge-amber">@L.T("Unpaid", "غير مدفوع")</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="flex flex-wrap items-center gap-1.5">
+                                    @if (canManage && lesson.Status == PrivateLessonStatus.Scheduled)
+                                    {
+                                        <form asp-action="Complete" asp-route-id="@lesson.Id" method="post" class="inline">
+                                            @Html.AntiForgeryToken()
+                                            <button class="btn btn-soft btn-xs">@L.T("Complete", "إكمال")</button>
+                                        </form>
+                                    }
+                                    @if (canPay && !lesson.IsPaid && lesson.Status != PrivateLessonStatus.Cancelled)
+                                    {
+                                        <form asp-action="Pay" asp-route-id="@lesson.Id" method="post" class="inline-flex items-center gap-1">
+                                            @Html.AntiForgeryToken()
+                                            <select name="method" class="select !w-auto !py-1 !text-[11px]">
+                                                @foreach (var method in Enum.GetValues<PaymentMethod>())
+                                                {
+                                                    <option value="@method">@L.E(method)</option>
+                                                }
+                                            </select>
+                                            <button class="btn btn-primary btn-xs">@L.T("Collect", "قبض")</button>
+                                        </form>
+                                    }
+                                    @if (canRate)
+                                    {
+                                        <a asp-action="Rate" asp-route-id="@lesson.Id" class="btn btn-outline btn-xs">@L.T("Rate", "تقييم")</a>
+                                    }
+                                    @if (canManage && lesson.Status == PrivateLessonStatus.Scheduled && !lesson.IsPaid)
+                                    {
+                                        <details class="inline-block">
+                                            <summary class="btn btn-outline btn-xs cursor-pointer list-none">@L.T("Cancel", "إلغاء")</summary>
+                                            <form asp-action="CancelLesson" asp-route-id="@lesson.Id" method="post" class="mt-2 flex items-center gap-1">
+                                                @Html.AntiForgeryToken()
+                                                <input name="reason" class="input !w-36 !py-1 !text-[11px]" placeholder="@L.T("Reason", "السبب")" />
+                                                <button class="btn btn-danger btn-xs" onclick="return confirm('@L.T("Cancel this lesson?", "إلغاء هذا الدرس؟")')">@L.T("Confirm", "تأكيد")</button>
+                                            </form>
+                                        </details>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                        @if (lesson.Ratings.Count > 0)
+                        {
+                            <tr>
+                                <td colspan="8" class="!border-t-0 !pt-0">
+                                    <div class="rounded-xl bg-sand-50 px-3 py-2">
+                                        @foreach (var rating in lesson.Ratings)
+                                        {
+                                            <p class="text-[11px] text-ink-600">
+                                                <span class="font-bold text-gold-700">★ @rating.Average.ToString("0.0", CultureInfo.InvariantCulture)</span> · @rating.RatedByName
+                                                @if (!string.IsNullOrWhiteSpace(rating.Comment))
+                                                {
+                                                    <span>— @rating.Comment</span>
+                                                }
+                                            </p>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

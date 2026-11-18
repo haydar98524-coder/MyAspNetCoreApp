@@ -1,0 +1,114 @@
+@model EmployeesIndexViewModel
+@{
+    ViewData["Title"] = L.T("Employees", "الموظفون");
+    var q = ViewBag.Q as string;
+    var status = ViewBag.Status as StaffStatus?;
+    var department = ViewBag.Department as string;
+    var departments = ViewBag.Departments as List<string> ?? new();
+    var canEdit = User.IsInRole(Roles.Administrator) || User.IsInRole(Roles.Manager) || User.IsInRole(Roles.Hr);
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Employees", "الموظفون")</h1>
+        <p class="page-sub">@L.Num(Model.Active) @L.T("active", "على الملاك") · @L.Num(Model.OnLeave) @L.T("on leave", "بإجازة") · @L.T("monthly payroll", "الرواتب الشهرية") @L.Money(Model.MonthlyPayroll)</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <a asp-action="Attendance" class="btn btn-outline btn-sm"><svg class="h-4 w-4"><use href="#i-clipboard"/></svg>@L.T("Staff attendance", "حضور الموظفين")</a>
+        <a asp-action="Payroll" class="btn btn-outline btn-sm"><svg class="h-4 w-4"><use href="#i-cash"/></svg>@L.T("Payroll", "الرواتب")</a>
+        @if (canEdit)
+        {
+            <a asp-action="Create" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-plus"/></svg>@L.T("Add employee", "إضافة موظف")</a>
+        }
+    </div>
+</div>
+
+<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("All employees", "كل الموظفين")</p><p class="kpi mt-1">@L.Num(Model.Total)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("On the payroll", "على الملاك")</p><p class="kpi mt-1 text-emerald-700">@L.Num(Model.Active)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("On leave", "بإجازة")</p><p class="kpi mt-1 text-amber-600">@L.Num(Model.OnLeave)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Monthly commitment", "الالتزام الشهري")</p><p class="kpi mt-1 text-brand-800">@L.Money(Model.MonthlyPayroll)</p></div>
+</div>
+
+<form method="get" class="card card-pad !py-4 mt-5">
+    <div class="flex flex-wrap gap-2">
+        <div class="relative min-w-60 flex-1">
+            <span class="pointer-events-none absolute inset-y-0 start-3 flex items-center text-ink-500"><svg class="h-4 w-4"><use href="#i-search"/></svg></span>
+            <input name="q" value="@q" class="input !ps-9" placeholder="@L.T("Name, code, phone or job title…", "الاسم أو الرمز أو الهاتف أو الوظيفة…")" />
+        </div>
+        <select name="department" class="select !w-auto">
+            <option value="">@L.T("All departments", "كل الأقسام")</option>
+            @foreach (var d in departments)
+            {
+                <option value="@d" selected="@(department == d)">@d</option>
+            }
+        </select>
+        <select name="status" class="select !w-auto">
+            <option value="">@L.T("All statuses", "كل الحالات")</option>
+            @foreach (var value in Enum.GetValues<StaffStatus>())
+            {
+                <option value="@value" selected="@(status == value)">@L.E(value)</option>
+            }
+        </select>
+        <button class="btn btn-primary">@L.T("Filter", "تصفية")</button>
+    </div>
+</form>
+
+<div class="card mt-4 overflow-hidden">
+    <div class="table-wrap">
+        <table class="table-base min-w-[900px]">
+            <thead>
+                <tr>
+                    <th>@L.T("Employee", "الموظف")</th>
+                    <th>@L.T("Department", "القسم")</th>
+                    <th>@L.T("Contact", "التواصل")</th>
+                    <th>@L.T("Basic salary", "الراتب الأساسي")</th>
+                    <th>@L.T("Allowances", "المخصصات")</th>
+                    <th>@L.T("Hire date", "تاريخ التعيين")</th>
+                    <th>@L.T("Status", "الحالة")</th>
+                    <th class="text-end">@L.T("Actions", "الإجراءات")</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (Model.Employees.Count == 0)
+            {
+                <tr><td colspan="8"><div class="empty">@L.T("No employees match this search.", "لا يوجد موظفون مطابقون.")</div></td></tr>
+            }
+            @foreach (var e in Model.Employees)
+            {
+                <tr>
+                    <td>
+                        <div class="flex items-center gap-3">
+                            <span class="avatar h-9 w-9 text-xs">@L.Initials(e.FullNameAr)</span>
+                            <div>
+                                <p class="font-semibold text-ink-900">@L.Pick(e.FullNameAr, e.FullNameEn)</p>
+                                <p class="text-[11px] text-ink-500">@e.Code · @L.Pick(e.JobTitleAr, e.JobTitleEn)</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="text-xs text-ink-600">@e.Department</td>
+                    <td class="text-xs text-ink-600" dir="ltr">@e.Phone</td>
+                    <td class="text-sm font-semibold">@L.Money(e.BasicSalary)</td>
+                    <td class="text-sm">@L.Money(e.Allowances)</td>
+                    <td class="text-xs text-ink-600">@L.Date(e.HireDate)</td>
+                    <td><span class="badge @(e.Status == StaffStatus.Active ? "badge-green" : e.Status == StaffStatus.OnLeave ? "badge-amber" : "badge-gray")">@L.E(e.Status)</span></td>
+                    <td>
+                        <div class="flex justify-end gap-1">
+                            @if (canEdit)
+                            {
+                                <a asp-action="Edit" asp-route-id="@e.Id" class="icon-btn" title="@L.T("Edit", "تعديل")"><svg class="h-4 w-4"><use href="#i-edit"/></svg></a>
+                                @if (e.Status != StaffStatus.Inactive)
+                                {
+                                    <form asp-action="Deactivate" asp-route-id="@e.Id" method="post" onsubmit="return confirm('@L.T("Mark this employee as inactive?", "تعيين هذا الموظف كغير نشط؟")')">
+                                        @Html.AntiForgeryToken()
+                                        <button class="icon-btn text-red-600" title="@L.T("Deactivate", "إيقاف")"><svg class="h-4 w-4"><use href="#i-ban"/></svg></button>
+                                    </form>
+                                }
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

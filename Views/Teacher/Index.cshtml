@@ -1,0 +1,302 @@
+@model TeacherPortalViewModel
+@{
+    ViewData["Title"] = L.T("Teacher dashboard", "لوحة المدرّس");
+    var name = L.Pick(Model.Teacher.FullNameAr, Model.Teacher.FullNameEn);
+    var sessionCount = Model.Today.Count;
+    var weekGroups = Model.Week.GroupBy(x => x.DayOfWeek)
+        .OrderBy(g => ((int)g.Key + 6) % 7)
+        .ToList();
+}
+<div class="page-head">
+    <div>
+        <p class="text-xs font-bold uppercase tracking-wider text-brand-600">@L.T("Teacher portal", "بوابة المدرّس")</p>
+        <h1 class="page-title mt-1">@L.T("Welcome", "أهلاً") @name</h1>
+        <p class="page-sub">@Model.Teacher.Specialization · @Model.Teacher.Code · @L.Date(DateTime.Today)</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <a asp-action="Attendance" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-clipboard"/></svg>@L.T("Take attendance", "تسجيل الحضور")</a>
+        <a asp-action="Schedule" class="btn btn-outline btn-sm"><svg class="h-4 w-4"><use href="#i-calendar"/></svg>@L.T("Weekly schedule", "جدولي الأسبوعي")</a>
+    </div>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="stat-card">
+        <div class="flex items-start justify-between">
+            <div>
+                <p class="text-xs font-semibold text-ink-500">@L.T("My students", "طلابي")</p>
+                <p class="kpi mt-2">@L.Num(Model.Students)</p>
+                <p class="mt-1 text-[11px] text-ink-500">@Model.Courses.Count @L.T("courses", "دورة") · @L.T("active enrollments", "اشتراكات نشطة")</p>
+            </div>
+            <span class="stat-icon bg-brand-50 text-brand-700"><svg class="h-5 w-5"><use href="#i-users"/></svg></span>
+        </div>
+        <div class="mt-4 flex items-center gap-2">
+            <span class="badge badge-blue">@L.Num(Model.Teacher.ExperienceYears) @L.T("yrs exp.", "سنة خبرة")</span>
+            @if (Model.RatingCount > 0)
+            {
+                <span class="badge badge-gold"><svg class="h-3 w-3"><use href="#i-star-fill"/></svg>@Model.AverageRating.ToString("0.0") (@L.Num(Model.RatingCount))</span>
+            }
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="flex items-start justify-between">
+            <div>
+                <p class="text-xs font-semibold text-ink-500">@L.T("Attendance · 30 days", "الحضور · 30 يوماً")</p>
+                <p class="kpi mt-2">@L.Percent(Model.AttendanceRate)</p>
+                <p class="mt-1 text-[11px] text-ink-500">@L.T("Present or late across my sections", "حاضر أو متأخر في شُعبي")</p>
+            </div>
+            <span class="stat-icon bg-emerald-50 text-emerald-700"><svg class="h-5 w-5"><use href="#i-check"/></svg></span>
+        </div>
+        <div class="progress mt-4"><span style="width:@Math.Min(100, Model.AttendanceRate)%"></span></div>
+    </div>
+
+    <div class="stat-card">
+        <div class="flex items-start justify-between">
+            <div>
+                <p class="text-xs font-semibold text-ink-500">@L.T("Unpaid earnings", "مستحقات غير مدفوعة")</p>
+                <p class="kpi mt-2 text-amber-700">@L.Money(Model.Unpaid)</p>
+                <p class="mt-1 text-[11px] text-ink-500">@L.T("Paid to date", "المدفوع حتى الآن") <span class="font-semibold text-brand-700">@L.Money(Model.Paid)</span></p>
+            </div>
+            <span class="stat-icon bg-amber-50 text-amber-700"><svg class="h-5 w-5"><use href="#i-wallet"/></svg></span>
+        </div>
+        <div class="mt-4"><a asp-action="Earnings" class="text-[11px] font-bold text-brand-700 hover:underline">@L.T("Open earnings statement", "فتح كشف المستحقات")</a></div>
+    </div>
+
+    <div class="stat-card">
+        <div class="flex items-start justify-between">
+            <div>
+                <p class="text-xs font-semibold text-ink-500">@L.T("Today's sessions", "حصص اليوم")</p>
+                <p class="kpi mt-2">@L.Num(sessionCount)</p>
+                <p class="mt-1 text-[11px] text-ink-500">@L.Day(DateTime.Today.DayOfWeek)</p>
+            </div>
+            <span class="stat-icon bg-violet-50 text-violet-700"><svg class="h-5 w-5"><use href="#i-calendar"/></svg></span>
+        </div>
+        <div class="mt-4 flex items-center gap-2">
+            <a asp-action="Schedule" class="text-[11px] font-bold text-brand-700 hover:underline">@L.T("Full week", "الأسبوع كامل")</a>
+            <span class="dot bg-violet-400"></span>
+            <span class="text-[10px] text-ink-500">@L.Num(Model.Week.Count) @L.T("weekly sessions", "حصة أسبوعياً")</span>
+        </div>
+    </div>
+</div>
+
+<div class="mt-5 grid gap-5 xl:grid-cols-3">
+    <div class="space-y-5 xl:col-span-2">
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <p class="section-title">@L.T("Today's timetable", "جدول اليوم")</p>
+                    <p class="mt-0.5 text-xs text-ink-500">@L.Date(DateTime.Today) · @L.Day(DateTime.Today.DayOfWeek)</p>
+                </div>
+                <a asp-action="Attendance" class="btn btn-soft btn-xs">@L.T("Attendance", "الحضور")</a>
+            </div>
+            @if (Model.Today.Count == 0)
+            {
+                <div class="empty">@L.T("No sessions are scheduled for today.", "لا توجد حصص مجدولة اليوم.")</div>
+            }
+            else
+            {
+                <div class="divide-y divide-sand-200">
+                    @foreach (var s in Model.Today)
+                    {
+                        <div class="flex flex-wrap items-center gap-3 px-5 py-3.5">
+                            <div class="w-20 shrink-0 rounded-lg bg-brand-50 px-2 py-1.5 text-center">
+                                <p class="text-[11px] font-bold text-brand-800">@s.StartTime</p>
+                                <p class="text-[10px] text-ink-500">@s.EndTime</p>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate text-sm font-bold text-ink-900">@L.Pick(s.Section.Course.Subject.NameAr, s.Section.Course.Subject.NameEn)</p>
+                                <p class="truncate text-xs text-ink-500">@L.Pick(s.Section.Course.Grade.NameAr, s.Section.Course.Grade.NameEn) · @s.Section.Name</p>
+                            </div>
+                            <span class="chip"><svg class="h-3.5 w-3.5"><use href="#i-pin"/></svg>@L.Pick(s.Classroom.NameAr, s.Classroom.NameEn)</span>
+                            <a asp-action="Take" asp-route-sectionId="@s.SectionId" asp-route-date="@DateTime.Today.ToString("yyyy-MM-dd")" class="btn btn-outline btn-xs">@L.T("Register", "تسجيل")</a>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <p class="section-title">@L.T("My courses", "دوراتي")</p>
+                    <p class="mt-0.5 text-xs text-ink-500">@L.T("Sections and groups assigned to me", "الشُعب والمجموعات المسندة إليّ")</p>
+                </div>
+                <a asp-action="Schedule" class="btn btn-ghost btn-xs">@L.T("Schedule", "الجدول")</a>
+            </div>
+            <div class="table-wrap">
+                <table class="table-base">
+                    <thead>
+                        <tr>
+                            <th>@L.T("Course", "الدورة")</th>
+                            <th>@L.T("Grade", "الصف")</th>
+                            <th>@L.T("Type", "النوع")</th>
+                            <th class="text-end">@L.T("Fee", "الرسوم")</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var course in Model.Courses)
+                    {
+                        <tr>
+                            <td>
+                                <p class="font-semibold text-ink-900">@L.Pick(course.Subject.NameAr, course.Subject.NameEn)</p>
+                                <p class="text-xs text-ink-500">@course.Code</p>
+                            </td>
+                            <td class="text-xs">@L.Pick(course.Grade.NameAr, course.Grade.NameEn)</td>
+                            <td><span class="badge badge-gray">@L.E(course.Type)</span></td>
+                            <td class="text-end text-sm font-bold text-brand-800">@L.Money(course.Fee)</td>
+                        </tr>
+                    }
+                    @if (Model.Courses.Count == 0)
+                    {
+                        <tr><td colspan="4"><div class="empty">@L.T("No courses are assigned to you yet.", "لا توجد دورات مسندة إليك بعد.")</div></td></tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <p class="section-title">@L.T("Recent earnings", "أحدث المستحقات")</p>
+                    <p class="mt-0.5 text-xs text-ink-500">@L.T("Course shares and private lessons", "حصص الدورات والدروس الخصوصية")</p>
+                </div>
+                <a asp-action="Earnings" class="btn btn-ghost btn-xs">@L.T("View all", "عرض الكل")</a>
+            </div>
+            @if (Model.RecentEarnings.Count == 0)
+            {
+                <div class="empty">@L.T("No earnings have been posted yet.", "لم تُحتسب مستحقات بعد.")</div>
+            }
+            else
+            {
+                <div class="table-wrap">
+                    <table class="table-base">
+                        <thead>
+                            <tr>
+                                <th>@L.T("Date", "التاريخ")</th>
+                                <th>@L.T("Source", "المصدر")</th>
+                                <th>@L.T("Kind", "النوع")</th>
+                                <th class="text-end">@L.T("Amount", "المبلغ")</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var e in Model.RecentEarnings)
+                        {
+                            <tr>
+                                <td class="text-xs text-ink-500">@L.DateShort(e.Date)</td>
+                                <td class="text-sm">@(e.Course is not null ? L.Pick(e.Course.NameAr, e.Course.NameEn) : e.PrivateLesson?.Subject is not null ? L.Pick(e.PrivateLesson.Subject.NameAr, e.PrivateLesson.Subject.NameEn) : "—")</td>
+                                <td><span class="badge badge-gray">@L.E(e.Kind)</span></td>
+                                <td class="text-end text-sm font-bold">@L.Money(e.Amount)</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="space-y-5">
+        <div class="card card-pad">
+            <div class="flex items-center gap-3">
+                <span class="avatar h-12 w-12 bg-brand-100 text-brand-800">@L.Initials(name)</span>
+                <div class="min-w-0">
+                    <p class="truncate text-sm font-bold text-brand-950">@name</p>
+                    <p class="text-xs text-ink-500">@L.Role(Roles.Teacher) · @Model.Teacher.Phone</p>
+                </div>
+            </div>
+            <dl class="mt-4 space-y-2 text-xs">
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Specialization", "التخصص")</dt><dd class="font-semibold text-ink-800">@Model.Teacher.Specialization</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Certificate", "الشهادة")</dt><dd class="font-semibold text-ink-800">@Model.Teacher.Certificate</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Rating", "التقييم")</dt><dd class="font-semibold text-ink-800">@Model.AverageRating.ToString("0.0") / 5</dd></div>
+            </dl>
+            <a asp-controller="Teachers" asp-action="Profile" asp-route-id="@Model.Teacher.Id" class="btn btn-outline btn-sm mt-4 w-full">@L.T("View public profile", "عرض الملف العام")</a>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <p class="section-title">@L.T("Private lesson assignments", "إسنادات الدروس الخصوصية")</p>
+                    <p class="mt-0.5 text-xs text-ink-500">@L.T("New and pending requests", "طلبات جديدة وقيد الترتيب")</p>
+                </div>
+                <a asp-action="Requests" class="btn btn-ghost btn-xs">@L.T("All", "الكل")</a>
+            </div>
+            @if (Model.PendingRequests.Count == 0)
+            {
+                <div class="empty">@L.T("No pending assignments.", "لا توجد إسنادات معلّقة.")</div>
+            }
+            else
+            {
+                <div class="divide-y divide-sand-200">
+                    @foreach (var r in Model.PendingRequests)
+                    {
+                        <a asp-controller="PrivateLessons" asp-action="Details" asp-route-id="@r.Id" class="block px-5 py-3 transition hover:bg-sand-50">
+                            <div class="flex items-center justify-between gap-2">
+                                <p class="truncate text-sm font-bold text-ink-900">@L.Pick(r.Subject.NameAr, r.Subject.NameEn)</p>
+                                <span class="badge badge-amber">@L.E(r.Status)</span>
+                            </div>
+                            <p class="mt-0.5 truncate text-xs text-ink-500">@(r.Student is not null ? L.Pick(r.Student.FullNameAr, r.Student.FullNameEn) : r.GuardianName) · @L.Pick(r.Grade.NameAr, r.Grade.NameEn)</p>
+                            <p class="mt-1 text-[11px] text-ink-500">@L.E(r.Mode) · @r.PreferredTime · @L.Num(r.DaysPerWeek) @L.T("days/week", "أيام/أسبوع")</p>
+                        </a>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <p class="section-title">@L.T("Upcoming private lessons", "الدروس الخصوصية القادمة")</p>
+                    <p class="mt-0.5 text-xs text-ink-500">@L.T("Scheduled by the administration", "مجدولة من الإدارة")</p>
+                </div>
+            </div>
+            @if (Model.UpcomingLessons.Count == 0)
+            {
+                <div class="empty">@L.T("No upcoming lessons.", "لا توجد دروس قادمة.")</div>
+            }
+            else
+            {
+                <div class="divide-y divide-sand-200">
+                    @foreach (var l in Model.UpcomingLessons)
+                    {
+                        <div class="flex items-center gap-3 px-5 py-3">
+                            <div class="w-14 shrink-0 rounded-lg bg-sand-100 px-2 py-1.5 text-center">
+                                <p class="text-[10px] font-bold text-brand-800">@l.Date.ToString("MM/dd")</p>
+                                <p class="text-[10px] text-ink-500">@l.StartTime</p>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate text-sm font-semibold text-ink-900">@L.Pick(l.Subject.NameAr, l.Subject.NameEn)</p>
+                                <p class="truncate text-[11px] text-ink-500">@(l.Student is not null ? L.Pick(l.Student.FullNameAr, l.Student.FullNameEn) : "—") · @L.E(l.Mode)</p>
+                            </div>
+                            <span class="text-xs font-bold text-brand-800">@L.Money(l.Fee)</span>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <p class="section-title">@L.T("Weekly load", "العبء الأسبوعي")</p>
+                    <p class="mt-0.5 text-xs text-ink-500">@L.T("Sessions per day", "الحصص حسب اليوم")</p>
+                </div>
+            </div>
+            <div class="space-y-2 px-5 py-4">
+                @foreach (var g in weekGroups)
+                {
+                    var pct = Math.Min(100, g.Count() * 100 / Math.Max(1, weekGroups.Max(x => x.Count())));
+                    <div class="flex items-center gap-2 text-xs">
+                        <span class="w-16 shrink-0 text-ink-500">@L.Day(g.Key)</span>
+                        <div class="progress flex-1"><span style="width:@pct%"></span></div>
+                        <span class="w-6 text-end font-bold text-ink-800">@g.Count()</span>
+                    </div>
+                }
+                @if (weekGroups.Count == 0)
+                {
+                    <p class="text-xs text-ink-500">@L.T("No weekly sessions scheduled.", "لا توجد حصص أسبوعية مجدولة.")</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>

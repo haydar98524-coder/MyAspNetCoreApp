@@ -1,0 +1,96 @@
+@model TeacherPayablesViewModel
+@{
+    ViewData["Title"] = L.T("Teacher payables", "مستحقات المدرسين");
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Teacher payables", "مستحقات المدرسين")</h1>
+        <p class="page-sub">@L.T("Settle accumulated course shares and private-lesson shares.", "تسوية حصص الدورات والدروس الخصوصية المتراكمة.")</p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline btn-sm"><svg class="h-4 w-4 flip-x"><use href="#i-arrow-left"/></svg>@L.T("Finance", "المالية")</a>
+</div>
+
+<div class="grid gap-3 sm:grid-cols-3">
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Unpaid balance", "الرصيد غير المدفوع")</p><p class="kpi mt-1 text-amber-700">@L.Money(Model.TotalUnpaid)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Settled to date", "المدفوع حتى الآن")</p><p class="kpi mt-1 text-emerald-700">@L.Money(Model.TotalPaid)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Teachers with dues", "مدرّسون عليهم مستحقات")</p><p class="kpi mt-1">@L.Num(Model.Rows.Count(r => r.Unpaid > 0))</p></div>
+</div>
+
+<div class="card mt-5 overflow-hidden">
+    <div class="card-header">
+        <h2 class="section-title">@L.T("Outstanding by teacher", "المستحقات حسب المدرّس")</h2>
+        <span class="chip">@L.T("Paid through the selected fund", "تُدفع من الصندوق المحدد")</span>
+    </div>
+    <div class="table-wrap">
+        <table class="table-base">
+            <thead><tr><th>@L.T("Teacher", "المدرّس")</th><th>@L.T("Course shares", "حصص الدورات")</th><th>@L.T("Private lessons", "الدروس الخصوصية")</th><th>@L.T("Unpaid", "غير مدفوع")</th><th class="text-end">@L.T("Settle", "التسوية")</th></tr></thead>
+            <tbody>
+            @if (Model.Rows.Count == 0)
+            {
+                <tr><td colspan="5"><div class="empty">@L.T("No teacher earnings recorded yet.", "لا توجد مستحقات مدرسين مسجلة بعد.")</div></td></tr>
+            }
+            @foreach (var row in Model.Rows)
+            {
+                <tr>
+                    <td>
+                        <div class="flex items-center gap-2">
+                            <span class="avatar h-8 w-8 bg-brand-100 text-[11px] text-brand-800">@L.Initials(row.Teacher.FullNameAr)</span>
+                            <div>
+                                <p class="font-semibold text-ink-900">@L.Pick(row.Teacher.FullNameAr, row.Teacher.FullNameEn)</p>
+                                <p class="text-[10px] text-ink-500">@row.Teacher.Code · @L.Num(row.Count) @L.T("entries", "قيداً")</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="text-xs text-ink-600">@L.Money(row.CourseShare)</td>
+                    <td class="text-xs text-ink-600">@L.Money(row.PrivateShare)</td>
+                    <td class="font-bold @(row.Unpaid > 0 ? "text-amber-700" : "text-ink-400")">@L.Money(row.Unpaid)</td>
+                    <td>
+                        <div class="flex justify-end">
+                            @if (row.Unpaid > 0)
+                            {
+                                <a asp-controller="TeacherSettlements" asp-action="Generate" asp-route-teacherId="@row.Teacher.Id"
+                                   class="btn btn-primary btn-xs" title="@L.T("Prepare an approval-controlled settlement statement", "إعداد كشف تسوية يمر بالاعتماد")">
+                                    <svg class="h-3.5 w-3.5"><use href="#i-sparkles"/></svg>@L.T("Prepare settlement", "إعداد التسوية")
+                                </a>
+                            }
+                            else
+                            {
+                                <span class="badge badge-green">@L.T("Settled", "مسدد")</span>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card mt-5 overflow-hidden">
+    <div class="card-header">
+        <h2 class="section-title">@L.T("Recently settled earnings", "أحدث المستحقات المصروفة")</h2>
+    </div>
+    <div class="table-wrap">
+        <table class="table-base">
+            <thead><tr><th>@L.T("Teacher", "المدرّس")</th><th>@L.T("Kind", "النوع")</th><th>@L.T("Base", "الأساس")</th><th>@L.T("Share", "الحصة")</th><th>@L.T("Amount", "المبلغ")</th><th>@L.T("Reference", "المرجع")</th><th>@L.T("Paid", "تاريخ الصرف")</th></tr></thead>
+            <tbody>
+            @if (Model.RecentPaid.Count == 0)
+            {
+                <tr><td colspan="7"><div class="empty">@L.T("No settled earnings yet.", "لا توجد مستحقات مصروفة بعد.")</div></td></tr>
+            }
+            @foreach (var earn in Model.RecentPaid)
+            {
+                <tr>
+                    <td class="text-xs font-semibold text-ink-800">@L.Pick(earn.Teacher.FullNameAr, earn.Teacher.FullNameEn)</td>
+                    <td><span class="badge badge-gray">@L.E(earn.Kind)</span></td>
+                    <td class="text-xs text-ink-600">@L.Money(earn.BaseAmount)</td>
+                    <td class="text-xs text-ink-600">@L.Percent(earn.SharePercent)</td>
+                    <td class="font-bold text-emerald-700">@L.Money(earn.Amount)</td>
+                    <td class="font-mono text-[10px] text-ink-500">@(earn.PaidReference ?? "—")</td>
+                    <td class="text-xs text-ink-500">@(earn.PaidAt.HasValue ? L.DateShort(earn.PaidAt.Value.ToLocalTime()) : "—")</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

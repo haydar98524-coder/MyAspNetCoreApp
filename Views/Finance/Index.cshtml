@@ -1,0 +1,190 @@
+@model FinanceOverviewViewModel
+@{
+    ViewData["Title"] = L.T("Financial overview", "الملخص المالي");
+    var maxTrend = Model.Trend.Count == 0 ? 1 : Math.Max(1, Model.Trend.Max(p => Math.Max(p.Revenue, p.Expense)));
+    var sourceTotal = Model.RevenueSources.Sum(s => s.Amount);
+    var expenseTotal = Model.TeacherCost + Model.PayrollCost + Model.DirectExpenses;
+    var margin = Model.TotalRevenue == 0 ? 0 : Math.Round((decimal)Model.NetProfit / Model.TotalRevenue * 100, 1);
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Financial overview", "الملخص المالي")</h1>
+        <p class="page-sub">@L.Date(Model.From) — @L.Date(Model.To) · @L.T("accrual and cash view", "عرض الاستحقاق والنقد")</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <a asp-action="NewEntry" class="btn btn-outline btn-sm"><svg class="h-4 w-4"><use href="#i-clipboard"/></svg>@L.T("Manual journal", "قيد يدوي")</a>
+        <a asp-action="CreateExpense" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-receipt"/></svg>@L.T("New expense", "مصروف جديد")</a>
+    </div>
+</div>
+
+<form method="get" class="card card-pad !py-4">
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto]">
+        <div><label class="label">@L.T("From", "من")</label><input type="date" name="from" value="@Model.From.ToString("yyyy-MM-dd")" class="input" /></div>
+        <div><label class="label">@L.T("To", "إلى")</label><input type="date" name="to" value="@Model.To.ToString("yyyy-MM-dd")" class="input" /></div>
+        <div class="flex items-end gap-2"><button class="btn btn-primary">@L.T("Apply", "تطبيق")</button><a asp-action="Index" class="btn btn-outline">@L.T("Reset", "مسح")</a></div>
+    </div>
+</form>
+
+<div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="stat-card">
+        <div class="flex items-start justify-between">
+            <div><p class="text-xs text-ink-500">@L.T("Period revenue", "إيرادات الفترة")</p><p class="kpi mt-2 text-emerald-700">@L.Money(Model.TotalRevenue)</p><p class="mt-1 text-[11px] text-ink-500">@L.T("all revenue streams", "جميع مصادر الإيراد")</p></div>
+            <span class="stat-icon bg-emerald-50 text-emerald-700"><svg class="h-5 w-5"><use href="#i-arrow-trend"/></svg></span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="flex items-start justify-between">
+            <div><p class="text-xs text-ink-500">@L.T("Period costs", "تكاليف الفترة")</p><p class="kpi mt-2 text-red-600">@L.Money(expenseTotal)</p><p class="mt-1 text-[11px] text-ink-500">@L.Money(Model.TeacherCost) @L.T("teacher shares", "حصص مدرسين") · @L.Money(Model.PayrollCost) @L.T("payroll", "رواتب")</p></div>
+            <span class="stat-icon bg-red-50 text-red-600"><svg class="h-5 w-5"><use href="#i-receipt"/></svg></span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="flex items-start justify-between">
+            <div><p class="text-xs text-ink-500">@L.T("Net profit", "صافي الربح")</p><p class="kpi mt-2 @(Model.NetProfit >= 0 ? "text-brand-900" : "text-red-600")">@L.Money(Model.NetProfit)</p><p class="mt-1 text-[11px] text-ink-500">@L.Percent(margin) @L.T("margin", "هامش")</p></div>
+            <span class="stat-icon bg-brand-50 text-brand-700"><svg class="h-5 w-5"><use href="#i-chart"/></svg></span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="flex items-start justify-between">
+            <div><p class="text-xs text-ink-500">@L.T("Liquid funds", "الأموال السائلة")</p><p class="kpi mt-2">@L.Money(Model.CashBalance + Model.BankBalance)</p><p class="mt-1 text-[11px] text-ink-500">@L.Money(Model.CashBalance) @L.T("cash", "نقداً") · @L.Money(Model.BankBalance) @L.T("bank", "مصرف")</p></div>
+            <span class="stat-icon bg-gold-50 text-gold-700"><svg class="h-5 w-5"><use href="#i-bank"/></svg></span>
+        </div>
+    </div>
+</div>
+
+<div class="mt-5 grid gap-5 lg:grid-cols-3">
+    <div class="card lg:col-span-2">
+        <div class="card-header">
+            <div>
+                <h2 class="section-title">@L.T("Revenue vs. costs", "الإيرادات مقابل التكاليف")</h2>
+                <p class="mt-0.5 text-xs text-ink-500">@L.T("Last six months including teacher shares and payroll", "آخر ستة أشهر شاملة حصص المدرسين والرواتب")</p>
+            </div>
+            <div class="flex items-center gap-4 text-[11px] font-semibold text-ink-500">
+                <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm bg-brand-600"></span>@L.T("Revenue", "إيرادات")</span>
+                <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm bg-gold-400"></span>@L.T("Costs", "تكاليف")</span>
+            </div>
+        </div>
+        <div class="p-5 sm:p-6">
+            <div class="mb-3 flex items-center justify-between text-[10px] text-ink-500"><span>@L.Money(maxTrend)</span><span>@L.T("Month", "الشهر")</span></div>
+            <div class="flex h-48 items-end gap-3 border-b border-sand-200 sm:gap-5">
+                @foreach (var point in Model.Trend)
+                {
+                    var revenueHeight = point.Revenue == 0 ? 2 : Math.Max(3, (int)(point.Revenue * 100 / maxTrend));
+                    var expenseHeight = point.Expense == 0 ? 2 : Math.Max(3, (int)(point.Expense * 100 / maxTrend));
+                    <div class="group flex h-full flex-1 items-end justify-center gap-1.5">
+                        <div class="w-4 rounded-t-md bg-brand-600 transition group-hover:bg-brand-500 sm:w-6" style="height:@(revenueHeight)%" title="@L.Money(point.Revenue)"></div>
+                        <div class="w-4 rounded-t-md bg-gold-400 transition group-hover:bg-gold-300 sm:w-6" style="height:@(expenseHeight)%" title="@L.Money(point.Expense)"></div>
+                    </div>
+                }
+            </div>
+            <div class="mt-2 flex gap-3 sm:gap-5">
+                @foreach (var point in Model.Trend) { <div class="flex-1 text-center text-[10px] font-semibold text-ink-500">@point.Label</div> }
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2 class="section-title">@L.T("Revenue sources", "مصادر الإيرادات")</h2>
+            <span class="text-[10px] font-semibold text-ink-500">@L.Money(sourceTotal)</span>
+        </div>
+        <div class="card-pad space-y-4">
+            @if (Model.RevenueSources.Count == 0)
+            {
+                <div class="empty !py-8"><svg class="h-8 w-8 text-sand-300"><use href="#i-chart"/></svg><p>@L.T("No revenue in this period.", "لا توجد إيرادات في هذه الفترة.")</p></div>
+            }
+            @foreach (var source in Model.RevenueSources)
+            {
+                var pct = sourceTotal == 0 ? 0 : (int)Math.Round(source.Amount * 100m / sourceTotal);
+                <div>
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="flex items-center gap-1.5 font-semibold text-ink-700"><span class="h-2.5 w-2.5 rounded-sm" style="background-color:@source.Color"></span>@source.Label</span>
+                        <span class="font-bold text-brand-950">@L.Money(source.Amount)</span>
+                    </div>
+                    <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-sand-200"><span class="block h-full rounded-full" style="width:@(Math.Max(2, pct))%;background-color:@source.Color"></span></div>
+                    <p class="mt-1 text-[10px] text-ink-500">@pct% @L.T("of revenue", "من الإيراد")</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="mt-5 grid gap-5 lg:grid-cols-3">
+    <div class="card">
+        <div class="card-header">
+            <h2 class="section-title">@L.T("Expense breakdown", "توزيع المصروفات")</h2>
+            <a asp-action="Expenses" class="text-xs link">@L.T("All expenses", "كل المصروفات")</a>
+        </div>
+        <div class="card-pad space-y-3">
+            @if (Model.ExpenseBreakdown.Count == 0)
+            {
+                <div class="empty !py-8"><p>@L.T("No approved expenses in this period.", "لا توجد مصروفات معتمدة في هذه الفترة.")</p></div>
+            }
+            @foreach (var item in Model.ExpenseBreakdown)
+            {
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex min-w-0 items-center gap-2">
+                        <span class="h-2.5 w-2.5 shrink-0 rounded-sm" style="background-color:@item.Color"></span>
+                        <span class="truncate text-xs font-semibold text-ink-700">@item.Label</span>
+                    </div>
+                    <span class="text-xs font-bold text-ink-900">@L.Money(item.Amount)</span>
+                </div>
+            }
+            <div class="border-t border-sand-200 pt-3 text-xs text-ink-500">
+                @L.T("Outstanding student dues", "ذمم الطلاب المستحقة")
+                <span class="float-end font-bold text-amber-700">@L.Money(Model.DuesOutstanding)</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2 class="section-title">@L.T("Funds", "الصناديق")</h2>
+            <a asp-action="Funds" class="text-xs link">@L.T("Manage", "إدارة")</a>
+        </div>
+        <div class="card-pad space-y-3">
+            @foreach (var fund in Model.Funds)
+            {
+                <a asp-action="Funds" class="flex items-center justify-between gap-3 rounded-xl border border-sand-200 p-3 transition hover:border-brand-300 hover:bg-brand-50/40">
+                    <div class="flex items-center gap-2">
+                        <span class="stat-icon h-9 w-9 @(fund.Type == FundType.Cash ? "bg-emerald-50 text-emerald-700" : "bg-blue-50 text-blue-700")">
+                            <svg class="h-4 w-4"><use href="@(fund.Type == FundType.Cash ? "#i-cash" : "#i-bank")"/></svg>
+                        </span>
+                        <div>
+                            <p class="text-xs font-bold text-ink-900">@L.Pick(fund.NameAr, fund.NameEn)</p>
+                            <p class="text-[10px] text-ink-500">@L.E(fund.Type)@(string.IsNullOrWhiteSpace(fund.BankName) ? "" : " · " + fund.BankName)</p>
+                        </div>
+                    </div>
+                    <span class="text-sm font-extrabold text-brand-900">@L.Money(fund.CurrentBalance)</span>
+                </a>
+            }
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2 class="section-title">@L.T("Latest journal entries", "أحدث القيود")</h2>
+            <a asp-action="Journal" class="text-xs link">@L.T("Journal", "القيود")</a>
+        </div>
+        <div class="divide-y divide-sand-200">
+            @foreach (var entry in Model.RecentEntries)
+            {
+                var total = entry.Lines.Sum(l => l.Debit);
+                <div class="flex items-center justify-between gap-3 px-5 py-3">
+                    <div class="min-w-0">
+                        <p class="truncate text-xs font-bold text-ink-900">@entry.Description</p>
+                        <p class="text-[10px] text-ink-500"><span class="font-mono">@entry.EntryNo</span> · @L.DateShort(entry.Date)</p>
+                    </div>
+                    <span class="shrink-0 text-xs font-bold text-brand-900">@L.Money(total)</span>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <a asp-action="Journal" class="portal-tile"><span class="stat-icon bg-brand-50 text-brand-700"><svg class="h-5 w-5"><use href="#i-clipboard"/></svg></span><span><span class="block text-sm font-bold text-brand-950">@L.T("Journal entries", "القيود اليومية")</span><span class="block text-xs text-ink-500">@L.T("Double-entry ledger", "دفتر اليومية المزدوج")</span></span></a>
+    <a asp-action="Expenses" class="portal-tile"><span class="stat-icon bg-red-50 text-red-600"><svg class="h-5 w-5"><use href="#i-receipt"/></svg></span><span><span class="block text-sm font-bold text-brand-950">@L.T("Expenses", "المصروفات")</span><span class="block text-xs text-ink-500">@L.T("Approve and post", "اعتماد وترحيل")</span></span></a>
+    <a asp-action="Incomes" class="portal-tile"><span class="stat-icon bg-emerald-50 text-emerald-700"><svg class="h-5 w-5"><use href="#i-cash"/></svg></span><span><span class="block text-sm font-bold text-brand-950">@L.T("Other income", "إيرادات أخرى")</span><span class="block text-xs text-ink-500">@L.T("Grants, sponsorship", "منح ورعاية")</span></span></a>
+    <a asp-action="TeacherPayables" class="portal-tile"><span class="stat-icon bg-gold-50 text-gold-700"><svg class="h-5 w-5"><use href="#i-wallet"/></svg></span><span><span class="block text-sm font-bold text-brand-950">@L.T("Teacher payables", "مستحقات المدرسين")</span><span class="block text-xs text-ink-500">@L.T("Settle shares", "تسوية الحصص")</span></span></a>
+</div>

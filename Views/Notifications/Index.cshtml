@@ -1,0 +1,135 @@
+@model NotificationsViewModel
+@{
+    ViewData["Title"] = L.T("Notifications", "الإشعارات");
+    var isLeadership = User.IsInRole(Roles.Administrator) || User.IsInRole(Roles.Manager);
+    string Icon(NotificationType type) => type switch
+    {
+        NotificationType.Success => "#i-check",
+        NotificationType.Warning => "#i-alert",
+        NotificationType.Danger => "#i-alert",
+        _ => "#i-info"
+    };
+    string IconStyle(NotificationType type) => type switch
+    {
+        NotificationType.Success => "bg-emerald-50 text-emerald-700",
+        NotificationType.Warning => "bg-amber-50 text-amber-700",
+        NotificationType.Danger => "bg-red-50 text-red-700",
+        _ => "bg-blue-50 text-blue-700"
+    };
+    string Badge(NotificationType type) => type switch
+    {
+        NotificationType.Success => "badge-green",
+        NotificationType.Warning => "badge-amber",
+        NotificationType.Danger => "badge-red",
+        _ => "badge-blue"
+    };
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Notifications", "الإشعارات")</h1>
+        <p class="page-sub">@L.Num(Model.Unread) @L.T("unread of", "غير مقروء من") @L.Num(Model.Total) @L.T("messages", "رسالة")</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        @if (Model.Unread > 0)
+        {
+            <form asp-action="MarkAllRead" asp-route-filter="@Model.Filter" asp-route-type="@Model.Type" method="post">
+                @Html.AntiForgeryToken()
+                <button class="btn btn-outline btn-sm"><svg class="h-4 w-4"><use href="#i-check"/></svg>@L.T("Mark all read", "تعليم الكل كمقروء")</button>
+            </form>
+        }
+        @if (isLeadership)
+        {
+            <a asp-action="Compose" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-bell"/></svg>@L.T("New announcement", "إعلان جديد")</a>
+        }
+    </div>
+</div>
+
+<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Inbox", "صندوق الوارد")</p><p class="kpi mt-1">@L.Num(Model.Total)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Unread", "غير مقروء")</p><p class="kpi mt-1 text-brand-800">@L.Num(Model.Unread)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Read", "مقروء")</p><p class="kpi mt-1 text-emerald-700">@L.Num(Model.Total - Model.Unread)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Displayed now", "المعروض حالياً")</p><p class="kpi mt-1 text-blue-700">@L.Num(Model.Items.Count)</p></div>
+</div>
+
+<div class="card card-pad !py-4 mt-5">
+    <div class="flex flex-wrap items-center gap-2">
+        <div class="flex flex-wrap gap-1">
+            <a asp-action="Index" asp-route-filter="all" asp-route-type="@Model.Type" class="btn btn-xs @(Model.Filter == "all" ? "btn-primary" : "btn-outline")">@L.T("All", "الكل")</a>
+            <a asp-action="Index" asp-route-filter="unread" asp-route-type="@Model.Type" class="btn btn-xs @(Model.Filter == "unread" ? "btn-primary" : "btn-outline")">@L.T("Unread", "غير مقروء")</a>
+            <a asp-action="Index" asp-route-filter="read" asp-route-type="@Model.Type" class="btn btn-xs @(Model.Filter == "read" ? "btn-primary" : "btn-outline")">@L.T("Read", "مقروء")</a>
+        </div>
+        <form method="get" class="ms-auto flex flex-wrap gap-2">
+            <input type="hidden" name="filter" value="@Model.Filter" />
+            <select name="type" class="select !w-auto" onchange="this.form.submit()">
+                <option value="">@L.T("All types", "كل الأنواع")</option>
+                @foreach (var t in Enum.GetValues<NotificationType>())
+                {
+                    <option value="@t" selected="@(Model.Type == t.ToString())">@L.E(t)</option>
+                }
+            </select>
+        </form>
+        @if (Model.Total - Model.Unread > 0)
+        {
+            <form asp-action="ClearRead" asp-route-filter="@Model.Filter" asp-route-type="@Model.Type" method="post"
+                  onsubmit="return confirm('@L.T("Remove all read notifications from your inbox?", "حذف جميع الإشعارات المقروءة من صندوقك؟")')">
+                @Html.AntiForgeryToken()
+                <button class="btn btn-ghost btn-xs text-ink-500"><svg class="h-3.5 w-3.5"><use href="#i-ban"/></svg>@L.T("Clear read", "حذف المقروء")</button>
+            </form>
+        }
+    </div>
+</div>
+
+<div class="mt-4 space-y-3">
+    @if (Model.Items.Count == 0)
+    {
+        <div class="card"><div class="empty">
+            <span class="stat-icon bg-sand-100 text-ink-400"><svg class="h-6 w-6"><use href="#i-bell"/></svg></span>
+            <p class="font-semibold text-ink-700">@L.T("Nothing to show", "لا يوجد ما يُعرض")</p>
+            <p class="text-xs">@(Model.Filter == "unread" ? L.T("You have read every message.", "لقد قرأت جميع الرسائل.") : L.T("Notifications will appear here as activity happens.", "ستظهر الإشعارات هنا عند حدوث النشاط."))</p>
+        </div></div>
+    }
+    @foreach (var n in Model.Items)
+    {
+        <div class="card p-4 @(n.IsRead ? "" : "!border-brand-200 !bg-brand-50/40")">
+            <div class="flex flex-wrap items-start gap-3">
+                <span class="stat-icon !h-10 !w-10 @IconStyle(n.Type)"><svg class="h-5 w-5"><use href="@Icon(n.Type)"/></svg></span>
+                <div class="min-w-0 flex-1">
+                    <div class="flex flex-wrap items-center gap-2">
+                        @if (!n.IsRead)
+                        {
+                            <span class="dot bg-brand-600"></span>
+                        }
+                        <p class="text-sm @(n.IsRead ? "font-semibold text-ink-800" : "font-extrabold text-brand-950")">@L.Pick(n.TitleAr, n.TitleEn)</p>
+                        <span class="badge @Badge(n.Type)">@L.E(n.Type)</span>
+                    </div>
+                    <p class="mt-1 text-sm leading-relaxed text-ink-600">@L.Pick(n.BodyAr, n.BodyEn)</p>
+                    <p class="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-ink-400">
+                        <span>@L.DateTimeShort(n.CreatedAt.ToLocalTime())</span>
+                        @if (!string.IsNullOrWhiteSpace(n.Url))
+                        {
+                            <span>·</span>
+                            <a href="@n.Url" class="font-semibold text-brand-700 hover:text-brand-900">@L.T("Open related record", "فتح السجل المرتبط")</a>
+                        }
+                    </p>
+                </div>
+                <div class="flex shrink-0 items-center gap-1">
+                    @if (!n.IsRead)
+                    {
+                        <form asp-action="MarkRead" asp-route-id="@n.Id" asp-route-filter="@Model.Filter" asp-route-type="@Model.Type" method="post">
+                            @Html.AntiForgeryToken()
+                            <button class="icon-btn text-emerald-600" title="@L.T("Mark as read", "تعليم كمقروء")"><svg class="h-4 w-4"><use href="#i-check"/></svg></button>
+                        </form>
+                    }
+                    @if (n.UserId == User.CurrentUserId())
+                    {
+                        <form asp-action="Delete" asp-route-id="@n.Id" asp-route-filter="@Model.Filter" asp-route-type="@Model.Type" method="post"
+                              onsubmit="return confirm('@L.T("Delete this notification?", "حذف هذا الإشعار؟")')">
+                            @Html.AntiForgeryToken()
+                            <button class="icon-btn text-ink-400 hover:text-red-600" title="@L.T("Delete", "حذف")"><svg class="h-4 w-4"><use href="#i-ban"/></svg></button>
+                        </form>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>

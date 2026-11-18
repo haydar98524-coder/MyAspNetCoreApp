@@ -1,0 +1,59 @@
+@model List<Parent>
+@{
+    ViewData["Title"] = L.T("Parents", "أولياء الأمور");
+    var q = ViewBag.Q as string;
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Guardians", "أولياء الأمور")</h1>
+        <p class="page-sub">@L.Num(Model.Count) @L.T("registered guardians", "ولي أمر مسجل") · @L.Num((int)ViewBag.WithBalance) @L.T("with outstanding balances", "لديهم أرصدة متبقية")</p>
+    </div>
+    <a asp-action="Create" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-plus"/></svg>@L.T("New guardian", "ولي أمر جديد")</a>
+</div>
+
+<form method="get" class="card card-pad !py-4">
+    <div class="flex flex-wrap gap-2">
+        <div class="relative min-w-64 flex-1">
+            <span class="pointer-events-none absolute inset-y-0 start-3 flex items-center text-ink-500"><svg class="h-4 w-4"><use href="#i-search"/></svg></span>
+            <input name="q" value="@q" class="input !ps-9" placeholder="@L.T("Search by name, phone or email…", "ابحث بالاسم أو الهاتف أو البريد…")" />
+        </div>
+        <button class="btn btn-primary">@L.T("Search", "بحث")</button>
+        @if (!string.IsNullOrWhiteSpace(q))
+        {
+            <a asp-action="Index" class="btn btn-outline">@L.T("Clear", "مسح")</a>
+        }
+    </div>
+</form>
+
+<div class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    @if (Model.Count == 0)
+    {
+        <div class="card empty sm:col-span-2 xl:col-span-3">
+            <svg class="h-10 w-10 text-brand-300"><use href="#i-user"/></svg>
+            <p>@L.T("No guardians found.", "لا يوجد أولياء أمور.")</p>
+        </div>
+    }
+    @foreach (var p in Model)
+    {
+        <div class="card p-5 transition hover:border-brand-200 hover:shadow-pop">
+            <div class="flex items-start justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <span class="avatar h-11 w-11">@L.Initials(p.FullNameAr)</span>
+                    <div class="min-w-0">
+                        <a asp-action="Details" asp-route-id="@p.Id" class="block truncate font-bold text-brand-950 hover:underline">@L.Pick(p.FullNameAr, p.FullNameEn)</a>
+                        <p class="text-xs text-ink-500" dir="ltr">@p.Phone</p>
+                    </div>
+                </div>
+                <span class="badge badge-green">@L.Num(p.Children.Count) @L.T("children", "أبناء")</span>
+            </div>
+            <dl class="mt-4 space-y-1.5 text-xs">
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Area", "المنطقة")</dt><dd class="font-semibold">@(string.IsNullOrEmpty(p.Area) ? "—" : p.Area)</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Email", "البريد")</dt><dd class="max-w-40 truncate font-semibold" dir="ltr">@(string.IsNullOrEmpty(p.Email) ? "—" : p.Email)</dd></div>
+            </dl>
+            <div class="mt-4 flex gap-2 border-t border-sand-200 pt-3">
+                <a asp-action="Details" asp-route-id="@p.Id" class="btn btn-soft btn-xs flex-1"><svg class="h-3.5 w-3.5"><use href="#i-eye"/></svg>@L.T("Profile", "الملف")</a>
+                <a asp-action="Edit" asp-route-id="@p.Id" class="btn btn-outline btn-xs"><svg class="h-3.5 w-3.5"><use href="#i-edit"/></svg>@L.T("Edit", "تعديل")</a>
+            </div>
+        </div>
+    }
+</div>

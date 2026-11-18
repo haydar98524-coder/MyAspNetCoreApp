@@ -1,0 +1,148 @@
+@model AttendanceIndexViewModel
+@{
+    ViewData["Title"] = L.T("Attendance register", "سجل الحضور");
+    var filter = ViewBag.Filter as string;
+    var tomorrow = Model.Date.AddDays(1) > DateTime.Today ? DateTime.Today : Model.Date.AddDays(1);
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Attendance register", "سجل الحضور")</h1>
+        <p class="page-sub">@L.Date(Model.Date) · @L.Day(Model.Date.DayOfWeek)</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+        <a asp-action="Index" asp-route-date="@Model.Date.AddDays(-1).ToString("yyyy-MM-dd")" asp-route-filter="@filter" class="btn btn-outline btn-sm">
+            <svg class="h-4 w-4 flip-x"><use href="#i-chevron-down"/></svg>@L.T("Previous day", "اليوم السابق")
+        </a>
+        <a asp-action="Index" class="btn btn-outline btn-sm">@L.T("Today", "اليوم")</a>
+        <a asp-action="Index" asp-route-date="@tomorrow.ToString("yyyy-MM-dd")" asp-route-filter="@filter" class="btn btn-outline btn-sm">
+            @L.T("Next day", "اليوم التالي")<svg class="h-4 w-4"><use href="#i-chevron-down"/></svg>
+        </a>
+        <a asp-action="Requests" class="btn btn-primary btn-sm">
+            <svg class="h-4 w-4"><use href="#i-clipboard"/></svg>@L.T("Change requests", "طلبات التعديل")
+            @if (Model.PendingRequests > 0) { <span class="badge !bg-white/20 !text-white !ring-0">@L.Num(Model.PendingRequests)</span> }
+        </a>
+    </div>
+</div>
+
+<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+    <div class="stat-card !p-4">
+        <p class="text-xs text-ink-500">@L.T("Present", "حاضر")</p>
+        <p class="kpi mt-1 text-emerald-700">@L.Num(Model.Present)</p>
+        <p class="text-[10px] text-ink-500">@L.T("including late arrivals", "شاملاً المتأخرين")</p>
+    </div>
+    <div class="stat-card !p-4">
+        <p class="text-xs text-ink-500">@L.T("Absent", "غائب")</p>
+        <p class="kpi mt-1 text-red-600">@L.Num(Model.Absent)</p>
+    </div>
+    <div class="stat-card !p-4">
+        <p class="text-xs text-ink-500">@L.T("Late", "متأخر")</p>
+        <p class="kpi mt-1 text-amber-600">@L.Num(Model.Late)</p>
+    </div>
+    <div class="stat-card !p-4">
+        <p class="text-xs text-ink-500">@L.T("Excused", "غياب بعذر")</p>
+        <p class="kpi mt-1 text-sky-600">@L.Num(Model.Excused)</p>
+    </div>
+    <div class="stat-card !p-4">
+        <p class="text-xs text-ink-500">@L.T("Sections", "الشعب")</p>
+        <p class="kpi mt-1">@L.Num(Model.Sections.Count)</p>
+        <p class="text-[10px] text-ink-500">@L.Num(Model.Sections.Count(x => x.Recorded > 0)) @L.T("recorded", "مسجلة")</p>
+    </div>
+</div>
+
+<div class="card card-pad !py-4 mt-5">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-2">
+            <a asp-action="Index" asp-route-date="@Model.Date.ToString("yyyy-MM-dd")" class="chip @(string.IsNullOrEmpty(filter) ? "!bg-brand-800 !text-white !ring-brand-800" : "")">@L.T("All sections", "كل الشعب")</a>
+            <a asp-action="Index" asp-route-date="@Model.Date.ToString("yyyy-MM-dd")" asp-route-filter="unscheduled" class="chip @(filter == "unscheduled" ? "!bg-brand-800 !text-white !ring-brand-800" : "")">@L.T("Scheduled today only", "المجدولة اليوم فقط")</a>
+        </div>
+        <form method="get" class="flex items-center gap-2">
+            <input type="hidden" name="filter" value="@filter" />
+            <input type="date" name="date" value="@Model.Date.ToString("yyyy-MM-dd")" max="@DateTime.Today.ToString("yyyy-MM-dd")" class="input !py-2 !w-auto" />
+            <button class="btn btn-soft btn-sm">@L.T("Go", "انتقال")</button>
+        </form>
+    </div>
+</div>
+
+<div class="card mt-4 overflow-hidden">
+    <div class="table-wrap">
+        <table class="table-base min-w-[900px]">
+            <thead>
+                <tr>
+                    <th>@L.T("Section", "الشعبة")</th>
+                    <th>@L.T("Schedule", "التوقيت")</th>
+                    <th>@L.T("Enrolled", "المشتركين")</th>
+                    <th>@L.T("Recorded", "المسجل")</th>
+                    <th>@L.T("Present / absent", "حاضر / غائب")</th>
+                    <th>@L.T("Status", "الحالة")</th>
+                    <th class="text-end">@L.T("Action", "الإجراء")</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (Model.Sections.Count == 0)
+            {
+                <tr><td colspan="7"><div class="empty">@L.T("No sections match this view.", "لا توجد شعب مطابقة لهذا العرض.")</div></td></tr>
+            }
+            @foreach (var row in Model.Sections)
+            {
+                <tr class="@(row.IsScheduled ? "" : "opacity-70")">
+                    <td>
+                        <p class="font-semibold text-ink-900">@row.CourseName</p>
+                        <p class="text-[11px] text-ink-500">@row.Section.Name · @row.TeacherName</p>
+                    </td>
+                    <td class="text-xs text-ink-600">
+                        @if (row.IsScheduled)
+                        {
+                            <span class="font-semibold">@row.Time</span>
+                            <p class="text-[10px] text-ink-400">@row.Room</p>
+                        }
+                        else
+                        {
+                            <span class="text-ink-400">@L.T("Not scheduled", "غير مجدولة")</span>
+                        }
+                    </td>
+                    <td class="text-sm font-semibold">@L.Num(row.Enrolled)</td>
+                    <td>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-semibold">@L.Num(row.Recorded)</span>
+                            <span class="text-[10px] text-ink-400">/ @L.Num(row.Enrolled)</span>
+                        </div>
+                    </td>
+                    <td>
+                        @if (row.Recorded == 0)
+                        {
+                            <span class="text-xs text-ink-400">—</span>
+                        }
+                        else
+                        {
+                            <span class="badge badge-green">@L.Num(row.Present)</span>
+                            <span class="badge badge-red">@L.Num(row.Absent)</span>
+                        }
+                    </td>
+                    <td>
+                        @if (row.Recorded == 0)
+                        {
+                            <span class="badge badge-gray">@L.T("Not recorded", "غير مسجل")</span>
+                        }
+                        else if (row.Recorded >= row.Enrolled)
+                        {
+                            <span class="badge badge-green">@L.T("Complete", "مكتمل")</span>
+                        }
+                        else
+                        {
+                            <span class="badge badge-amber">@L.T("Partial", "جزئي")</span>
+                        }
+                    </td>
+                    <td>
+                        <div class="flex justify-end">
+                            <a asp-action="Take" asp-route-sectionId="@row.Section.Id" asp-route-date="@Model.Date.ToString("yyyy-MM-dd")" class="btn @(row.Recorded > 0 ? "btn-outline" : "btn-primary") btn-xs">
+                                <svg class="h-3.5 w-3.5"><use href="#i-check"/></svg>
+                                @(row.Recorded > 0 ? L.T("View", "عرض") : L.T("Take attendance", "تسجيل الحضور"))
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

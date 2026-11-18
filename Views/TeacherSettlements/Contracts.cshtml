@@ -1,0 +1,174 @@
+@model TeacherContractFormViewModel
+@{
+    ViewData["Title"] = L.T("Teacher contracts", "عقود المدرسين");
+    var contracts = ViewBag.Contracts as List<TeacherContract> ?? new();
+    var teachers = ViewBag.Teachers as List<Teacher> ?? new();
+    var defaultShare = (decimal)ViewBag.DefaultShare;
+    var activeCount = contracts.Count(c => c.IsActive);
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Teacher contracts", "عقود المدرسين")</h1>
+        <p class="page-sub">@L.T("Define how each teacher is paid: a share of collected tuition or a fixed monthly retainer.", "حدّد طريقة دفع كل مدرّس: نسبة من الأقساط المحصلة أو مخصص شهري ثابت.")</p>
+    </div>
+    <div class="flex gap-2">
+        <a asp-action="Index" class="btn btn-outline btn-sm"><svg class="h-4 w-4 flip-x"><use href="#i-arrow-left"/></svg>@L.T("Settlements", "التسويات")</a>
+        <a asp-action="Generate" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-sparkles"/></svg>@L.T("Generate statement", "إنشاء كشف")</a>
+    </div>
+</div>
+
+<div class="grid gap-5 lg:grid-cols-3">
+    <div class="card card-pad">
+        <h2 class="section-title">@L.T("New contract", "عقد جديد")</h2>
+        <p class="mt-1 text-xs text-ink-500">@L.T("A teacher can hold one active contract at a time.", "يمكن أن يكون للمدرّس عقد نشط واحد فقط.")</p>
+
+        @if (teachers.Count == 0)
+        {
+            <div class="empty mt-4">@L.T("Add teachers first, then create their contracts.", "أضف المدرسين أولاً ثم أنشئ عقودهم.")</div>
+        }
+        else
+        {
+            <form method="post" asp-action="CreateContract" class="mt-4 space-y-3">
+                @Html.AntiForgeryToken()
+                <div>
+                    <label class="label" asp-for="TeacherId">@L.T("Teacher", "المدرّس")</label>
+                    <select asp-for="TeacherId" class="select">
+                        <option value="0">@L.T("Select teacher…", "اختر المدرّس…")</option>
+                        @foreach (var t in teachers)
+                        {
+                            <option value="@t.Id">@L.Pick(t.FullNameAr, t.FullNameEn) · @t.Code</option>
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label class="label" asp-for="CompensationType">@L.T("Compensation", "نوع الأجر")</label>
+                    <select asp-for="CompensationType" class="select" id="compType">
+                        <option value="PercentageCollected">@L.E(TeacherCompensationType.PercentageCollected)</option>
+                        <option value="FixedMonthly">@L.E(TeacherCompensationType.FixedMonthly)</option>
+                    </select>
+                </div>
+                <div id="shareBox">
+                    <label class="label" asp-for="SharePercent">@L.T("Share percent", "نسبة الحصة")</label>
+                    <input asp-for="SharePercent" type="number" min="0" max="100" step="0.5" class="input" value="@defaultShare" />
+                    <p class="mt-1 text-[10px] text-ink-500">@L.T("Applied to every collected receipt; default from institute settings.", "تُطبّق على كل سند محصّل؛ الافتراضي من إعدادات المعهد.")</p>
+                </div>
+                <div id="fixedBox" class="hidden">
+                    <label class="label" asp-for="FixedMonthlyAmount">@L.T("Fixed monthly amount (IQD)", "المخصص الشهري (د.ع)")</label>
+                    <input asp-for="FixedMonthlyAmount" type="number" min="0" step="1000" class="input" />
+                    <p class="mt-1 text-[10px] text-ink-500">@L.T("Added once per full calendar month when a statement is generated.", "يُضاف مرة واحدة لكل شهر ميلادي كامل عند إنشاء الكشف.")</p>
+                </div>
+                <div class="grid gap-3 sm:grid-cols-2">
+                    <div>
+                        <label class="label" asp-for="StartDate">@L.T("Start date", "تاريخ البدء")</label>
+                        <input asp-for="StartDate" type="date" class="input" />
+                    </div>
+                    <div>
+                        <label class="label" asp-for="EndDate">@L.T("End date", "تاريخ الانتهاء")</label>
+                        <input asp-for="EndDate" type="date" class="input" />
+                    </div>
+                </div>
+                <div>
+                    <label class="label" asp-for="Notes">@L.T("Notes", "ملاحظات")</label>
+                    <textarea asp-for="Notes" class="textarea" rows="2" placeholder="@L.T("Optional terms note…", "ملاحظة شروط اختيارية…")"></textarea>
+                </div>
+                <label class="flex items-center gap-2 text-xs text-ink-700">
+                    <input asp-for="IsActive" type="checkbox" />
+                    @L.T("Active immediately", "نشط فوراً")
+                </label>
+                <button class="btn btn-primary w-full"><svg class="h-4 w-4"><use href="#i-check"/></svg>@L.T("Create contract", "إنشاء العقد")</button>
+            </form>
+        }
+    </div>
+
+    <div class="card overflow-hidden lg:col-span-2">
+        <div class="card-header">
+            <h2 class="section-title">@L.T("Contract register", "سجل العقود")</h2>
+            <span class="chip">@L.Num(activeCount) @L.T("active", "نشط")</span>
+        </div>
+        <div class="table-wrap">
+            <table class="table-base">
+                <thead>
+                    <tr>
+                        <th>@L.T("Contract", "العقد")</th>
+                        <th>@L.T("Teacher", "المدرّس")</th>
+                        <th>@L.T("Compensation", "الأجر")</th>
+                        <th>@L.T("Terms", "الشروط")</th>
+                        <th>@L.T("Period", "الفترة")</th>
+                        <th>@L.T("Status", "الحالة")</th>
+                        <th class="text-end"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (contracts.Count == 0)
+                {
+                    <tr><td colspan="7"><div class="empty">@L.T("No teacher contracts yet. Seeded percentage contracts appear after the first receipt.", "لا توجد عقود مدرسين بعد. تظهر عقود النسبة المُهيّأة بعد أول سند.")</div></td></tr>
+                }
+                @foreach (var c in contracts)
+                {
+                    <tr>
+                        <td class="font-mono text-[11px] font-bold text-brand-900">@c.ContractNo</td>
+                        <td>
+                            <p class="text-xs font-semibold text-ink-800">@L.Pick(c.Teacher.FullNameAr, c.Teacher.FullNameEn)</p>
+                            <p class="text-[10px] text-ink-500">@c.Teacher.Code</p>
+                        </td>
+                        <td><span class="badge badge-gray">@L.E(c.CompensationType)</span></td>
+                        <td class="text-xs text-ink-700">
+                            @if (c.CompensationType == TeacherCompensationType.PercentageCollected)
+                            {
+                                <span>@L.Percent(c.SharePercent)</span>
+                            }
+                            else
+                            {
+                                <span>@L.Money(c.FixedMonthlyAmount) / @L.T("month", "شهر")</span>
+                            }
+                        </td>
+                        <td class="text-xs text-ink-500">
+                            @L.DateShort(c.StartDate)
+                            @if (c.EndDate.HasValue)
+                            {
+                                <span> – @L.DateShort(c.EndDate.Value)</span>
+                            }
+                        </td>
+                        <td>
+                            @if (c.IsActive)
+                            {
+                                <span class="badge badge-green">@L.T("Active", "نشط")</span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-gray">@L.T("Inactive", "موقوف")</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            <div class="flex justify-end gap-1">
+                                <a asp-action="Generate" asp-route-teacherId="@c.TeacherId" class="icon-btn" title="@L.T("Generate statement", "إنشاء كشف")"><svg class="h-4 w-4"><use href="#i-sparkles"/></svg></a>
+                                <form method="post" asp-action="ToggleContract" asp-route-id="@c.Id">
+                                    @Html.AntiForgeryToken()
+                                    <button class="btn btn-ghost btn-xs" title="@(c.IsActive ? L.T("Deactivate", "إيقاف") : L.T("Activate", "تنشيط"))">
+                                        @(c.IsActive ? L.T("Deactivate", "إيقاف") : L.T("Activate", "تنشيط"))
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        const type = document.getElementById('compType');
+        const share = document.getElementById('shareBox');
+        const fixed = document.getElementById('fixedBox');
+        function sync() {
+            const isFixed = type.value === 'FixedMonthly';
+            fixed.classList.toggle('hidden', !isFixed);
+            share.classList.toggle('hidden', isFixed);
+        }
+        type.addEventListener('change', sync);
+        sync();
+    })();
+</script>

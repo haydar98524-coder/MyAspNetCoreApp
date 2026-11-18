@@ -1,0 +1,173 @@
+@model TeacherRequestsViewModel
+@{
+    ViewData["Title"] = L.T("Private lesson requests", "طلبات الدروس الخصوصية");
+    var teacher = ViewBag.Teacher as Teacher;
+}
+<div class="page-head">
+    <div>
+        <div class="flex items-center gap-2 text-xs text-ink-500">
+            <a asp-action="Index" class="link">@L.T("Teacher dashboard", "لوحة المدرّس")</a>
+            <svg class="h-3.5 w-3.5"><use href="#i-chevron-down"/></svg>
+            <span>@L.T("Private lessons", "الدروس الخصوصية")</span>
+        </div>
+        <h1 class="page-title mt-1">@L.T("Private lesson requests", "طلبات الدروس الخصوصية")</h1>
+        <p class="page-sub">@(teacher is null ? "" : L.Pick(teacher.FullNameAr, teacher.FullNameEn)) · @L.T("Assignments and scheduled lessons", "الإسنادات والدروس المجدولة")</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <a asp-action="Schedule" class="btn btn-outline btn-sm"><svg class="h-4 w-4"><use href="#i-calendar"/></svg>@L.T("Schedule", "الجدول")</a>
+        <a asp-action="Earnings" class="btn btn-soft btn-sm"><svg class="h-4 w-4"><use href="#i-wallet"/></svg>@L.T("Earnings", "المستحقات")</a>
+    </div>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-3">
+    <div class="stat-card">
+        <p class="text-xs font-semibold text-ink-500">@L.T("Open assignments", "إسنادات مفتوحة")</p>
+        <p class="kpi mt-2">@L.Num(Model.OpenRequests)</p>
+        <p class="mt-1 text-[11px] text-ink-500">@L.T("Awaiting scheduling or confirmation", "بانتظار الجدولة أو التأكيد")</p>
+    </div>
+    <div class="stat-card">
+        <p class="text-xs font-semibold text-ink-500">@L.T("Upcoming lessons", "دروس قادمة")</p>
+        <p class="kpi mt-2">@L.Num(Model.UpcomingLessons)</p>
+        <p class="mt-1 text-[11px] text-ink-500">@L.T("Scheduled from today", "مجدولة من اليوم")</p>
+    </div>
+    <div class="stat-card">
+        <p class="text-xs font-semibold text-ink-500">@L.T("Completed lessons", "دروس مكتملة")</p>
+        <p class="kpi mt-2 text-emerald-700">@L.Num(Model.CompletedLessons)</p>
+        <p class="mt-1 text-[11px] text-ink-500">@L.T("Recorded by the administration", "مسجلة من الإدارة")</p>
+    </div>
+</div>
+
+<div class="card mt-5">
+    <div class="card-header">
+        <div>
+            <p class="section-title">@L.T("My assignments", "إسناداتي")</p>
+            <p class="mt-0.5 text-xs text-ink-500">@L.T("Requests where I am the matched or preferred teacher", "الطلبات التي أكون فيها المدرّس المسند أو المفضل")</p>
+        </div>
+    </div>
+    @if (Model.Requests.Count == 0)
+    {
+        <div class="empty">@L.T("No private lesson requests are assigned to you.", "لا توجد طلبات دروس خصوصية مسندة إليك.")</div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="table-base">
+                <thead>
+                    <tr>
+                        <th>@L.T("Created", "تاريخ الطلب")</th>
+                        <th>@L.T("Student / guardian", "الطالب / ولي الأمر")</th>
+                        <th>@L.T("Subject", "المادة")</th>
+                        <th>@L.T("Mode & area", "النمط والمنطقة")</th>
+                        <th>@L.T("Preferred", "الموعد المفضل")</th>
+                        <th>@L.T("Status", "الحالة")</th>
+                        <th class="text-end">@L.T("Details", "التفاصيل")</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var r in Model.Requests)
+                {
+                    <tr>
+                        <td class="text-xs text-ink-500">@L.DateShort(r.CreatedAt.ToLocalTime())</td>
+                        <td>
+                            <p class="text-sm font-semibold text-ink-900">@(r.Student is not null ? L.Pick(r.Student.FullNameAr, r.Student.FullNameEn) : r.GuardianName)</p>
+                            <p class="text-[11px] text-ink-500">@r.GuardianName · @r.GuardianPhone</p>
+                        </td>
+                        <td>
+                            <p class="text-sm">@L.Pick(r.Subject.NameAr, r.Subject.NameEn)</p>
+                            <p class="text-[11px] text-ink-500">@L.Pick(r.Grade.NameAr, r.Grade.NameEn)</p>
+                        </td>
+                        <td>
+                            <span class="badge badge-blue">@L.E(r.Mode)</span>
+                            <p class="mt-1 text-[11px] text-ink-500">@r.Area</p>
+                        </td>
+                        <td class="text-xs">
+                            <p>@r.PreferredTime · @r.DurationMinutes @L.T("min", "دقيقة")</p>
+                            <p class="text-[11px] text-ink-500">@L.Num(r.DaysPerWeek) @L.T("days/week", "أيام/أسبوع")</p>
+                        </td>
+                        <td>
+                            @switch (r.Status)
+                            {
+                                case RequestStatus.Pending: <span class="badge badge-amber">@L.E(r.Status)</span> break;
+                                case RequestStatus.Matched: <span class="badge badge-blue">@L.E(r.Status)</span> break;
+                                case RequestStatus.Accepted: <span class="badge badge-green">@L.E(r.Status)</span> break;
+                                case RequestStatus.Rejected: <span class="badge badge-red">@L.E(r.Status)</span> break;
+                                default: <span class="badge badge-gray">@L.E(r.Status)</span> break;
+                            }
+                        </td>
+                        <td class="text-end">
+                            <a asp-controller="PrivateLessons" asp-action="Details" asp-route-id="@r.Id" class="btn btn-soft btn-xs"><svg class="h-3.5 w-3.5"><use href="#i-eye"/></svg>@L.T("Open", "فتح")</a>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<div class="card mt-5">
+    <div class="card-header">
+        <div>
+            <p class="section-title">@L.T("Scheduled private lessons", "الدروس الخصوصية المجدولة")</p>
+            <p class="mt-0.5 text-xs text-ink-500">@L.T("Fees and shares are managed by the administration", "الرسوم والحصص تُدار من الإدارة")</p>
+        </div>
+    </div>
+    @if (Model.Lessons.Count == 0)
+    {
+        <div class="empty">@L.T("No private lessons have been scheduled yet.", "لم تُجدول دروس خصوصية بعد.")</div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="table-base">
+                <thead>
+                    <tr>
+                        <th>@L.T("Date & time", "التاريخ والوقت")</th>
+                        <th>@L.T("Subject", "المادة")</th>
+                        <th>@L.T("Student", "الطالب")</th>
+                        <th>@L.T("Mode", "النمط")</th>
+                        <th class="text-end">@L.T("Fee", "الرسوم")</th>
+                        <th class="text-end">@L.T("My share", "حصتي")</th>
+                        <th>@L.T("Status", "الحالة")</th>
+                        <th class="text-end">@L.T("Details", "التفاصيل")</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var l in Model.Lessons)
+                {
+                    var share = (long)Math.Round(l.Fee * l.TeacherSharePercent / 100m);
+                    <tr>
+                        <td class="text-xs">
+                            <p class="font-semibold text-ink-800">@L.Date(l.Date)</p>
+                            <p class="text-[11px] text-ink-500">@l.StartTime · @l.DurationMinutes @L.T("min", "دقيقة")</p>
+                        </td>
+                        <td class="text-sm">@L.Pick(l.Subject.NameAr, l.Subject.NameEn)</td>
+                        <td class="text-xs">@(l.Student is null ? "—" : L.Pick(l.Student.FullNameAr, l.Student.FullNameEn))</td>
+                        <td><span class="badge badge-blue">@L.E(l.Mode)</span></td>
+                        <td class="text-end text-xs">@L.Money(l.Fee)</td>
+                        <td class="text-end text-sm font-bold text-brand-800">@L.Money(share)</td>
+                        <td>
+                            @switch (l.Status)
+                            {
+                                case PrivateLessonStatus.Scheduled: <span class="badge badge-amber">@L.E(l.Status)</span> break;
+                                case PrivateLessonStatus.Completed: <span class="badge badge-green">@L.E(l.Status)</span> break;
+                                case PrivateLessonStatus.Cancelled: <span class="badge badge-gray">@L.E(l.Status)</span> break;
+                                default: <span class="badge badge-red">@L.E(l.Status)</span> break;
+                            }
+                        </td>
+                        <td class="text-end">
+                            <a asp-controller="PrivateLessons" asp-action="Details" asp-route-id="@l.RequestId" class="btn btn-soft btn-xs">@L.T("Open", "فتح")</a>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<p class="mt-4 flex items-center gap-2 text-[11px] text-ink-500">
+    <svg class="h-4 w-4 text-brand-600"><use href="#i-info"/></svg>
+    @L.T("Matching, scheduling, completion and fee collection are performed by the administration. Contact the office to update your availability.",
+        "الإسناد والجدولة والإكمال وقبض الرسوم تتم من الإدارة. تواصل مع المكتب لتحديث أوقات توفرك.")
+</p>

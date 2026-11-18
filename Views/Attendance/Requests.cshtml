@@ -1,0 +1,107 @@
+@model List<AttendanceChangeRequest>
+@{
+    ViewData["Title"] = L.T("Attendance change requests", "طلبات تعديل الحضور");
+    var status = ViewBag.Status as ChangeRequestStatus?;
+    var pending = (int)ViewBag.Pending;
+    var approved = (int)ViewBag.Approved;
+    var rejected = (int)ViewBag.Rejected;
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Attendance change requests", "طلبات تعديل الحضور")</h1>
+        <p class="page-sub">@L.T("Every correction is reviewed and audited before it reaches the register.", "كل تصحيح يُراجع ويُدقق قبل أن يصل إلى السجل.")</p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline btn-sm"><svg class="h-4 w-4 flip-x"><use href="#i-arrow-left"/></svg>@L.T("Attendance register", "سجل الحضور")</a>
+</div>
+
+<div class="grid gap-3 sm:grid-cols-3">
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Pending", "قيد المراجعة")</p><p class="kpi mt-1 text-amber-600">@L.Num(pending)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Approved", "تمت الموافقة")</p><p class="kpi mt-1 text-emerald-700">@L.Num(approved)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Rejected", "مرفوض")</p><p class="kpi mt-1 text-red-600">@L.Num(rejected)</p></div>
+</div>
+
+<div class="card card-pad !py-4 mt-5">
+    <div class="flex flex-wrap gap-2">
+        <a asp-action="Requests" class="chip @(status is null ? "!bg-brand-800 !text-white !ring-brand-800" : "")">@L.T("All requests", "كل الطلبات")</a>
+        <a asp-action="Requests" asp-route-status="Pending" class="chip @(status == ChangeRequestStatus.Pending ? "!bg-brand-800 !text-white !ring-brand-800" : "")">@L.E(ChangeRequestStatus.Pending)</a>
+        <a asp-action="Requests" asp-route-status="Approved" class="chip @(status == ChangeRequestStatus.Approved ? "!bg-brand-800 !text-white !ring-brand-800" : "")">@L.E(ChangeRequestStatus.Approved)</a>
+        <a asp-action="Requests" asp-route-status="Rejected" class="chip @(status == ChangeRequestStatus.Rejected ? "!bg-brand-800 !text-white !ring-brand-800" : "")">@L.E(ChangeRequestStatus.Rejected)</a>
+    </div>
+</div>
+
+<div class="mt-4 space-y-3">
+@if (Model.Count == 0)
+{
+    <div class="card"><div class="empty">
+        <span class="stat-icon bg-brand-50 text-brand-700"><svg class="h-6 w-6"><use href="#i-check"/></svg></span>
+        <p>@L.T("No change requests in this view.", "لا توجد طلبات تعديل في هذا العرض.")</p>
+    </div></div>
+}
+@foreach (var r in Model)
+{
+    var tone = r.Status == ChangeRequestStatus.Pending ? "badge-amber" : r.Status == ChangeRequestStatus.Approved ? "badge-green" : "badge-red";
+    <div class="card p-5">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="flex items-start gap-3">
+                <span class="avatar h-10 w-10 bg-brand-100 text-xs text-brand-800">@L.Initials(r.Attendance.Student.FullNameAr)</span>
+                <div>
+                    <p class="font-bold text-brand-950">@L.Pick(r.Attendance.Student.FullNameAr, r.Attendance.Student.FullNameEn)</p>
+                    <p class="text-xs text-ink-500">@r.Attendance.Section.Course.NameAr · @r.Attendance.Section.Name · @L.Date(r.Attendance.Date)</p>
+                </div>
+            </div>
+            <span class="badge @tone">@L.E(r.Status)</span>
+        </div>
+
+        <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div class="rounded-xl bg-sand-50 p-3">
+                <p class="text-[10px] font-bold uppercase tracking-wide text-ink-400">@L.T("Current status", "الحالة الحالية")</p>
+                <p class="mt-1 text-sm font-bold text-ink-900">@L.E(r.Attendance.Status)</p>
+            </div>
+            <div class="rounded-xl bg-sand-50 p-3">
+                <p class="text-[10px] font-bold uppercase tracking-wide text-ink-400">@L.T("Requested status", "الحالة المطلوبة")</p>
+                <p class="mt-1 text-sm font-bold text-brand-800">@L.E(r.NewStatus)</p>
+            </div>
+            <div class="rounded-xl bg-sand-50 p-3">
+                <p class="text-[10px] font-bold uppercase tracking-wide text-ink-400">@L.T("Requested by", "مقدم الطلب")</p>
+                <p class="mt-1 text-sm font-semibold text-ink-800">@r.RequestedByName</p>
+                <p class="text-[10px] text-ink-400">@L.DateTimeShort(r.CreatedAt.ToLocalTime())</p>
+            </div>
+            <div class="rounded-xl bg-sand-50 p-3">
+                <p class="text-[10px] font-bold uppercase tracking-wide text-ink-400">@L.T("Reviewed by", "المراجع")</p>
+                <p class="mt-1 text-sm font-semibold text-ink-800">@(r.ReviewedByName ?? "—")</p>
+                @if (r.ReviewedAt.HasValue) { <p class="text-[10px] text-ink-400">@L.DateTimeShort(r.ReviewedAt.Value.ToLocalTime())</p> }
+            </div>
+        </div>
+
+        <div class="mt-3 rounded-xl border border-sand-200 bg-white p-3">
+            <p class="text-[10px] font-bold uppercase tracking-wide text-ink-400">@L.T("Reason", "السبب")</p>
+            <p class="mt-1 text-sm text-ink-700">@r.Reason</p>
+            @if (!string.IsNullOrWhiteSpace(r.ReviewNote))
+            {
+                <p class="mt-2 border-t border-sand-200 pt-2 text-xs text-ink-500"><span class="font-bold">@L.T("Review note", "ملاحظة المراجعة"):</span> @r.ReviewNote</p>
+            }
+        </div>
+
+        @if (r.Status == ChangeRequestStatus.Pending)
+        {
+            <div class="mt-4 flex flex-wrap items-end gap-2 border-t border-sand-200 pt-4">
+                <form asp-action="Approve" method="post" class="flex flex-1 flex-wrap items-end gap-2">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@r.Id" />
+                    <div class="min-w-48 flex-1">
+                        <label class="label">@L.T("Approval note (optional)", "ملاحظة الموافقة (اختياري)")</label>
+                        <input name="note" class="input !py-2" placeholder="@L.T("Optional note…", "ملاحظة اختيارية…")" />
+                    </div>
+                    <button class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-check"/></svg>@L.T("Approve correction", "اعتماد التعديل")</button>
+                </form>
+                <form asp-action="Reject" method="post" class="flex items-end gap-2" onsubmit="return confirm('@L.T("Reject this request?", "هل تريد رفض هذا الطلب؟")')">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@r.Id" />
+                    <input name="note" class="input !py-2 !w-48" placeholder="@L.T("Rejection reason…", "سبب الرفض…")" />
+                    <button class="btn btn-danger btn-sm"><svg class="h-4 w-4"><use href="#i-x"/></svg>@L.T("Reject", "رفض")</button>
+                </form>
+            </div>
+        }
+    </div>
+}
+</div>

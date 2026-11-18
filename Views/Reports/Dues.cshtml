@@ -1,0 +1,108 @@
+@model DuesReportViewModel
+@{
+    ViewData["Title"] = L.T("Dues aging", "أعمار الذمم");
+    var current = Model.Total - Model.Overdue;
+    var b1 = Model.Rows.Where(r => r.Bucket == 1).Sum(r => r.Remaining);
+    var b2 = Model.Rows.Where(r => r.Bucket == 2).Sum(r => r.Remaining);
+    var b3 = Model.Rows.Where(r => r.Bucket == 3).Sum(r => r.Remaining);
+    var canCollect = User.IsInRole(Roles.Administrator) || User.IsInRole(Roles.Manager) || User.IsInRole(Roles.Accountant) || User.IsInRole(Roles.Registrar);
+}
+<div class="page-head">
+    <div>
+        <div class="mb-1 flex items-center gap-2 text-xs text-ink-500">
+            <a asp-action="Index" class="hover:text-brand-700">@L.T("Reports", "التقارير")</a>
+            <svg class="h-3 w-3 flip-x"><use href="#i-chevron-down"/></svg>
+            <span>@L.T("Dues aging", "أعمار الذمم")</span>
+        </div>
+        <h1 class="page-title">@L.T("Dues aging", "أعمار الذمم")</h1>
+        <p class="page-sub">@L.T("As of", "بتاريخ") @L.Date(Model.AsOf) · @L.Num(Model.Students) @L.T("students", "طالباً")</p>
+    </div>
+    <div class="flex gap-2 no-print">
+        <a asp-action="Index" class="btn btn-outline btn-sm">@L.T("Back", "رجوع")</a>
+        <button type="button" class="btn btn-primary btn-sm" onclick="window.print()"><svg class="h-4 w-4"><use href="#i-printer"/></svg>@L.T("Print", "طباعة")</button>
+    </div>
+</div>
+
+<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Total outstanding", "إجمالي المتبقي")</p><p class="kpi mt-1 text-brand-900">@L.Money(Model.Total)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Not due yet", "غير مستحق بعد")</p><p class="kpi mt-1 text-emerald-700">@L.Money(current)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Overdue", "متأخر")</p><p class="kpi mt-1 text-red-600">@L.Money(Model.Overdue)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("31–60 days", "31–60 يوماً")</p><p class="kpi mt-1 text-amber-600">@L.Money(b2)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("60+ days", "أكثر من 60 يوماً")</p><p class="kpi mt-1 text-red-700">@L.Money(b3)</p></div>
+</div>
+
+<div class="card mt-4 overflow-hidden">
+    <div class="card-header">
+        <div>
+            <h2 class="section-title">@L.T("Outstanding balances", "الأرصدة المتبقية")</h2>
+            <p class="text-[11px] text-ink-500">@L.T("1–30 days", "1–30 يوماً"): @L.Money(b1) · @L.T("31–60 days", "31–60 يوماً"): @L.Money(b2) · @L.T("Over 60 days", "أكثر من 60 يوماً"): @L.Money(b3)</p>
+        </div>
+    </div>
+    <div class="table-wrap">
+        <table class="table-base min-w-[1000px]">
+            <thead>
+                <tr>
+                    <th>@L.T("Student", "الطالب")</th>
+                    <th>@L.T("Guardian", "ولي الأمر")</th>
+                    <th>@L.T("Charged", "المحتسب")</th>
+                    <th>@L.T("Paid", "المدفوع")</th>
+                    <th>@L.T("Remaining", "المتبقي")</th>
+                    <th>@L.T("Due date", "تاريخ الاستحقاق")</th>
+                    <th>@L.T("Overdue", "التأخير")</th>
+                    <th class="text-end">@L.T("Action", "الإجراء")</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (Model.Rows.Count == 0)
+            {
+                <tr><td colspan="8"><div class="empty">@L.T("All student dues are settled.", "كل ذمم الطلاب مسددة.")</div></td></tr>
+            }
+            @foreach (var row in Model.Rows)
+            {
+                <tr>
+                    <td>
+                        <a asp-controller="Students" asp-action="Details" asp-route-id="@row.Student.Id" class="font-semibold text-brand-900 hover:underline">@L.Pick(row.Student.FullNameAr, row.Student.FullNameEn)</a>
+                        <p class="text-[11px] text-ink-500">@row.Student.StudentNo · @row.GradeName</p>
+                    </td>
+                    <td class="text-xs text-ink-600">@row.ParentName</td>
+                    <td class="text-xs">@L.Money(row.Amount)</td>
+                    <td class="text-xs text-emerald-700">@L.Money(row.Paid)</td>
+                    <td class="text-sm font-bold text-red-600">@L.Money(row.Remaining)</td>
+                    <td class="text-xs text-ink-600">@L.Date(row.DueDate)</td>
+                    <td>
+                        @if (row.DaysOverdue <= 0)
+                        {
+                            <span class="badge badge-gray">@L.T("Not due", "غير مستحق")</span>
+                        }
+                        else if (row.Bucket == 1)
+                        {
+                            <span class="badge badge-amber">@L.Num(row.DaysOverdue) @L.T("days", "يوماً")</span>
+                        }
+                        else
+                        {
+                            <span class="badge badge-red">@L.Num(row.DaysOverdue) @L.T("days", "يوماً")</span>
+                        }
+                    </td>
+                    <td>
+                        <div class="flex justify-end">
+                            @if (canCollect)
+                            {
+                                <a asp-controller="Payments" asp-action="Collect" asp-route-studentId="@row.Student.Id" class="btn btn-primary btn-xs"><svg class="h-3.5 w-3.5"><use href="#i-receipt"/></svg>@L.T("Collect", "تحصيل")</a>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+            <tfoot>
+                <tr class="bg-sand-50 font-bold">
+                    <td colspan="2">@L.T("Total", "الإجمالي")</td>
+                    <td>@L.Money(Model.Rows.Sum(r => r.Amount))</td>
+                    <td class="text-emerald-700">@L.Money(Model.Rows.Sum(r => r.Paid))</td>
+                    <td class="text-red-600">@L.Money(Model.Total)</td>
+                    <td colspan="3"></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>

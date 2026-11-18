@@ -1,0 +1,62 @@
+@model ParentFormViewModel
+@{
+    var isEdit = Model.Id > 0;
+    ViewData["Title"] = isEdit ? L.T("Edit guardian", "تعديل ولي الأمر") : L.T("New guardian", "ولي أمر جديد");
+}
+<div class="page-head">
+    <div>
+        <div class="mb-1 flex items-center gap-2 text-xs text-ink-500">
+            <a asp-action="Index" class="hover:text-brand-700">@L.T("Parents", "أولياء الأمور")</a>
+            <svg class="h-3 w-3 flip-x"><use href="#i-chevron-down"/></svg>
+            <span>@(isEdit ? L.T("Edit", "تعديل") : L.T("New", "جديد"))</span>
+        </div>
+        <h1 class="page-title">@(isEdit ? L.T("Edit guardian", "تعديل بيانات ولي الأمر") : L.T("New guardian record", "سجل ولي أمر جديد"))</h1>
+    </div>
+</div>
+<form method="post" asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@(isEdit ? Model.Id : (int?)null)" class="mx-auto max-w-3xl">
+    <input type="hidden" asp-for="Id" />
+    <div class="card card-pad">
+        <div asp-validation-summary="ModelOnly" class="alert alert-error mb-4 @(ViewData.ModelState.IsValid ? "hidden" : "")"></div>
+        <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+                <label asp-for="FullNameAr" class="label">@L.T("Full name (Arabic)", "الاسم الكامل (عربي)") *</label>
+                <input asp-for="FullNameAr" class="input" />
+                <span asp-validation-for="FullNameAr" class="field-error"></span>
+            </div>
+            <div>
+                <label asp-for="FullNameEn" class="label">@L.T("Full name (English)", "الاسم الكامل (إنكليزي)")</label>
+                <input asp-for="FullNameEn" class="input" dir="ltr" />
+            </div>
+            <div>
+                <label asp-for="Phone" class="label">@L.T("Phone", "الهاتف") *</label>
+                <input asp-for="Phone" class="input" dir="ltr" />
+                <span asp-validation-for="Phone" class="field-error"></span>
+            </div>
+            <div>
+                <label asp-for="Email" class="label">@L.T("Email", "البريد الإلكتروني")</label>
+                <input asp-for="Email" class="input" dir="ltr" />
+            </div>
+            <div>
+                <label asp-for="Area" class="label">@L.T("Area", "المنطقة")</label>
+                <input asp-for="Area" class="input" />
+            </div>
+            <div>
+                <label asp-for="Occupation" class="label">@L.T("Occupation", "المهنة")</label>
+                <input asp-for="Occupation" class="input" />
+            </div>
+            <div class="sm:col-span-2">
+                <label asp-for="Address" class="label">@L.T("Address", "العنوان")</label>
+                <input asp-for="Address" class="input" />
+            </div>
+            <div class="sm:col-span-2">
+                <label asp-for="Notes" class="label">@L.T("Notes", "ملاحظات")</label>
+                <textarea asp-for="Notes" class="textarea"></textarea>
+            </div>
+        </div>
+        <div class="mt-5 flex justify-end gap-2">
+            <a asp-action="Index" class="btn btn-outline">@L.T("Cancel", "إلغاء")</a>
+            <button class="btn btn-primary"><svg class="h-4 w-4"><use href="#i-check"/></svg>@L.T("Save", "حفظ")</button>
+        </div>
+    </div>
+    <p class="mt-3 text-center text-xs text-ink-500">@L.T("A guardian portal account can be created later from Users & roles.", "يمكن إنشاء حساب بوابة لولي الأمر لاحقاً من المستخدمين والصلاحيات.")</p>
+</form>

@@ -1,0 +1,108 @@
+@model EmployeeFormViewModel
+@{
+    var isEdit = Model.Id > 0;
+    ViewData["Title"] = isEdit ? L.T("Edit employee", "تعديل موظف") : L.T("Add employee", "إضافة موظف");
+}
+<div class="page-head">
+    <div>
+        <div class="mb-1 flex items-center gap-2 text-xs text-ink-500">
+            <a asp-action="Index" class="hover:text-brand-700">@L.T("Employees", "الموظفون")</a>
+            <svg class="h-3 w-3 flip-x"><use href="#i-chevron-down"/></svg>
+            <span>@(isEdit ? L.T("Edit", "تعديل") : L.T("New", "جديد"))</span>
+        </div>
+        <h1 class="page-title">@(isEdit ? L.T("Edit employee record", "تعديل بيانات الموظف") : L.T("Add a new employee", "إضافة موظف جديد"))</h1>
+    </div>
+    <a asp-action="Index" class="btn btn-outline btn-sm">@L.T("Cancel", "إلغاء")</a>
+</div>
+
+<form method="post" asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@(isEdit ? Model.Id : (int?)null)" class="grid gap-5 lg:grid-cols-3">
+    <input type="hidden" asp-for="Id" />
+    <div class="space-y-5 lg:col-span-2">
+        <div asp-validation-summary="ModelOnly" class="alert alert-error @(ViewData.ModelState.IsValid ? "hidden" : "")"></div>
+        <div class="card card-pad">
+            <h2 class="section-title mb-4">@L.T("Personal details", "البيانات الشخصية")</h2>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label asp-for="FullNameAr" class="label">@L.T("Full name (Arabic)", "الاسم الكامل (عربي)") *</label>
+                    <input asp-for="FullNameAr" class="input" />
+                    <span asp-validation-for="FullNameAr" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="FullNameEn" class="label">@L.T("Full name (English)", "الاسم الكامل (إنكليزي)") *</label>
+                    <input asp-for="FullNameEn" class="input" dir="ltr" />
+                    <span asp-validation-for="FullNameEn" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="Phone" class="label">@L.T("Phone", "الهاتف") *</label>
+                    <input asp-for="Phone" class="input" dir="ltr" />
+                    <span asp-validation-for="Phone" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="Email" class="label">@L.T("Email", "البريد الإلكتروني")</label>
+                    <input asp-for="Email" class="input" dir="ltr" />
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-pad">
+            <h2 class="section-title mb-4">@L.T("Job details", "بيانات الوظيفة")</h2>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label asp-for="JobTitleAr" class="label">@L.T("Job title (Arabic)", "المسمى الوظيفي (عربي)") *</label>
+                    <input asp-for="JobTitleAr" class="input" placeholder="@L.T("Accountant", "محاسب")" />
+                    <span asp-validation-for="JobTitleAr" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="JobTitleEn" class="label">@L.T("Job title (English)", "المسمى الوظيفي (إنكليزي)") *</label>
+                    <input asp-for="JobTitleEn" class="input" dir="ltr" placeholder="Accountant" />
+                    <span asp-validation-for="JobTitleEn" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="Department" class="label">@L.T("Department", "القسم") *</label>
+                    <input asp-for="Department" class="input" placeholder="@L.T("Finance, Services, Registry…", "المحاسبة، الخدمات، التسجيل…")" />
+                    <span asp-validation-for="Department" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="HireDate" class="label">@L.T("Hire date", "تاريخ التعيين")</label>
+                    <input asp-for="HireDate" type="date" class="input" />
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-pad">
+            <h2 class="section-title mb-4">@L.T("Salary", "الراتب")</h2>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label asp-for="BasicSalary" class="label">@L.T("Basic monthly salary (IQD)", "الراتب الأساسي الشهري (د.ع)")</label>
+                    <input asp-for="BasicSalary" type="number" step="1000" min="0" class="input" />
+                    <span asp-validation-for="BasicSalary" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="Allowances" class="label">@L.T("Fixed allowances (IQD)", "المخصصات الثابتة (د.ع)")</label>
+                    <input asp-for="Allowances" type="number" step="1000" min="0" class="input" />
+                    <p class="help">@L.T("Transport, mobile, responsibility…", "نقل، هاتف، مسؤولية…")</p>
+                </div>
+                <div class="sm:col-span-2">
+                    <label asp-for="Notes" class="label">@L.T("Notes", "ملاحظات")</label>
+                    <textarea asp-for="Notes" class="textarea"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="space-y-5">
+        <div class="card card-pad">
+            <h2 class="section-title mb-4">@L.T("Employment status", "حالة التوظيف")</h2>
+            <select asp-for="Status" class="select">
+                @foreach (var value in Enum.GetValues<StaffStatus>())
+                {
+                    <option value="@value">@L.E(value)</option>
+                }
+            </select>
+        </div>
+        <div class="card card-pad !bg-brand-50">
+            <p class="flex items-start gap-2 text-xs text-brand-800"><svg class="mt-0.5 h-4 w-4 shrink-0"><use href="#i-info"/></svg><span>@L.T("Absence deductions are calculated automatically from staff attendance when payroll is generated (basic salary ÷ 30 per absent day).", "تُحتسب خصومات الغياب تلقائياً من حضور الموظفين عند توليد الرواتب (الراتب الأساسي ÷ 30 لكل يوم غياب).")</span></p>
+        </div>
+        <button class="btn btn-primary btn-lg w-full"><svg class="h-5 w-5"><use href="#i-check"/></svg>@(isEdit ? L.T("Save changes", "حفظ التغييرات") : L.T("Add employee", "إضافة الموظف"))</button>
+    </div>
+</form>

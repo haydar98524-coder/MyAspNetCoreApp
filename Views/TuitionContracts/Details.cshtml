@@ -1,0 +1,135 @@
+@model TuitionContract
+@{
+    ViewData["Title"] = Model.ContractNo;
+    var payments = ViewBag.Payments as List<Payment> ?? new();
+    var outstanding = Model.Outstanding;
+    var badge = Model.Status == TuitionContractStatus.Active ? "badge-green" : Model.Status == TuitionContractStatus.Completed ? "badge-blue" : Model.Status == TuitionContractStatus.Cancelled ? "badge-gray" : "badge-amber";
+}
+<div class="page-head">
+    <div>
+        <div class="mb-1 flex items-center gap-2 text-xs text-ink-500">
+            <a asp-action="Index" class="hover:text-brand-700">@L.T("Tuition contracts", "عقود الرسوم")</a>
+            <svg class="h-3 w-3 flip-x"><use href="#i-chevron-down"/></svg>
+            <span class="font-mono">@Model.ContractNo</span>
+        </div>
+        <h1 class="page-title flex items-center gap-3">@L.Pick(Model.Student.FullNameAr, Model.Student.FullNameEn) <span class="badge @badge">@L.E(Model.Status)</span></h1>
+        <p class="page-sub">@L.Pick(Model.Course.NameAr, Model.Course.NameEn) · @Model.Student.StudentNo · @L.DateShort(Model.StartDate)</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <a asp-controller="Students" asp-action="Details" asp-route-id="@Model.StudentId" class="btn btn-outline btn-sm"><svg class="h-4 w-4"><use href="#i-user"/></svg>@L.T("Student file", "ملف الطالب")</a>
+        @if (outstanding > 0 && Model.Status == TuitionContractStatus.Active)
+        {
+            <a asp-controller="Payments" asp-action="Collect" asp-route-studentId="@Model.StudentId" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-cash"/></svg>@L.T("Collect", "تحصيل")</a>
+        }
+    </div>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("List fee", "الرسوم الأساسية")</p><p class="kpi mt-1">@L.Money(Model.ListFee)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Net contract", "صافي العقد")</p><p class="kpi mt-1">@L.Money(Model.NetFee)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Paid", "المسدد")</p><p class="kpi mt-1 text-emerald-700">@L.Money(Model.Paid)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Outstanding", "المتبقي")</p><p class="kpi mt-1 @(outstanding > 0 ? "text-amber-700" : "text-emerald-700")">@L.Money(outstanding)</p></div>
+</div>
+
+<div class="mt-5 grid gap-5 lg:grid-cols-3">
+    <div class="card card-pad lg:col-span-2">
+        <div class="flex items-center justify-between">
+            <h2 class="section-title">@L.T("Installment schedule", "جدول الأقساط")</h2>
+            <span class="chip">@L.Num(Model.InstallmentCount) @L.T("installments", "قسطاً")</span>
+        </div>
+        <div class="table-wrap mt-3">
+            <table class="table-base">
+                <thead><tr><th>#</th><th>@L.T("Due date", "الاستحقاق")</th><th>@L.T("Amount", "المبلغ")</th><th>@L.T("Paid", "المدفوع")</th><th>@L.T("Remaining", "المتبقي")</th><th>@L.T("Status", "الحالة")</th><th>@L.T("Receipts", "السندات")</th></tr></thead>
+                <tbody>
+                @if (Model.Installments.Count == 0)
+                {
+                    <tr><td colspan="7"><div class="empty">@L.T("No installments recorded.", "لا توجد أقساط مسجلة.")</div></td></tr>
+                }
+                @foreach (var due in Model.Installments.OrderBy(i => i.InstallmentNo ?? 0).ThenBy(i => i.DueDate))
+                {
+                    var dueBadge = due.Status == DueStatus.Paid ? "badge-green" : due.Status == DueStatus.Partial ? "badge-amber" : due.Status == DueStatus.Waived ? "badge-gray" : "badge-blue";
+                    <tr>
+                        <td class="text-xs font-semibold text-ink-500">@(due.InstallmentNo?.ToString() ?? "—")</td>
+                        <td class="text-xs">@L.DateShort(due.DueDate)</td>
+                        <td class="font-semibold">@L.Money(due.Amount)</td>
+                        <td class="text-emerald-700">@L.Money(due.PaidAmount)</td>
+                        <td class="@(due.Remaining > 0 ? "font-semibold text-amber-700" : "text-ink-400")">@L.Money(due.Remaining)</td>
+                        <td><span class="badge @dueBadge">@L.E(due.Status)</span></td>
+                        <td>
+                            @if (due.Payments.Count == 0)
+                            {
+                                <span class="text-[11px] text-ink-400">—</span>
+                            }
+                            @foreach (var p in due.Payments)
+                            {
+                                <a asp-controller="Payments" asp-action="Receipt" asp-route-id="@p.Id" class="me-1 font-mono text-[10px] text-brand-700 hover:underline">@p.ReceiptNo</a>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="space-y-5">
+        <div class="card card-pad">
+            <h2 class="section-title mb-3">@L.T("Agreement", "الاتفاق")</h2>
+            <dl class="space-y-2 text-sm">
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Contract", "العقد")</dt><dd class="font-mono text-xs font-bold">@Model.ContractNo</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Student", "الطالب")</dt><dd class="font-semibold">@Model.Student.StudentNo</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Grade", "الصف")</dt><dd>@L.Pick(Model.Student.Grade.NameAr, Model.Student.Grade.NameEn)</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Guardian", "ولي الأمر")</dt><dd>@(Model.Student.Parent is null ? "—" : L.Pick(Model.Student.Parent.FullNameAr, Model.Student.Parent.FullNameEn))</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Teacher", "المدرّس")</dt><dd>@L.Pick(Model.Course.Teacher.FullNameAr, Model.Course.Teacher.FullNameEn)</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Section", "الشعبة")</dt><dd>@(Model.Enrollment.Section?.Name ?? "—")</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Discount", "الخصم")</dt><dd class="text-emerald-700">@L.Money(Model.Discount)</dd></div>
+                <div class="flex justify-between border-t border-sand-200 pt-2"><dt class="font-semibold text-ink-700">@L.T("First due", "أول استحقاق")</dt><dd class="font-semibold">@L.DateShort(Model.FirstDueDate)</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Created", "أُنشئ")</dt><dd class="text-xs">@L.DateShort(Model.CreatedAt.ToLocalTime())</dd></div>
+            </dl>
+            @if (!string.IsNullOrWhiteSpace(Model.Notes))
+            {
+                <p class="mt-3 rounded-lg bg-sand-50 p-2 text-xs leading-5 text-ink-600">@Model.Notes</p>
+            }
+            @if (Model.Status == TuitionContractStatus.Active)
+            {
+                <form asp-controller="Enrollments" asp-action="Cancel" asp-route-id="@Model.EnrollmentId" method="post" class="mt-4" data-confirm="@L.T("Cancel this enrollment and waive unpaid installments?", "إلغاء هذا الاشتراك وإعفاء الأقساط غير المدفوعة؟")">
+                    @Html.AntiForgeryToken()
+                    <button class="btn btn-outline btn-sm w-full text-red-600"><svg class="h-4 w-4"><use href="#i-x"/></svg>@L.T("Cancel agreement", "إلغاء الاتفاق")</button>
+                </form>
+            }
+        </div>
+        <div class="card card-pad !bg-brand-50">
+            <p class="text-xs leading-6 text-brand-800">@L.T("Every installment is a ledger-backed due. Receipts, waivers and aging reports read the same records, so the agreement and the accounting can never drift apart.", "كل قسط هو ذمة مسجلة في الدفتر. السندات والإعفاءات وتقارير الأعمار تقرأ السجلات نفسها، لذا لا يمكن أن يختلف الاتفاق عن المحاسبة.")</p>
+        </div>
+    </div>
+</div>
+
+<div class="card mt-5 overflow-hidden">
+    <div class="card-header">
+        <h2 class="section-title">@L.T("Receipts against this agreement", "السندات على هذا الاتفاق")</h2>
+        <span class="chip">@L.Num(payments.Count) @L.T("receipts", "سنداً")</span>
+    </div>
+    <div class="table-wrap">
+        <table class="table-base">
+            <thead><tr><th>@L.T("Receipt", "السند")</th><th>@L.T("Date", "التاريخ")</th><th>@L.T("Amount", "المبلغ")</th><th>@L.T("Method", "الطريقة")</th><th>@L.T("Cashier shift", "وردية الصندوق")</th><th>@L.T("Received by", "المستلم")</th><th class="text-end"></th></tr></thead>
+            <tbody>
+            @if (payments.Count == 0)
+            {
+                <tr><td colspan="7"><div class="empty">@L.T("No receipts yet.", "لا توجد سندات بعد.")</div></td></tr>
+            }
+            @foreach (var p in payments)
+            {
+                <tr>
+                    <td class="font-mono text-xs font-bold text-brand-900">@p.ReceiptNo</td>
+                    <td class="text-xs">@L.DateShort(p.Date)</td>
+                    <td class="font-semibold">@L.Money(p.Amount)</td>
+                    <td><span class="badge badge-gray">@L.E(p.Method)</span></td>
+                    <td class="font-mono text-[11px] text-ink-500">@(p.CashierShift?.ShiftNo ?? "—")</td>
+                    <td class="text-xs">@p.ReceivedByName</td>
+                    <td class="text-end"><a asp-controller="Payments" asp-action="Receipt" asp-route-id="@p.Id" class="icon-btn" title="@L.T("Receipt", "السند")"><svg class="h-4 w-4"><use href="#i-receipt"/></svg></a></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

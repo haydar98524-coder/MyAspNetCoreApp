@@ -1,0 +1,109 @@
+@model List<JournalEntry>
+@{
+    ViewData["Title"] = L.T("Journal entries", "القيود اليومية");
+    var from = (DateTime)ViewBag.From;
+    var to = (DateTime)ViewBag.To;
+    var q = ViewBag.Q as string;
+    var accountId = ViewBag.AccountId as int?;
+    var page = (int)ViewBag.Page;
+    var pageCount = (int)ViewBag.PageCount;
+    var accounts = ViewBag.Accounts as List<Account> ?? new List<Account>();
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Journal entries", "القيود اليومية")</h1>
+        <p class="page-sub">@L.Date(from) — @L.Date(to) · @L.Num((int)ViewBag.Total) @L.T("entries", "قيداً")</p>
+    </div>
+    <div class="flex gap-2">
+        <a asp-action="Index" class="btn btn-outline btn-sm"><svg class="h-4 w-4 flip-x"><use href="#i-arrow-left"/></svg>@L.T("Finance", "المالية")</a>
+        <a asp-action="NewEntry" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-plus"/></svg>@L.T("Manual journal", "قيد يدوي")</a>
+    </div>
+</div>
+
+<div class="grid gap-3 sm:grid-cols-3">
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Debit total (page)", "إجمالي المدين (الصفحة)")</p><p class="kpi mt-1 text-brand-900">@L.Money((long)ViewBag.Debit)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Credit total (page)", "إجمالي الدائن (الصفحة)")</p><p class="kpi mt-1 text-brand-900">@L.Money((long)ViewBag.Credit)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Balanced", "التوازن")</p>
+        @if ((long)ViewBag.Debit == (long)ViewBag.Credit) { <p class="kpi mt-1 text-emerald-700">@L.T("Yes", "نعم")</p> } else { <p class="kpi mt-1 text-red-600">@L.T("No", "لا")</p> }
+    </div>
+</div>
+
+<form method="get" class="card card-pad !py-4 mt-5">
+    <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+        <div class="relative">
+            <span class="pointer-events-none absolute inset-y-0 start-3 flex items-center text-ink-500"><svg class="h-4 w-4"><use href="#i-search"/></svg></span>
+            <input name="q" value="@q" class="input !ps-9" placeholder="@L.T("Entry no. or description…", "رقم القيد أو الوصف…")" />
+        </div>
+        <input type="date" name="from" value="@from.ToString("yyyy-MM-dd")" class="input" />
+        <input type="date" name="to" value="@to.ToString("yyyy-MM-dd")" class="input" />
+        <select name="accountId" class="select">
+            <option value="">@L.T("All accounts", "كل الحسابات")</option>
+            @foreach (var account in accounts)
+            {
+                <option value="@account.Id" selected="@(accountId == account.Id)">@account.Code · @L.Pick(account.NameAr, account.NameEn)</option>
+            }
+        </select>
+        <div class="flex gap-2">
+            <button class="btn btn-primary flex-1">@L.T("Filter", "تصفية")</button>
+            <a asp-action="Journal" class="btn btn-outline">@L.T("Reset", "مسح")</a>
+        </div>
+    </div>
+</form>
+
+<div class="card mt-4 overflow-hidden">
+    <div class="table-wrap">
+        <table class="table-base">
+            <thead><tr><th>@L.T("Entry", "القيد")</th><th>@L.T("Description", "الوصف")</th><th>@L.T("Source", "المصدر")</th><th>@L.T("By", "بواسطة")</th><th class="text-end">@L.T("Amount", "المبلغ")</th><th></th></tr></thead>
+            <tbody>
+            @if (Model.Count == 0)
+            {
+                <tr><td colspan="6"><div class="empty">@L.T("No journal entries match the filter.", "لا توجد قيود مطابقة للتصفية.")</div></td></tr>
+            }
+            @foreach (var entry in Model)
+            {
+                var total = entry.Lines.Sum(l => l.Debit);
+                <tr>
+                    <td>
+                        <p class="font-mono text-xs font-bold text-brand-800">@entry.EntryNo</p>
+                        <p class="text-[10px] text-ink-500">@L.DateShort(entry.Date)</p>
+                    </td>
+                    <td class="max-w-72"><p class="truncate font-semibold text-ink-900">@entry.Description</p></td>
+                    <td>@if (!string.IsNullOrWhiteSpace(entry.ReferenceType)) { <span class="badge badge-gray">@entry.ReferenceType</span> } else { <span class="text-ink-400">—</span> }</td>
+                    <td class="text-xs text-ink-500">@entry.CreatedByName</td>
+                    <td class="text-end font-bold text-brand-900">@L.Money(total)</td>
+                    <td class="text-end">
+                        <details>
+                            <summary class="btn btn-soft btn-xs cursor-pointer list-none"><svg class="h-3.5 w-3.5"><use href="#i-eye"/></svg>@L.T("Lines", "السطور")</summary>
+                            <div class="mt-3 min-w-72 rounded-xl border border-sand-200 bg-sand-50 p-3 text-start">
+                                <table class="w-full text-[11px]">
+                                    <thead><tr class="text-ink-400"><th class="text-start font-bold">@L.T("Account", "الحساب")</th><th class="text-end font-bold">@L.T("Debit", "مدين")</th><th class="text-end font-bold">@L.T("Credit", "دائن")</th></tr></thead>
+                                    <tbody>
+                                    @foreach (var line in entry.Lines)
+                                    {
+                                        <tr>
+                                            <td class="py-1 pe-2"><span class="font-mono text-ink-400">@line.Account.Code</span> @L.Pick(line.Account.NameAr, line.Account.NameEn)</td>
+                                            <td class="py-1 text-end tabular-nums">@(line.Debit == 0 ? "—" : line.Debit.ToString("N0"))</td>
+                                            <td class="py-1 text-end tabular-nums">@(line.Credit == 0 ? "—" : line.Credit.ToString("N0"))</td>
+                                        </tr>
+                                    }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    @if (pageCount > 1)
+    {
+        <div class="flex items-center justify-between border-t border-sand-200 px-5 py-3 text-xs text-ink-500">
+            <span>@L.T("Page", "صفحة") @(page) / @(pageCount)</span>
+            <div class="flex gap-1">
+                <a asp-action="Journal" asp-route-from="@from.ToString("yyyy-MM-dd")" asp-route-to="@to.ToString("yyyy-MM-dd")" asp-route-q="@q" asp-route-accountId="@accountId" asp-route-page="@(page - 1)" class="btn btn-outline btn-xs @(page <= 1 ? "pointer-events-none opacity-40" : "")">@L.T("Previous", "السابق")</a>
+                <a asp-action="Journal" asp-route-from="@from.ToString("yyyy-MM-dd")" asp-route-to="@to.ToString("yyyy-MM-dd")" asp-route-q="@q" asp-route-accountId="@accountId" asp-route-page="@(page + 1)" class="btn btn-outline btn-xs @(page >= pageCount ? "pointer-events-none opacity-40" : "")">@L.T("Next", "التالي")</a>
+            </div>
+        </div>
+    }
+</div>

@@ -1,0 +1,106 @@
+@{
+    ViewData["Title"] = L.T("Cashier shift", "وردية الصندوق");
+    var active = ViewBag.Active as CashierShift;
+    var recent = ViewBag.Recent as List<CashierShift> ?? new();
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Cashier shift", "وردية الصندوق")</h1>
+        <p class="page-sub">@L.T("Open your drawer, receive cash against receipts, then close with a blind count.", "افتح صندوقك، استلم النقد مقابل السندات، ثم أغلق بعدّ أعمى.")</p>
+    </div>
+    <a asp-controller="Payments" asp-action="Collect" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-cash"/></svg>@L.T("Collect payment", "تحصيل دفعة")</a>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Cash received today", "النقد المستلم اليوم")</p><p class="kpi mt-1 text-emerald-700">@L.Money((long)ViewBag.TodayCash)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Cash receipts today", "سندات نقدية اليوم")</p><p class="kpi mt-1">@L.Num((int)ViewBag.TodayReceipts)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Shifts awaiting approval", "ورديات بانتظار الاعتماد")</p><p class="kpi mt-1 text-amber-700">@L.Num((int)ViewBag.Pending)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Your recent shifts", "وردياتك الأخيرة")</p><p class="kpi mt-1">@L.Num((int)ViewBag.MyShifts)</p></div>
+</div>
+
+<div class="mt-5 grid gap-5 lg:grid-cols-3">
+    <div class="card card-pad">
+        @if (active is null)
+        {
+            <h2 class="section-title">@L.T("Open a shift", "فتح وردية")</h2>
+            <p class="mt-1 text-xs text-ink-500">@L.T("Count the opening float, then open the drawer before taking any cash.", "عدّ الرصيد الافتتاحي ثم افتح الصندوق قبل استلام أي نقد.")</p>
+            <form method="post" asp-action="Open" class="mt-4 space-y-3">
+                @Html.AntiForgeryToken()
+                <div>
+                    <label class="label" for="openingFloat">@L.T("Opening float (IQD)", "الرصيد الافتتاحي (د.ع)")</label>
+                    <input id="openingFloat" name="OpeningFloat" type="number" min="0" step="1000" value="0" class="input" required />
+                </div>
+                <div>
+                    <label class="label" for="openNotes">@L.T("Notes", "ملاحظات")</label>
+                    <textarea id="openNotes" name="Notes" class="textarea" rows="2" placeholder="@L.T("Optional handover note…", "ملاحظة تسليم اختيارية…")"></textarea>
+                </div>
+                <button class="btn btn-primary w-full"><svg class="h-4 w-4"><use href="#i-key"/></svg>@L.T("Open drawer", "فتح الصندوق")</button>
+            </form>
+        }
+        else
+        {
+            var badge = active.Status == CashierShiftStatus.Open ? "badge-green" : "badge-amber";
+            <div class="flex items-center justify-between">
+                <h2 class="section-title">@L.T("Your current shift", "ورديتك الحالية")</h2>
+                <span class="badge @badge">@L.E(active.Status)</span>
+            </div>
+            <p class="mt-2 font-mono text-lg font-extrabold text-brand-950">@active.ShiftNo</p>
+            <dl class="mt-3 space-y-2 text-sm">
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Opened", "فُتحت")</dt><dd>@L.DateTimeShort(active.OpenedAt)</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Opening float", "الرصيد الافتتاحي")</dt><dd class="font-semibold">@L.Money(active.OpeningFloat)</dd></div>
+            </dl>
+            @if (active.Status == CashierShiftStatus.Open)
+            {
+                <a asp-action="Close" asp-route-id="@active.Id" class="btn btn-primary mt-4 w-full"><svg class="h-4 w-4"><use href="#i-check"/></svg>@L.T("Close drawer", "إغلاق الصندوق")</a>
+            }
+            else
+            {
+                <div class="alert alert-warning mt-4"><svg class="h-4 w-4"><use href="#i-clipboard"/></svg><p>@L.T("A variance was found. A manager must approve it before you can open a new shift.", "وُجد فرق. يجب أن يعتمده المدير قبل فتح وردية جديدة.")</p></div>
+                <a asp-action="Details" asp-route-id="@active.Id" class="btn btn-outline mt-3 w-full">@L.T("View count & variance", "عرض العد والفرق")</a>
+            }
+        }
+    </div>
+
+    <div class="card card-pad lg:col-span-2 !bg-brand-50">
+        <h2 class="section-title">@L.T("Drawer controls", "ضوابط الصندوق")</h2>
+        <ul class="mt-3 space-y-3 text-xs leading-5 text-brand-900">
+            <li class="flex gap-2"><svg class="h-4 w-4 shrink-0 text-brand-600"><use href="#i-check"/></svg>@L.T("Each cash receipt is permanently linked to your shift, receipt number and name.", "كل سند نقدي يرتبط نهائياً بورديتك ورقم السند واسمك.")</li>
+            <li class="flex gap-2"><svg class="h-4 w-4 shrink-0 text-brand-600"><use href="#i-check"/></svg>@L.T("The close screen never shows the expected cash: you count first, the system compares afterwards.", "شاشة الإغلاق لا تعرض النقد المتوقع: تعدّ أولاً ثم يقارن النظام بعدها.")</li>
+            <li class="flex gap-2"><svg class="h-4 w-4 shrink-0 text-brand-600"><use href="#i-check"/></svg>@L.T("A balanced drawer closes immediately; any variance is sent to the manager with a notification.", "الصندوق المطابق يُغلق فوراً، وأي فرق يُرسل إلى المدير مع إشعار.")</li>
+            <li class="flex gap-2"><svg class="h-4 w-4 shrink-0 text-brand-600"><use href="#i-check"/></svg>@L.T("Only administrators and managers can approve a variance.", "لا يعتمد الفرق إلا مدير النظام أو مدير المعهد.")</li>
+        </ul>
+    </div>
+</div>
+
+<div class="card mt-5 overflow-hidden">
+    <div class="card-header">
+        <h2 class="section-title">@L.T("Recent shifts", "أحدث الورديات")</h2>
+        <a asp-controller="Reports" asp-action="Index" class="chip hover:text-brand-700">@L.T("Cash reports", "تقارير النقد")</a>
+    </div>
+    <div class="table-wrap">
+        <table class="table-base">
+            <thead><tr><th>@L.T("Shift", "الوردية")</th><th>@L.T("Cashier", "أمين الصندوق")</th><th>@L.T("Opened", "الفتح")</th><th>@L.T("Closed", "الإغلاق")</th><th>@L.T("Float", "الافتتاحي")</th><th>@L.T("Counted", "العد")</th><th>@L.T("Variance", "الفرق")</th><th>@L.T("Status", "الحالة")</th><th class="text-end"></th></tr></thead>
+            <tbody>
+            @if (recent.Count == 0)
+            {
+                <tr><td colspan="9"><div class="empty">@L.T("No shifts recorded yet.", "لا توجد ورديات مسجلة بعد.")</div></td></tr>
+            }
+            @foreach (var s in recent)
+            {
+                var badge = s.Status == CashierShiftStatus.Open ? "badge-green" : s.Status == CashierShiftStatus.PendingApproval ? "badge-amber" : "badge-gray";
+                <tr>
+                    <td class="font-mono text-xs font-bold text-brand-900">@s.ShiftNo</td>
+                    <td class="text-xs">@s.CashierName</td>
+                    <td class="text-xs text-ink-500">@L.DateTimeShort(s.OpenedAt)</td>
+                    <td class="text-xs text-ink-500">@(s.ClosedAt.HasValue ? L.DateTimeShort(s.ClosedAt.Value) : "—")</td>
+                    <td class="text-xs">@L.Money(s.OpeningFloat)</td>
+                    <td class="text-xs">@(s.ClosedAt.HasValue ? L.Money(s.CountedCash) : "—")</td>
+                    <td class="text-xs font-semibold @(s.Variance < 0 ? "text-red-600" : s.Variance > 0 ? "text-amber-700" : "text-emerald-700")">@(s.ClosedAt.HasValue ? L.Money(s.Variance) : "—")</td>
+                    <td><span class="badge @badge">@L.E(s.Status)</span></td>
+                    <td class="text-end"><a asp-action="Details" asp-route-id="@s.Id" class="icon-btn" title="@L.T("Details", "التفاصيل")"><svg class="h-4 w-4"><use href="#i-receipt"/></svg></a></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

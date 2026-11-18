@@ -1,0 +1,176 @@
+@model CollectPaymentViewModel
+@{
+    ViewData["Title"] = L.T("Collect payment", "تحصيل دفعة");
+    var students = ViewBag.Students as List<Student> ?? new();
+    var dues = ViewBag.Dues as List<Due> ?? new();
+    var selected = ViewBag.SelectedStudent as Student;
+    var openTotal = dues.Sum(d => d.Remaining);
+    var openShift = ViewBag.OpenShift as CashierShift;
+    var activeShift = ViewBag.ActiveShift as CashierShift;
+}
+<div class="page-head">
+    <div>
+        <div class="mb-1 flex items-center gap-2 text-xs text-ink-500">
+            <a asp-action="Index" class="hover:text-brand-700">@L.T("Payments", "المدفوعات")</a>
+            <svg class="h-3 w-3 flip-x"><use href="#i-chevron-down"/></svg>
+            <span>@L.T("Collect", "تحصيل")</span>
+        </div>
+        <h1 class="page-title">@L.T("Receive a payment", "استلام دفعة")</h1>
+        <p class="page-sub">@L.T("A receipt, ledger entry and teacher share are created automatically.", "يُنشأ سند القبض والقيود وحصة المدرّس تلقائياً.")</p>
+    </div>
+</div>
+
+<div class="grid gap-5 lg:grid-cols-3">
+    <div class="space-y-5 lg:col-span-2">
+        <div class="card card-pad">
+            <h2 class="section-title mb-3">@L.T("1 · Select student", "1 · اختر الطالب")</h2>
+            <form method="get" asp-action="Collect">
+                <select name="studentId" class="select" data-autosubmit>
+                    <option value="">@L.T("Select student…", "اختر الطالب…")</option>
+                    @foreach (var s in students)
+                    {
+                        <option value="@s.Id" selected="@(Model.StudentId == s.Id)">@L.Pick(s.FullNameAr, s.FullNameEn) · @s.StudentNo · @L.Pick(s.Grade.NameAr, s.Grade.NameEn)</option>
+                    }
+                </select>
+                <noscript><button class="btn btn-primary mt-2">@L.T("Load", "تحميل")</button></noscript>
+            </form>
+        </div>
+
+        @if (selected is not null)
+        {
+            <div class="card card-pad">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <span class="avatar h-11 w-11">@L.Initials(selected.FullNameAr)</span>
+                        <div>
+                            <p class="font-bold text-brand-950">@L.Pick(selected.FullNameAr, selected.FullNameEn)</p>
+                            <p class="text-xs text-ink-500">@selected.StudentNo · @L.Pick(selected.Grade.NameAr, selected.Grade.NameEn)@if (selected.Parent is not null) { <span> · @selected.Parent.FullNameAr · @selected.Parent.Phone</span> }</p>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <p class="text-[11px] text-ink-500">@L.T("Open balance", "الرصيد المفتوح")</p>
+                        <p class="text-lg font-extrabold text-amber-700">@L.Money(openTotal)</p>
+                    </div>
+                </div>
+            </div>
+
+            <form method="post" asp-action="Collect" class="card card-pad space-y-4">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="StudentId" value="@Model.StudentId" />
+                <div asp-validation-summary="ModelOnly" class="alert alert-error @(ViewData.ModelState.IsValid ? "hidden" : "")"></div>
+                <h2 class="section-title">@L.T("2 · Payment details", "2 · تفاصيل الدفعة")</h2>
+                @if (dues.Count == 0)
+                {
+                    <div class="alert alert-success"><svg class="h-5 w-5"><use href="#i-check"/></svg><p>@L.T("No open dues for this student.", "لا توجد أقساط مفتوحة لهذا الطالب.")</p></div>
+                }
+                else
+                {
+                    <div>
+                        <label asp-for="DueId" class="label">@L.T("Due", "القسط")</label>
+                        <select asp-for="DueId" id="dueSelect" class="select">
+                            @foreach (var d in dues)
+                            {
+                                <option value="@d.Id" data-remaining="@d.Remaining">@d.Description · @L.Money(d.Remaining) · @L.T("due", "استحقاق") @L.DateShort(d.DueDate)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label asp-for="Amount" class="label">@L.T("Amount received (IQD)", "المبلغ المستلم (د.ع)")</label>
+                            <input asp-for="Amount" id="amountInput" type="number" step="1" min="1" class="input" />
+                            <span asp-validation-for="Amount" class="field-error"></span>
+                        </div>
+                        <div>
+                            <label asp-for="Method" class="label">@L.T("Payment method", "طريقة الدفع")</label>
+                            <select asp-for="Method" class="select" asp-items="Html.GetEnumSelectList<PaymentMethod>()"></select>
+                        </div>
+                    </div>
+                    <div>
+                        <label asp-for="Notes" class="label">@L.T("Notes", "ملاحظات")</label>
+                        <textarea asp-for="Notes" class="textarea" placeholder="@L.T("Optional note printed on the receipt…", "ملاحظة اختيارية تطبع على السند…")"></textarea>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        @foreach (var quick in new[] { 25, 50, 100 })
+                        {
+                            <button type="button" class="btn btn-outline btn-xs" data-amount-percent="@quick">@quick%</button>
+                        }
+                        <button type="button" class="btn btn-soft btn-xs" data-amount-full>@L.T("Full remaining", "كامل المتبقي")</button>
+                    </div>
+                    <button class="btn btn-primary btn-lg w-full"><svg class="h-5 w-5"><use href="#i-receipt"/></svg>@L.T("Receive & issue receipt", "استلام وإصدار السند")</button>
+                }
+            </form>
+        }
+        else
+        {
+            <div class="card empty">
+                <svg class="h-10 w-10 text-brand-300"><use href="#i-cash"/></svg>
+                <p>@L.T("Select a student above to view open dues and collect a payment.", "اختر طالباً أعلاه لعرض الأقساط المفتوحة وتحصيل دفعة.")</p>
+            </div>
+        }
+    </div>
+
+    <div class="space-y-5">
+        <div class="card card-pad @(openShift is null ? "!bg-amber-50" : "!bg-emerald-50")">
+            <div class="flex items-center justify-between gap-2">
+                <h2 class="section-title">@L.T("Cash drawer", "صندوق النقد")</h2>
+                @if (openShift is not null)
+                {
+                    <span class="badge badge-green">@L.T("Open", "مفتوح")</span>
+                }
+                else if (activeShift is not null)
+                {
+                    <span class="badge badge-amber">@L.E(activeShift.Status)</span>
+                }
+                else
+                {
+                    <span class="badge badge-amber">@L.T("Closed", "مغلق")</span>
+                }
+            </div>
+            @if (openShift is not null)
+            {
+                <p class="mt-2 font-mono text-sm font-bold text-brand-950">@openShift.ShiftNo</p>
+                <p class="mt-1 text-[11px] text-ink-600">@L.T("Opened", "فُتح") @L.DateTimeShort(openShift.OpenedAt) · @L.T("float", "الافتتاحي") @L.Money(openShift.OpeningFloat)</p>
+                <p class="mt-2 text-[11px] leading-5 text-emerald-800">@L.T("Cash receipts will be attached to this shift and included in your blind close.", "ستُرتبط السندات النقدية بهذه الوردية وتُدرج في إغلاقك الأعمى.")</p>
+            }
+            else
+            {
+                <p class="mt-2 text-[11px] leading-5 text-amber-800">@L.T("No open shift. Cash cannot be received until you open the drawer; transfers and cards remain available.", "لا توجد وردية مفتوحة. لا يمكن استلام النقد قبل فتح الصندوق، وتبقى الحوالات والبطاقات متاحة.")</p>
+                <a asp-controller="Cashier" asp-action="Index" class="btn btn-primary btn-sm mt-3 w-full"><svg class="h-4 w-4"><use href="#i-key"/></svg>@L.T("Open cashier shift", "فتح وردية الصندوق")</a>
+            }
+        </div>
+
+        <div class="card card-pad">
+            <h2 class="section-title mb-3">@L.T("Receipt controls", "ضوابط السند")</h2>
+            <ul class="space-y-2.5 text-xs text-ink-500">
+                <li class="flex gap-2"><svg class="h-4 w-4 shrink-0 text-brand-500"><use href="#i-check"/></svg>@L.T("Receipt number is generated sequentially per year.", "رقم السند يتسلسل سنوياً.")</li>
+                <li class="flex gap-2"><svg class="h-4 w-4 shrink-0 text-brand-500"><use href="#i-check"/></svg>@L.T("Cash goes to the cash fund; transfers and cards to the bank fund.", "النقد إلى الصندوق، والحوالات والبطاقات إلى المصرف.")</li>
+                <li class="flex gap-2"><svg class="h-4 w-4 shrink-0 text-brand-500"><use href="#i-check"/></svg>@L.T("Teacher share is accrued immediately in payables.", "تُستحق حصة المدرّس فوراً في المستحقات.")</li>
+                <li class="flex gap-2"><svg class="h-4 w-4 shrink-0 text-brand-500"><use href="#i-check"/></svg>@L.T("Guardian receives an in-app notification.", "يتلقى ولي الأمر إشعاراً داخل النظام.")</li>
+            </ul>
+        </div>
+        <div class="card card-pad !bg-brand-50">
+            <p class="text-xs leading-6 text-brand-800">@L.T("Under Iraqi institute practice, receipts must state the student name, amount, course and date, and must be signed by the registrar or accountant.", "وفق عمل المعاهد العراقية، يجب أن يتضمن السند اسم الطالب والمبلغ والدورة والتاريخ وتوقيع المسجل أو المحاسب.")</p>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(() => {
+  const due = document.getElementById('dueSelect');
+  const amount = document.getElementById('amountInput');
+  if (!due || !amount) return;
+  const setFromDue = () => {
+    const opt = due.selectedOptions[0];
+    amount.value = Number(opt?.dataset.remaining || 0);
+  };
+  due.addEventListener('change', setFromDue);
+  document.querySelectorAll('[data-amount-percent]').forEach(b => b.addEventListener('click', () => {
+    const pct = Number(b.dataset.amountPercent);
+    amount.value = Math.round(Number(due.selectedOptions[0]?.dataset.remaining || 0) * pct / 100);
+  }));
+  document.querySelector('[data-amount-full]')?.addEventListener('click', setFromDue);
+  if (!amount.value) setFromDue();
+})();
+</script>
+}

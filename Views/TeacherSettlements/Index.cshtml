@@ -1,0 +1,111 @@
+@model List<TeacherSettlement>
+@{
+    ViewData["Title"] = L.T("Teacher settlements", "تسويات المدرسين");
+    var status = ViewBag.Status as TeacherSettlementStatus?;
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Teacher settlements", "تسويات المدرسين")</h1>
+        <p class="page-sub">@L.T("Generate monthly statements from accrued shares, adjust, approve, then pay against a fund.", "أنشئ الكشوف الشهرية من الحصص المستحقة، عدّلها، اعتمدها، ثم اصرفها من الصندوق.")</p>
+    </div>
+    <div class="flex gap-2">
+        <a asp-action="Contracts" class="btn btn-outline btn-sm"><svg class="h-4 w-4"><use href="#i-clipboard"/></svg>@L.T("Teacher contracts", "عقود المدرسين")</a>
+        <a asp-action="Generate" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-sparkles"/></svg>@L.T("Generate statement", "إنشاء كشف")</a>
+    </div>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="stat-card !p-4">
+        <p class="text-xs text-ink-500">@L.T("Draft statements", "كشوف مسودة")</p>
+        <p class="kpi mt-1 text-amber-700">@L.Num((int)ViewBag.DraftCount)</p>
+    </div>
+    <div class="stat-card !p-4">
+        <p class="text-xs text-ink-500">@L.T("Approved, awaiting payout", "معتمدة بانتظار الصرف")</p>
+        <p class="kpi mt-1 text-brand-800">@L.Money((long)ViewBag.ApprovedTotal)</p>
+    </div>
+    <div class="stat-card !p-4">
+        <p class="text-xs text-ink-500">@L.T("Paid to date", "المصروف حتى الآن")</p>
+        <p class="kpi mt-1 text-emerald-700">@L.Money((long)ViewBag.PaidTotal)</p>
+    </div>
+    <div class="stat-card !p-4">
+        <p class="text-xs text-ink-500">@L.T("Active teacher contracts", "عقود مدرسين نشطة")</p>
+        <p class="kpi mt-1">@L.Num((int)ViewBag.ActiveContracts)</p>
+    </div>
+</div>
+
+<form method="get" class="card card-pad mt-5">
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div class="lg:col-span-2">
+            <label class="label" for="q">@L.T("Search", "بحث")</label>
+            <input id="q" name="q" value="@ViewBag.Q" class="input" placeholder="@L.T("Statement no., teacher name or code…", "رقم الكشف، اسم المدرّس أو رمزه…")" />
+        </div>
+        <div>
+            <label class="label" for="status">@L.T("Status", "الحالة")</label>
+            <select id="status" name="status" class="select">
+                <option value="">@L.T("All", "الكل")</option>
+                <option value="Draft" selected="@(status == TeacherSettlementStatus.Draft)">@L.E(TeacherSettlementStatus.Draft)</option>
+                <option value="Approved" selected="@(status == TeacherSettlementStatus.Approved)">@L.E(TeacherSettlementStatus.Approved)</option>
+                <option value="Paid" selected="@(status == TeacherSettlementStatus.Paid)">@L.E(TeacherSettlementStatus.Paid)</option>
+            </select>
+        </div>
+        <div>
+            <label class="label" for="from">@L.T("From", "من")</label>
+            <input id="from" name="from" type="date" value="@(((DateTime?)ViewBag.From)?.ToString("yyyy-MM-dd"))" class="input" />
+        </div>
+        <div>
+            <label class="label" for="to">@L.T("To", "إلى")</label>
+            <input id="to" name="to" type="date" value="@(((DateTime?)ViewBag.To)?.ToString("yyyy-MM-dd"))" class="input" />
+        </div>
+    </div>
+    <div class="mt-3 flex justify-end gap-2">
+        <a asp-action="Index" class="btn btn-ghost btn-sm">@L.T("Reset", "تصفير")</a>
+        <button class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-search"/></svg>@L.T("Filter", "تصفية")</button>
+    </div>
+</form>
+
+<div class="card mt-5 overflow-hidden">
+    <div class="table-wrap">
+        <table class="table-base">
+            <thead>
+                <tr>
+                    <th>@L.T("Statement", "الكشف")</th>
+                    <th>@L.T("Teacher", "المدرّس")</th>
+                    <th>@L.T("Period", "الفترة")</th>
+                    <th>@L.T("Gross", "الإجمالي")</th>
+                    <th>@L.T("Adjustments", "التعديلات")</th>
+                    <th>@L.T("Deductions", "الاستقطاعات")</th>
+                    <th>@L.T("Net", "الصافي")</th>
+                    <th>@L.T("Status", "الحالة")</th>
+                    <th class="text-end"></th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (Model.Count == 0)
+            {
+                <tr><td colspan="9"><div class="empty">@L.T("No statements match the filters. Generate one from unsettled earnings.", "لا توجد كشوف مطابقة. أنشئ كشفاً من المستحقات غير المسواة.")</div></td></tr>
+            }
+            @foreach (var s in Model)
+            {
+                var badge = s.Status == TeacherSettlementStatus.Draft ? "badge-amber"
+                    : s.Status == TeacherSettlementStatus.Approved ? "badge-blue" : "badge-green";
+                <tr>
+                    <td class="font-mono text-xs font-bold text-brand-900">@s.SettlementNo</td>
+                    <td>
+                        <p class="text-xs font-semibold text-ink-800">@L.Pick(s.Teacher.FullNameAr, s.Teacher.FullNameEn)</p>
+                        <p class="text-[10px] text-ink-500">@s.Teacher.Code</p>
+                    </td>
+                    <td class="text-xs text-ink-600">@L.DateShort(s.PeriodStart) – @L.DateShort(s.PeriodEnd)</td>
+                    <td class="text-xs">@L.Money(s.Gross)</td>
+                    <td class="text-xs text-emerald-700">@(s.Adjustments > 0 ? "+" + L.Money(s.Adjustments) : "—")</td>
+                    <td class="text-xs text-red-600">@(s.Deductions > 0 ? "−" + L.Money(s.Deductions) : "—")</td>
+                    <td class="font-bold text-ink-900">@L.Money(s.Net)</td>
+                    <td><span class="badge @badge">@L.E(s.Status)</span></td>
+                    <td class="text-end">
+                        <a asp-action="Details" asp-route-id="@s.Id" class="icon-btn" title="@L.T("Open statement", "فتح الكشف")"><svg class="h-4 w-4"><use href="#i-receipt"/></svg></a>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

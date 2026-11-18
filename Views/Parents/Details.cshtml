@@ -1,0 +1,109 @@
+@model Parent
+@{
+    ViewData["Title"] = Model.FullNameAr;
+    var children = ViewBag.Children as List<Student> ?? new();
+    var totalDue = children.Sum(c => c.Dues.Where(d => d.Status != DueStatus.Paid && d.Status != DueStatus.Waived).Sum(d => d.Remaining));
+    var totalPaid = children.Sum(c => c.Payments.Sum(p => p.Amount));
+}
+<div class="page-head">
+    <div>
+        <div class="mb-1 flex items-center gap-2 text-xs text-ink-500">
+            <a asp-action="Index" class="hover:text-brand-700">@L.T("Parents", "أولياء الأمور")</a>
+            <svg class="h-3 w-3 flip-x"><use href="#i-chevron-down"/></svg>
+            <span>@L.T("Profile", "الملف")</span>
+        </div>
+        <h1 class="page-title">@L.Pick(Model.FullNameAr, Model.FullNameEn)</h1>
+        <p class="page-sub">@L.T("Guardian since", "ولي أمر منذ") @L.DateShort(Model.CreatedAt) · @L.Num(children.Count) @L.T("children", "أبناء")</p>
+    </div>
+    <div class="flex gap-2">
+        <a asp-action="Index" class="btn btn-outline btn-sm">@L.T("Back", "رجوع")</a>
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-edit"/></svg>@L.T("Edit", "تعديل")</a>
+    </div>
+</div>
+
+<div class="grid gap-5 lg:grid-cols-3">
+    <div class="space-y-4">
+        <div class="card card-pad">
+            <div class="flex items-center gap-3">
+                <span class="avatar h-14 w-14 text-lg">@L.Initials(Model.FullNameAr)</span>
+                <div class="min-w-0">
+                    <p class="font-bold text-brand-950">@L.Pick(Model.FullNameAr, Model.FullNameEn)</p>
+                    <p class="text-xs text-ink-500">@(string.IsNullOrEmpty(Model.Occupation) ? L.T("Guardian", "ولي أمر") : Model.Occupation)</p>
+                </div>
+            </div>
+            <dl class="mt-4 space-y-2 border-t border-sand-200 pt-4 text-sm">
+                <div class="flex justify-between gap-3"><dt class="text-ink-500">@L.T("Phone", "الهاتف")</dt><dd><a href="tel:@Model.Phone" class="font-semibold text-brand-700" dir="ltr">@Model.Phone</a></dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-ink-500">@L.T("Email", "البريد")</dt><dd class="truncate font-semibold" dir="ltr">@(Model.Email ?? "—")</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-ink-500">@L.T("Area", "المنطقة")</dt><dd class="font-semibold">@(string.IsNullOrEmpty(Model.Area) ? "—" : Model.Area)</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-ink-500">@L.T("Address", "العنوان")</dt><dd class="max-w-44 truncate font-semibold">@(string.IsNullOrEmpty(Model.Address) ? "—" : Model.Address)</dd></div>
+                <div class="flex justify-between gap-3"><dt class="text-ink-500">@L.T("Portal account", "حساب البوابة")</dt><dd><span class="badge @(string.IsNullOrEmpty(Model.UserId) ? "badge-gray" : "badge-green")">@(string.IsNullOrEmpty(Model.UserId) ? L.T("Not linked", "غير مرتبط") : L.T("Linked", "مرتبط"))</span></dd></div>
+            </dl>
+            @if (!string.IsNullOrEmpty(Model.Notes))
+            {
+                <div class="mt-4 rounded-xl bg-sand-50 p-3 text-xs text-ink-600">@Model.Notes</div>
+            }
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+            <div class="stat-card !p-4"><p class="text-[11px] text-ink-500">@L.T("Outstanding", "المتبقي")</p><p class="mt-1 text-base font-extrabold text-amber-700">@L.Money(totalDue)</p></div>
+            <div class="stat-card !p-4"><p class="text-[11px] text-ink-500">@L.T("Paid", "المدفوع")</p><p class="mt-1 text-base font-extrabold text-emerald-700">@L.Money(totalPaid)</p></div>
+        </div>
+    </div>
+
+    <div class="space-y-5 lg:col-span-2">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="section-title">@L.T("Children", "الأبناء")</h2>
+                <a asp-controller="Students" asp-action="Create" class="btn btn-soft btn-xs"><svg class="h-3.5 w-3.5"><use href="#i-plus"/></svg>@L.T("Register child", "تسجيل ابن")</a>
+            </div>
+            <div class="divide-y divide-sand-200">
+                @if (children.Count == 0)
+                {
+                    <div class="empty">@L.T("No children registered under this guardian.", "لا يوجد أبناء مسجلون تحت هذا ولي الأمر.")</div>
+                }
+                @foreach (var c in children)
+                {
+                    var due = c.Dues.Where(d => d.Status != DueStatus.Paid && d.Status != DueStatus.Waived).Sum(d => d.Remaining);
+                    <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+                        <div class="flex items-center gap-3">
+                            <span class="avatar h-10 w-10 text-xs">@L.Initials(c.FullNameAr)</span>
+                            <div>
+                                <a asp-controller="Students" asp-action="Details" asp-route-id="@c.Id" class="font-bold text-brand-950 hover:underline">@L.Pick(c.FullNameAr, c.FullNameEn)</a>
+                                <p class="text-[11px] text-ink-500">@c.StudentNo · @L.Pick(c.Grade.NameAr, c.Grade.NameEn) · @L.Num(c.Enrollments.Count) @L.T("courses", "دورات")</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="badge @(due > 0 ? "badge-amber" : "badge-green")">@(due > 0 ? L.Money(due) : L.T("Settled", "مسدد"))</span>
+                            <a asp-controller="Students" asp-action="Details" asp-route-id="@c.Id" class="icon-btn"><svg class="h-4 w-4"><use href="#i-eye"/></svg></a>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h2 class="section-title">@L.T("Private lesson requests", "طلبات الدروس الخصوصية")</h2><a asp-controller="PrivateLessons" asp-action="Index" class="text-xs link">@L.T("All requests", "كل الطلبات")</a></div>
+            <div class="table-wrap">
+                <table class="table-base">
+                    <thead><tr><th>@L.T("Subject", "المادة")</th><th>@L.T("Mode", "النمط")</th><th>@L.T("Area", "المنطقة")</th><th>@L.T("Status", "الحالة")</th><th>@L.T("Created", "التاريخ")</th></tr></thead>
+                    <tbody>
+                    @if (Model.LessonRequests.Count == 0)
+                    {
+                        <tr><td colspan="5"><div class="empty !py-8">@L.T("No private lesson requests.", "لا توجد طلبات دروس خصوصية.")</div></td></tr>
+                    }
+                    @foreach (var r in Model.LessonRequests.OrderByDescending(x => x.CreatedAt))
+                    {
+                        <tr>
+                            <td class="font-semibold">@L.Pick(r.Subject.NameAr, r.Subject.NameEn)</td>
+                            <td class="text-xs text-ink-500">@L.E(r.Mode)</td>
+                            <td class="text-xs text-ink-500">@r.Area</td>
+                            <td><span class="badge badge-blue">@L.E(r.Status)</span></td>
+                            <td class="text-xs text-ink-500">@L.DateShort(r.CreatedAt)</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,98 @@
+@model List<Expense>
+@{
+    ViewData["Title"] = L.T("Expenses", "المصروفات");
+    var status = ViewBag.Status as ExpenseStatus?;
+    var accountId = ViewBag.AccountId as int?;
+    var from = (DateTime)ViewBag.From;
+    var to = (DateTime)ViewBag.To;
+    var accounts = ViewBag.Accounts as List<Account> ?? new List<Account>();
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Expenses", "المصروفات")</h1>
+        <p class="page-sub">@L.Date(from) — @L.Date(to) · @L.Num((int)ViewBag.Count) @L.T("records", "سجلاً")</p>
+    </div>
+    <div class="flex gap-2">
+        <a asp-action="Index" class="btn btn-outline btn-sm"><svg class="h-4 w-4 flip-x"><use href="#i-arrow-left"/></svg>@L.T("Finance", "المالية")</a>
+        <a asp-action="CreateExpense" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-plus"/></svg>@L.T("New expense", "مصروف جديد")</a>
+    </div>
+</div>
+
+<div class="grid gap-3 sm:grid-cols-3">
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Approved in view", "معتمد في العرض")</p><p class="kpi mt-1 text-red-600">@L.Money((long)ViewBag.ApprovedTotal)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Draft in view", "مسودة في العرض")</p><p class="kpi mt-1 text-amber-600">@L.Money((long)ViewBag.DraftTotal)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Drafts awaiting approval", "مسودات بانتظار الاعتماد")</p><p class="kpi mt-1">@L.Num((int)ViewBag.DraftCount)</p></div>
+</div>
+
+<form method="get" class="card card-pad !py-4 mt-5">
+    <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+        <input type="date" name="from" value="@from.ToString("yyyy-MM-dd")" class="input" />
+        <input type="date" name="to" value="@to.ToString("yyyy-MM-dd")" class="input" />
+        <select name="accountId" class="select">
+            <option value="">@L.T("All expense accounts", "كل حسابات المصروف")</option>
+            @foreach (var account in accounts)
+            {
+                <option value="@account.Id" selected="@(accountId == account.Id)">@account.Code · @L.Pick(account.NameAr, account.NameEn)</option>
+            }
+        </select>
+        <select name="status" class="select">
+            <option value="">@L.T("All statuses", "كل الحالات")</option>
+            @foreach (var st in Enum.GetValues<ExpenseStatus>())
+            {
+                <option value="@st" selected="@(status == st)">@L.E(st)</option>
+            }
+        </select>
+        <div class="flex gap-2">
+            <button class="btn btn-primary flex-1">@L.T("Filter", "تصفية")</button>
+            <a asp-action="Expenses" class="btn btn-outline">@L.T("Reset", "مسح")</a>
+        </div>
+    </div>
+</form>
+
+<div class="card mt-4 overflow-hidden">
+    <div class="table-wrap">
+        <table class="table-base">
+            <thead><tr><th>@L.T("Expense", "المصروف")</th><th>@L.T("Account", "الحساب")</th><th>@L.T("Vendor", "المورد")</th><th>@L.T("Fund", "الصندوق")</th><th>@L.T("Amount", "المبلغ")</th><th>@L.T("Status", "الحالة")</th><th class="text-end">@L.T("Actions", "الإجراءات")</th></tr></thead>
+            <tbody>
+            @if (Model.Count == 0)
+            {
+                <tr><td colspan="7"><div class="empty">@L.T("No expenses match the filter.", "لا توجد مصروفات مطابقة.")</div></td></tr>
+            }
+            @foreach (var e in Model)
+            {
+                <tr>
+                    <td>
+                        <p class="font-semibold text-ink-900">@e.Description</p>
+                        <p class="text-[10px] text-ink-500"><span class="font-mono">@e.ExpenseNo</span> · @L.DateShort(e.Date)@(e.Course is null ? "" : " · " + e.Course.NameAr)</p>
+                    </td>
+                    <td class="text-xs text-ink-600"><span class="font-mono text-ink-400">@e.Account.Code</span> @L.Pick(e.Account.NameAr, e.Account.NameEn)</td>
+                    <td class="text-xs text-ink-600">@e.Vendor</td>
+                    <td class="text-xs text-ink-600">@(e.Fund is null ? "—" : L.Pick(e.Fund.NameAr, e.Fund.NameEn))</td>
+                    <td class="font-bold text-red-600">@L.Money(e.Amount)</td>
+                    <td><span class="badge @(e.Status == ExpenseStatus.Approved ? "badge-green" : "badge-amber")">@L.E(e.Status)</span></td>
+                    <td>
+                        <div class="flex justify-end gap-1">
+                            @if (!string.IsNullOrWhiteSpace(e.AttachmentPath))
+                            {
+                                <a href="@e.AttachmentPath" target="_blank" class="icon-btn" title="@L.T("Attachment", "المرفق")"><svg class="h-4 w-4"><use href="#i-eye"/></svg></a>
+                            }
+                            @if (e.Status == ExpenseStatus.Draft)
+                            {
+                                <form asp-action="ApproveExpense" method="post" onsubmit="return confirm('@L.T("Approve and post this expense?", "هل تريد اعتماد وترحيل هذا المصروف؟")')">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@e.Id" />
+                                    <button class="btn btn-primary btn-xs"><svg class="h-3.5 w-3.5"><use href="#i-check"/></svg>@L.T("Approve", "اعتماد")</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span class="text-[10px] text-ink-400">@(e.ApprovedAt.HasValue ? L.DateShort(e.ApprovedAt.Value.ToLocalTime()) : "")</span>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

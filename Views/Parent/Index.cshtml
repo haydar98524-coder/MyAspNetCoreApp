@@ -1,0 +1,295 @@
+@model ParentPortalViewModel
+@{
+    ViewData["Title"] = L.T("Guardian overview", "نظرة عامة لولي الأمر");
+    var name = L.Pick(Model.Parent.FullNameAr, Model.Parent.FullNameEn);
+    var settings = ViewBag.Settings as InstituteSettings;
+}
+<div class="page-head">
+    <div>
+        <p class="text-xs font-bold uppercase tracking-wider text-brand-600">@L.T("Guardian portal", "بوابة ولي الأمر")</p>
+        <h1 class="page-title mt-1">@L.T("Welcome", "أهلاً") @name</h1>
+        <p class="page-sub">@Model.Parent.Phone · @Model.Parent.Area · @L.Date(DateTime.Today)</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <a asp-controller="PrivateLessons" asp-action="Request" class="btn btn-gold btn-sm"><svg class="h-4 w-4"><use href="#i-book"/></svg>@L.T("Request a lesson", "طلب درس خصوصي")</a>
+        <a asp-action="Payments" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-receipt"/></svg>@L.T("Fees & payments", "الأقساط والمدفوعات")</a>
+    </div>
+</div>
+
+<div class="mb-5 inline-flex flex-wrap items-center gap-1 rounded-xl border border-sand-200 bg-sand-50 p-1">
+    <a asp-action="Index" class="tab active">@L.T("Overview", "نظرة عامة")</a>
+    <a asp-action="Children" class="tab">@L.T("My children", "أبنائي")</a>
+    <a asp-action="Payments" class="tab">@L.T("Fees", "الأقساط")</a>
+    <a asp-action="Attendance" class="tab">@L.T("Attendance", "الحضور")</a>
+    <a asp-action="Results" class="tab">@L.T("Results", "النتائج")</a>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="stat-card">
+        <div class="flex items-start justify-between">
+            <div>
+                <p class="text-xs font-semibold text-ink-500">@L.T("My children", "أبنائي")</p>
+                <p class="kpi mt-2">@L.Num(Model.Children.Count)</p>
+                <p class="mt-1 text-[11px] text-ink-500">@L.T("Registered at the institute", "مسجلون في المعهد")</p>
+            </div>
+            <span class="stat-icon bg-brand-50 text-brand-700"><svg class="h-5 w-5"><use href="#i-users"/></svg></span>
+        </div>
+        <div class="mt-4"><a asp-action="Children" class="text-[11px] font-bold text-brand-700 hover:underline">@L.T("Open children files", "فتح ملفات الأبناء")</a></div>
+    </div>
+
+    <div class="stat-card">
+        <div class="flex items-start justify-between">
+            <div>
+                <p class="text-xs font-semibold text-ink-500">@L.T("Outstanding fees", "أقساط مستحقة")</p>
+                <p class="kpi mt-2 @(Model.Outstanding > 0 ? "text-amber-700" : "text-emerald-700")">@L.Money(Model.Outstanding)</p>
+                <p class="mt-1 text-[11px] text-ink-500">@L.T("Across all children", "لجميع الأبناء")</p>
+            </div>
+            <span class="stat-icon bg-amber-50 text-amber-700"><svg class="h-5 w-5"><use href="#i-wallet"/></svg></span>
+        </div>
+        <div class="mt-4"><a asp-action="Payments" class="text-[11px] font-bold text-brand-700 hover:underline">@L.T("View statement", "عرض الكشف")</a></div>
+    </div>
+
+    <div class="stat-card">
+        <div class="flex items-start justify-between">
+            <div>
+                <p class="text-xs font-semibold text-ink-500">@L.T("Paid this year", "المدفوع هذه السنة")</p>
+                <p class="kpi mt-2 text-emerald-700">@L.Money(Model.PaidYear)</p>
+                <p class="mt-1 text-[11px] text-ink-500">@DateTime.Today.Year</p>
+            </div>
+            <span class="stat-icon bg-emerald-50 text-emerald-700"><svg class="h-5 w-5"><use href="#i-receipt"/></svg></span>
+        </div>
+        <div class="mt-4"><a asp-action="Payments" class="text-[11px] font-bold text-brand-700 hover:underline">@L.T("Payment history", "سجل المدفوعات")</a></div>
+    </div>
+
+    <div class="stat-card">
+        <div class="flex items-start justify-between">
+            <div>
+                <p class="text-xs font-semibold text-ink-500">@L.T("Upcoming private lessons", "دروس خصوصية قادمة")</p>
+                <p class="kpi mt-2">@L.Num(Model.UpcomingLessons.Count)</p>
+                <p class="mt-1 text-[11px] text-ink-500">@L.T("Scheduled from today", "مجدولة من اليوم")</p>
+            </div>
+            <span class="stat-icon bg-violet-50 text-violet-700"><svg class="h-5 w-5"><use href="#i-book"/></svg></span>
+        </div>
+        <div class="mt-4"><a asp-controller="PrivateLessons" asp-action="Request" class="text-[11px] font-bold text-brand-700 hover:underline">@L.T("Request a new lesson", "طلب درس جديد")</a></div>
+    </div>
+</div>
+
+<div class="mt-5 grid gap-5 xl:grid-cols-3">
+    <div class="space-y-5 xl:col-span-2">
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <p class="section-title">@L.T("My children", "أبنائي")</p>
+                    <p class="mt-0.5 text-xs text-ink-500">@L.T("Attendance, marks and balances at a glance", "الحضور والدرجات والأرصدة باختصار")</p>
+                </div>
+                <a asp-action="Children" class="btn btn-ghost btn-xs">@L.T("Details", "التفاصيل")</a>
+            </div>
+            @if (Model.Children.Count == 0)
+            {
+                <div class="empty">@L.T("No children are linked to your account. Please contact the registrar.", "لا يوجد أبناء مرتبطون بحسابك. يرجى التواصل مع التسجيل.")</div>
+            }
+            else
+            {
+                <div class="grid gap-3 p-5 sm:grid-cols-2">
+                    @foreach (var child in Model.Children)
+                    {
+                        var cname = L.Pick(child.Student.FullNameAr, child.Student.FullNameEn);
+                        <div class="rounded-xl border border-sand-200 bg-sand-50/60 p-4">
+                            <div class="flex items-center gap-3">
+                                <span class="avatar h-10 w-10 bg-brand-100 text-brand-800">@L.Initials(cname)</span>
+                                <div class="min-w-0">
+                                    <p class="truncate text-sm font-bold text-brand-950">@cname</p>
+                                    <p class="text-[11px] text-ink-500">@L.Pick(child.Student.Grade.NameAr, child.Student.Grade.NameEn) · @child.Student.StudentNo</p>
+                                </div>
+                            </div>
+                            <div class="mt-3 grid grid-cols-3 gap-2 text-center">
+                                <div class="rounded-lg bg-white px-2 py-2">
+                                    <p class="text-[10px] text-ink-500">@L.T("Attendance", "الحضور")</p>
+                                    <p class="text-sm font-bold @(child.AttendanceRate >= 80 ? "text-emerald-700" : "text-amber-700")">@L.Percent(child.AttendanceRate)</p>
+                                </div>
+                                <div class="rounded-lg bg-white px-2 py-2">
+                                    <p class="text-[10px] text-ink-500">@L.T("Average", "المعدل")</p>
+                                    <p class="text-sm font-bold text-brand-800">@child.AverageMark.ToString("0.0")%</p>
+                                </div>
+                                <div class="rounded-lg bg-white px-2 py-2">
+                                    <p class="text-[10px] text-ink-500">@L.T("Balance", "الرصيد")</p>
+                                    <p class="text-sm font-bold @(child.Outstanding > 0 ? "text-amber-700" : "text-emerald-700")">@L.Money(child.Outstanding)</p>
+                                </div>
+                            </div>
+                            <div class="mt-3 flex gap-2">
+                                <a asp-action="Attendance" asp-route-studentId="@child.Student.Id" class="btn btn-outline btn-xs flex-1">@L.T("Attendance", "الحضور")</a>
+                                <a asp-action="Results" asp-route-studentId="@child.Student.Id" class="btn btn-outline btn-xs flex-1">@L.T("Results", "النتائج")</a>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <p class="section-title">@L.T("Outstanding fees", "الأقساط المستحقة")</p>
+                    <p class="mt-0.5 text-xs text-ink-500">@L.T("Nearest due dates first", "الأقرب استحقاقاً أولاً")</p>
+                </div>
+                <a asp-action="Payments" class="btn btn-ghost btn-xs">@L.T("Full statement", "الكشف الكامل")</a>
+            </div>
+            @if (Model.Dues.Count == 0)
+            {
+                <div class="empty">@L.T("No outstanding fees. Thank you!", "لا توجد أقساط مستحقة. شكراً لكم!")</div>
+            }
+            else
+            {
+                <div class="table-wrap">
+                    <table class="table-base">
+                        <thead>
+                            <tr>
+                                <th>@L.T("Student", "الطالب")</th>
+                                <th>@L.T("Description", "البيان")</th>
+                                <th>@L.T("Due date", "تاريخ الاستحقاق")</th>
+                                <th class="text-end">@L.T("Remaining", "المتبقي")</th>
+                                <th>@L.T("Status", "الحالة")</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var d in Model.Dues)
+                        {
+                            <tr>
+                                <td class="text-sm font-semibold">@L.Pick(d.Student.FullNameAr, d.Student.FullNameEn)</td>
+                                <td class="text-xs text-ink-600">@d.Description</td>
+                                <td class="text-xs">@L.Date(d.DueDate)</td>
+                                <td class="text-end text-sm font-bold text-amber-700">@L.Money(d.Remaining)</td>
+                                <td>
+                                    <span class="badge @(d.Status == DueStatus.Partial ? "badge-amber" : "badge-red")">@L.E(d.Status)</span>
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <p class="section-title">@L.T("Recent payments", "أحدث المدفوعات")</p>
+                    <p class="mt-0.5 text-xs text-ink-500">@L.T("Receipts issued by the accountant", "وصولات صادرة من المحاسب")</p>
+                </div>
+                <a asp-action="Payments" class="btn btn-ghost btn-xs">@L.T("View all", "عرض الكل")</a>
+            </div>
+            @if (Model.Payments.Count == 0)
+            {
+                <div class="empty">@L.T("No payments recorded yet.", "لم تُسجل مدفوعات بعد.")</div>
+            }
+            else
+            {
+                <div class="table-wrap">
+                    <table class="table-base">
+                        <thead>
+                            <tr>
+                                <th>@L.T("Receipt", "الوصول")</th>
+                                <th>@L.T("Student", "الطالب")</th>
+                                <th>@L.T("Date", "التاريخ")</th>
+                                <th>@L.T("Method", "الطريقة")</th>
+                                <th class="text-end">@L.T("Amount", "المبلغ")</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var p in Model.Payments)
+                        {
+                            <tr>
+                                <td class="text-xs font-semibold text-brand-800">@p.ReceiptNo</td>
+                                <td class="text-xs">@L.Pick(p.Student.FullNameAr, p.Student.FullNameEn)</td>
+                                <td class="text-xs">@L.Date(p.Date)</td>
+                                <td><span class="badge badge-gray">@L.E(p.Method)</span></td>
+                                <td class="text-end text-sm font-bold text-emerald-700">@L.Money(p.Amount)</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="space-y-5">
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <p class="section-title">@L.T("Upcoming lessons", "الدروس القادمة")</p>
+                    <p class="mt-0.5 text-xs text-ink-500">@L.T("Private lessons scheduled", "الدروس الخصوصية المجدولة")</p>
+                </div>
+            </div>
+            @if (Model.UpcomingLessons.Count == 0)
+            {
+                <div class="empty">@L.T("No upcoming private lessons.", "لا توجد دروس خصوصية قادمة.")</div>
+            }
+            else
+            {
+                <div class="divide-y divide-sand-200">
+                    @foreach (var l in Model.UpcomingLessons)
+                    {
+                        <div class="flex items-center gap-3 px-5 py-3">
+                            <div class="w-14 shrink-0 rounded-lg bg-brand-50 px-2 py-1.5 text-center">
+                                <p class="text-[10px] font-bold text-brand-800">@l.Date.ToString("MM/dd")</p>
+                                <p class="text-[10px] text-ink-500">@l.StartTime</p>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate text-sm font-semibold text-ink-900">@L.Pick(l.Subject.NameAr, l.Subject.NameEn)</p>
+                                <p class="truncate text-[11px] text-ink-500">@L.Pick(l.Teacher.FullNameAr, l.Teacher.FullNameEn) · @(l.Student is null ? "" : L.Pick(l.Student.FullNameAr, l.Student.FullNameEn))</p>
+                            </div>
+                            <span class="text-xs font-bold text-brand-800">@L.Money(l.Fee)</span>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <p class="section-title">@L.T("Notifications", "الإشعارات")</p>
+                    <p class="mt-0.5 text-xs text-ink-500">@L.T("Latest updates", "آخر التحديثات")</p>
+                </div>
+                <a asp-controller="Notifications" asp-action="Index" class="btn btn-ghost btn-xs">@L.T("All", "الكل")</a>
+            </div>
+            @if (Model.Notifications.Count == 0)
+            {
+                <div class="empty">@L.T("No notifications yet.", "لا توجد إشعارات بعد.")</div>
+            }
+            else
+            {
+                <div class="divide-y divide-sand-200">
+                    @foreach (var n in Model.Notifications)
+                    {
+                        <a href="@(n.Url ?? "#")" class="block px-5 py-3 transition hover:bg-sand-50">
+                            <div class="flex items-start gap-2">
+                                <span class="mt-1 h-2 w-2 shrink-0 rounded-full @(n.Type == NotificationType.Warning || n.Type == NotificationType.Danger ? "bg-amber-400" : n.Type == NotificationType.Success ? "bg-emerald-500" : "bg-brand-400")"></span>
+                                <div class="min-w-0">
+                                    <p class="truncate text-xs font-bold text-ink-900">@L.Pick(n.TitleAr, n.TitleEn)</p>
+                                    <p class="mt-0.5 line-clamp-2 text-[11px] text-ink-500">@L.Pick(n.BodyAr, n.BodyEn)</p>
+                                    <p class="mt-1 text-[10px] text-ink-400">@L.DateTimeShort(n.CreatedAt.ToLocalTime())</p>
+                                </div>
+                            </div>
+                        </a>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="card card-pad">
+            <div class="flex items-center gap-3">
+                <span class="stat-icon bg-brand-50 text-brand-700"><svg class="h-5 w-5"><use href="#i-phone"/></svg></span>
+                <div>
+                    <p class="text-sm font-bold text-brand-950">@L.T("Need help?", "تحتاج مساعدة؟")</p>
+                    <p class="text-[11px] text-ink-500">@L.T("Contact the registrar for records and the accountant for fees.", "تواصل مع التسجيل للسجلات والمحاسب للأقساط.")</p>
+                </div>
+            </div>
+            <div class="mt-3 space-y-2 text-xs">
+                <p class="flex items-center gap-2 text-ink-600"><svg class="h-4 w-4 text-brand-600"><use href="#i-phone"/></svg>@(settings?.Phone ?? "—")</p>
+                <p class="flex items-center gap-2 text-ink-600"><svg class="h-4 w-4 text-brand-600"><use href="#i-mail"/></svg>@(settings?.Email ?? "—")</p>
+            </div>
+        </div>
+    </div>
+</div>

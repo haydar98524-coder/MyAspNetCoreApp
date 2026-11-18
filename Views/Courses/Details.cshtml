@@ -1,0 +1,194 @@
+@model Course
+@{
+    ViewData["Title"] = Model.NameAr;
+    var rooms = ViewBag.Classrooms as List<Classroom> ?? new();
+    var teachers = ViewBag.Teachers as List<Teacher> ?? new();
+    var enrolledIds = Model.Sections.SelectMany(s => s.Enrollments).Select(e => e.StudentId).Distinct().ToList();
+    var revenue = (long)ViewBag.Revenue;
+    var cost = (long)ViewBag.TeacherCost;
+    var margin = revenue == 0 ? 0 : Math.Round((decimal)(revenue - cost) / revenue * 100, 1);
+}
+<div class="page-head">
+    <div>
+        <div class="mb-1 flex items-center gap-2 text-xs text-ink-500">
+            <a asp-action="Index" class="hover:text-brand-700">@L.T("Courses", "الدورات")</a>
+            <svg class="h-3 w-3 flip-x"><use href="#i-chevron-down"/></svg>
+            <span>@Model.Code</span>
+        </div>
+        <h1 class="page-title">@L.Pick(Model.NameAr, Model.NameEn)</h1>
+        <p class="page-sub">@L.Pick(Model.Grade.NameAr, Model.Grade.NameEn) · @L.Pick(Model.Subject.NameAr, Model.Subject.NameEn) · @L.Pick(Model.Teacher.FullNameAr, Model.Teacher.FullNameEn)</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <span class="badge @(Model.Status == CourseStatus.Active ? "badge-green" : "badge-gray") self-center">@L.E(Model.Status)</span>
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline btn-sm"><svg class="h-4 w-4"><use href="#i-edit"/></svg>@L.T("Edit course", "تعديل الدورة")</a>
+        <a asp-controller="Enrollments" asp-action="Create" asp-route-courseId="@Model.Id" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-plus"/></svg>@L.T("Enroll student", "اشتراك طالب")</a>
+    </div>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Fee", "الرسوم")</p><p class="mt-1 text-lg font-extrabold text-brand-950">@L.Money(Model.Fee)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Enrolled", "المشتركون")</p><p class="mt-1 text-lg font-extrabold text-brand-950">@L.Num(enrolledIds.Count) <span class="text-xs font-normal text-ink-400">/ @Model.Capacity</span></p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Collected revenue", "الإيراد المحصل")</p><p class="mt-1 text-lg font-extrabold text-emerald-700">@L.Money(revenue)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Teacher cost", "كلفة المدرّس")</p><p class="mt-1 text-lg font-extrabold text-amber-700">@L.Money(cost)</p><p class="text-[10px] text-ink-500">@L.T("Margin", "الهامش") @L.Percent(margin)</p></div>
+</div>
+
+<div class="mt-5 grid gap-5 lg:grid-cols-3">
+    <div class="space-y-5 lg:col-span-2">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="section-title">@L.T("Sections & weekly schedule", "الشعب والجدول الأسبوعي")</h2>
+                <span class="text-xs text-ink-500">@L.Num(Model.Sections.Count) @L.T("sections", "شعبة")</span>
+            </div>
+            <div class="divide-y divide-sand-200">
+                @if (Model.Sections.Count == 0)
+                {
+                    <div class="empty">@L.T("No sections yet. Add the first section below.", "لا توجد شعب بعد. أضف الشعبة الأولى أدناه.")</div>
+                }
+                @foreach (var s in Model.Sections)
+                {
+                    <div class="p-5">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                                <p class="font-bold text-brand-950">@s.Name</p>
+                                <p class="text-[11px] text-ink-500">@L.Num(s.Enrollments.Count) / @s.Capacity @L.T("students", "طالباً") · @(s.Teacher is null ? L.Pick(Model.Teacher.FullNameAr, Model.Teacher.FullNameEn) : L.Pick(s.Teacher.FullNameAr, s.Teacher.FullNameEn))</p>
+                            </div>
+                            <span class="badge @(s.IsActive ? "badge-green" : "badge-gray")">@(s.IsActive ? L.T("Active", "نشطة") : L.T("Inactive", "غير نشطة"))</span>
+                        </div>
+                        <div class="mt-3 grid gap-2 sm:grid-cols-2">
+                            @foreach (var slot in s.Schedules.OrderBy(x => x.DayOfWeek))
+                            {
+                                <div class="flex items-center justify-between rounded-xl border border-sand-200 bg-sand-50 px-3 py-2">
+                                    <div class="flex items-center gap-2 text-xs">
+                                        <svg class="h-4 w-4 text-brand-500"><use href="#i-clock"/></svg>
+                                        <div>
+                                            <p class="font-bold text-ink-800">@L.Day(slot.DayOfWeek)</p>
+                                            <p class="text-[10px] text-ink-500" dir="ltr">@slot.StartTime – @slot.EndTime · @L.Pick(slot.Classroom.NameAr, slot.Classroom.NameEn)</p>
+                                        </div>
+                                    </div>
+                                    <form asp-action="RemoveSchedule" method="post">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="courseId" value="@Model.Id" />
+                                        <input type="hidden" name="id" value="@slot.Id" />
+                                        <button class="icon-btn !h-7 !w-7 text-red-500 hover:bg-red-50" title="@L.T("Remove", "حذف")"><svg class="h-3.5 w-3.5"><use href="#i-x"/></svg></button>
+                                    </form>
+                                </div>
+                            }
+                            @if (s.Schedules.Count == 0)
+                            {
+                                <p class="text-xs text-ink-400">@L.T("No weekly slots.", "لا توجد مواعيد أسبوعية.")</p>
+                            }
+                        </div>
+                        <details class="mt-3">
+                            <summary class="cursor-pointer text-xs font-bold text-brand-700">+ @L.T("Add weekly slot", "إضافة موعد أسبوعي")</summary>
+                            <form asp-action="AddSchedule" method="post" class="mt-2 grid gap-2 sm:grid-cols-5">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="courseId" value="@Model.Id" />
+                                <input type="hidden" name="sectionId" value="@s.Id" />
+                                <select name="dayOfWeek" class="select !py-1.5 !text-xs">
+                                    @foreach (var d in Enum.GetValues<DayOfWeek>())
+                                    {
+                                        <option value="@d">@L.Day(d)</option>
+                                    }
+                                </select>
+                                <input type="time" name="startTime" value="16:00" class="input !py-1.5 !text-xs" />
+                                <input type="time" name="endTime" value="17:30" class="input !py-1.5 !text-xs" />
+                                <select name="classroomId" class="select !py-1.5 !text-xs">
+                                    @foreach (var r in rooms)
+                                    {
+                                        <option value="@r.Id">@L.Pick(r.NameAr, r.NameEn)</option>
+                                    }
+                                </select>
+                                <button class="btn btn-soft btn-xs">@L.T("Add", "إضافة")</button>
+                            </form>
+                        </details>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h2 class="section-title">@L.T("Enrolled students", "الطلاب المشتركون")</h2><a asp-controller="Enrollments" asp-action="Index" asp-route-courseId="@Model.Id" class="text-xs link">@L.T("All enrollments", "كل الاشتراكات")</a></div>
+            <div class="table-wrap">
+                <table class="table-base">
+                    <thead><tr><th>@L.T("Student", "الطالب")</th><th>@L.T("Section", "الشعبة")</th><th>@L.T("Fee", "الرسوم")</th><th>@L.T("Status", "الحالة")</th><th>@L.T("Date", "التاريخ")</th></tr></thead>
+                    <tbody>
+                    @if (enrolledIds.Count == 0)
+                    {
+                        <tr><td colspan="5"><div class="empty !py-8">@L.T("No students enrolled yet.", "لا يوجد طلاب مشتركون بعد.")</div></td></tr>
+                    }
+                    @foreach (var e in Model.Sections.SelectMany(s => s.Enrollments).OrderBy(e => e.Student.FullNameAr).Take(50))
+                    {
+                        <tr>
+                            <td><a asp-controller="Students" asp-action="Details" asp-route-id="@e.StudentId" class="font-semibold text-brand-900 hover:underline">@L.Pick(e.Student.FullNameAr, e.Student.FullNameEn)</a><p class="text-[11px] text-ink-500">@e.Student.StudentNo</p></td>
+                            <td class="text-xs text-ink-500">@(e.Section?.Name ?? "—")</td>
+                            <td>@L.Money(e.NetFee)</td>
+                            <td><span class="badge @(e.Status == EnrollmentStatus.Active ? "badge-green" : "badge-gray")">@L.E(e.Status)</span></td>
+                            <td class="text-xs text-ink-500">@L.DateShort(e.EnrollmentDate)</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="space-y-5">
+        <div class="card card-pad">
+            <h2 class="section-title mb-3">@L.T("Add a section", "إضافة شعبة")</h2>
+            <form asp-action="AddSection" method="post" class="space-y-3">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="courseId" value="@Model.Id" />
+                <div><label class="label">@L.T("Section name", "اسم الشعبة")</label><input name="name" class="input" placeholder="@L.T("A, B, Morning…", "أ، ب، صباحي…")" required /></div>
+                <div><label class="label">@L.T("Capacity", "السعة")</label><input name="capacity" type="number" value="@Model.Capacity" class="input" /></div>
+                <div>
+                    <label class="label">@L.T("Teacher (optional)", "المدرّس (اختياري)")</label>
+                    <select name="teacherId" class="select">
+                        <option value="">@L.T("Course teacher", "مدرّس الدورة")</option>
+                        @foreach (var t in teachers)
+                        {
+                            <option value="@t.Id">@L.Pick(t.FullNameAr, t.FullNameEn)</option>
+                        }
+                    </select>
+                </div>
+                <button class="btn btn-primary w-full"><svg class="h-4 w-4"><use href="#i-plus"/></svg>@L.T("Add section", "إضافة الشعبة")</button>
+            </form>
+        </div>
+
+        <div class="card card-pad">
+            <h2 class="section-title mb-3">@L.T("Course facts", "بيانات الدورة")</h2>
+            <dl class="space-y-2 text-sm">
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Code", "الرمز")</dt><dd class="font-semibold">@Model.Code</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Type", "النوع")</dt><dd class="font-semibold">@L.E(Model.Type)</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Teacher share", "حصة المدرّس")</dt><dd class="font-semibold">@L.Percent(Model.TeacherSharePercent)</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Start", "البدء")</dt><dd class="font-semibold">@L.Date(Model.StartDate)</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("End", "الانتهاء")</dt><dd class="font-semibold">@L.Date(Model.EndDate)</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Attendance records", "سجلات الحضور")</dt><dd class="font-semibold">@L.Num((int)ViewBag.AttendanceCount)</dd></div>
+            </dl>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Model.DescriptionAr) || !string.IsNullOrWhiteSpace(Model.DescriptionEn))
+        {
+            <div class="card card-pad">
+                <h2 class="section-title mb-2">@L.T("Description", "الوصف")</h2>
+                <p class="text-sm leading-7 text-ink-600">@L.Pick(Model.DescriptionAr, Model.DescriptionEn)</p>
+            </div>
+        }
+
+        <div class="card">
+            <div class="card-header"><h2 class="section-title">@L.T("Exams", "الامتحانات")</h2><a asp-controller="Exams" asp-action="Create" asp-route-courseId="@Model.Id" class="btn btn-soft btn-xs">@L.T("Add", "إضافة")</a></div>
+            <div class="divide-y divide-sand-200">
+                @if (Model.Exams.Count == 0)
+                {
+                    <div class="empty !py-6">@L.T("No exams yet.", "لا توجد امتحانات.")</div>
+                }
+                @foreach (var e in Model.Exams.OrderByDescending(x => x.Date))
+                {
+                    <a asp-controller="Exams" asp-action="Results" asp-route-id="@e.Id" class="flex items-center justify-between px-5 py-3 hover:bg-brand-50/50">
+                        <div><p class="text-xs font-bold text-ink-900">@L.Pick(e.NameAr, e.NameEn)</p><p class="text-[11px] text-ink-500">@L.DateShort(e.Date) · @L.E(e.Type)</p></div>
+                        <span class="text-xs font-bold text-brand-700">@e.MaxMark</span>
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+</div>

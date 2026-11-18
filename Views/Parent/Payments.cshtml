@@ -1,0 +1,160 @@
+@model ParentPortalViewModel
+@{
+    ViewData["Title"] = L.T("Fees & payments", "الأقساط والمدفوعات");
+    var openDues = Model.Dues.Count(d => d.Status != DueStatus.Paid && d.Status != DueStatus.Waived);
+    var paidTotal = Model.Dues.Sum(d => d.PaidAmount);
+}
+<div class="page-head">
+    <div>
+        <div class="flex items-center gap-2 text-xs text-ink-500">
+            <a asp-action="Index" class="link">@L.T("Guardian overview", "نظرة عامة")</a>
+            <svg class="h-3.5 w-3.5"><use href="#i-chevron-down"/></svg>
+            <span>@L.T("Fees & payments", "الأقساط والمدفوعات")</span>
+        </div>
+        <h1 class="page-title mt-1">@L.T("Fees & payments", "الأقساط والمدفوعات")</h1>
+        <p class="page-sub">@L.Pick(Model.Parent.FullNameAr, Model.Parent.FullNameEn) · @L.T("All children", "جميع الأبناء")</p>
+    </div>
+    <div class="flex flex-wrap gap-2 no-print">
+        <button type="button" onclick="window.print()" class="btn btn-outline btn-sm"><svg class="h-4 w-4"><use href="#i-printer"/></svg>@L.T("Print", "طباعة")</button>
+        <a asp-controller="PrivateLessons" asp-action="Request" class="btn btn-gold btn-sm"><svg class="h-4 w-4"><use href="#i-book"/></svg>@L.T("Request a lesson", "طلب درس خصوصي")</a>
+    </div>
+</div>
+
+<div class="mb-5 inline-flex flex-wrap items-center gap-1 rounded-xl border border-sand-200 bg-sand-50 p-1 no-print">
+    <a asp-action="Index" class="tab">@L.T("Overview", "نظرة عامة")</a>
+    <a asp-action="Children" class="tab">@L.T("My children", "أبنائي")</a>
+    <a asp-action="Payments" class="tab active">@L.T("Fees", "الأقساط")</a>
+    <a asp-action="Attendance" class="tab">@L.T("Attendance", "الحضور")</a>
+    <a asp-action="Results" class="tab">@L.T("Results", "النتائج")</a>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="stat-card">
+        <p class="text-xs font-semibold text-ink-500">@L.T("Outstanding", "المتبقي")</p>
+        <p class="kpi mt-2 @(Model.Outstanding > 0 ? "text-amber-700" : "text-emerald-700")">@L.Money(Model.Outstanding)</p>
+        <p class="mt-1 text-[11px] text-ink-500">@L.Num(openDues) @L.T("open dues", "قسط مستحق")</p>
+    </div>
+    <div class="stat-card">
+        <p class="text-xs font-semibold text-ink-500">@L.T("Paid this year", "المدفوع هذه السنة")</p>
+        <p class="kpi mt-2 text-emerald-700">@L.Money(Model.PaidYear)</p>
+        <p class="mt-1 text-[11px] text-ink-500">@DateTime.Today.Year</p>
+    </div>
+    <div class="stat-card">
+        <p class="text-xs font-semibold text-ink-500">@L.T("Collected on dues", "المسدد من الأقساط")</p>
+        <p class="kpi mt-2">@L.Money(paidTotal)</p>
+        <p class="mt-1 text-[11px] text-ink-500">@L.T("Across all dues", "على جميع الأقساط")</p>
+    </div>
+    <div class="stat-card">
+        <p class="text-xs font-semibold text-ink-500">@L.T("Receipts", "الوصولات")</p>
+        <p class="kpi mt-2">@L.Num(Model.Payments.Count)</p>
+        <p class="mt-1 text-[11px] text-ink-500">@L.T("Latest", "أحدث") @L.Num(Math.Min(200, Model.Payments.Count))</p>
+    </div>
+</div>
+
+<div class="card mt-5">
+    <div class="card-header">
+        <div>
+            <p class="section-title">@L.T("Dues statement", "كشف الأقساط")</p>
+            <p class="mt-0.5 text-xs text-ink-500">@L.T("Amounts are in Iraqi dinars", "المبالغ بالدينار العراقي")</p>
+        </div>
+        <span class="badge badge-gray">@L.Num(Model.Dues.Count) @L.T("items", "بند")</span>
+    </div>
+    @if (Model.Dues.Count == 0)
+    {
+        <div class="empty">@L.T("No dues have been issued yet.", "لم تُصدر أقساط بعد.")</div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="table-base">
+                <thead>
+                    <tr>
+                        <th>@L.T("Student", "الطالب")</th>
+                        <th>@L.T("Description", "البيان")</th>
+                        <th>@L.T("Due date", "الاستحقاق")</th>
+                        <th class="text-end">@L.T("Amount", "المبلغ")</th>
+                        <th class="text-end">@L.T("Paid", "المدفوع")</th>
+                        <th class="text-end">@L.T("Remaining", "المتبقي")</th>
+                        <th>@L.T("Status", "الحالة")</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var d in Model.Dues)
+                {
+                    <tr>
+                        <td class="text-sm font-semibold">@L.Pick(d.Student.FullNameAr, d.Student.FullNameEn)</td>
+                        <td>
+                            <p class="text-xs text-ink-700">@d.Description</p>
+                            <p class="text-[11px] text-ink-500">@L.Pick(d.Enrollment.Course.NameAr, d.Enrollment.Course.NameEn)</p>
+                        </td>
+                        <td class="text-xs">@L.Date(d.DueDate)</td>
+                        <td class="text-end text-xs">@L.Money(d.Amount)</td>
+                        <td class="text-end text-xs text-emerald-700">@L.Money(d.PaidAmount)</td>
+                        <td class="text-end text-sm font-bold @(d.Remaining > 0 ? "text-amber-700" : "text-emerald-700")">@L.Money(d.Remaining)</td>
+                        <td>
+                            @switch (d.Status)
+                            {
+                                case DueStatus.Paid: <span class="badge badge-green">@L.E(d.Status)</span> break;
+                                case DueStatus.Partial: <span class="badge badge-amber">@L.E(d.Status)</span> break;
+                                case DueStatus.Waived: <span class="badge badge-blue">@L.E(d.Status)</span> break;
+                                default: <span class="badge badge-red">@L.E(d.Status)</span> break;
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<div class="card mt-5">
+    <div class="card-header">
+        <div>
+            <p class="section-title">@L.T("Payment history", "سجل المدفوعات")</p>
+            <p class="mt-0.5 text-xs text-ink-500">@L.T("Official receipts issued by the accountant", "الوصولات الرسمية الصادرة من المحاسب")</p>
+        </div>
+    </div>
+    @if (Model.Payments.Count == 0)
+    {
+        <div class="empty">@L.T("No payments have been recorded yet.", "لم تُسجل مدفوعات بعد.")</div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="table-base">
+                <thead>
+                    <tr>
+                        <th>@L.T("Receipt", "الوصول")</th>
+                        <th>@L.T("Date", "التاريخ")</th>
+                        <th>@L.T("Student", "الطالب")</th>
+                        <th>@L.T("Method", "الطريقة")</th>
+                        <th>@L.T("Received by", "المستلم")</th>
+                        <th>@L.T("Notes", "ملاحظات")</th>
+                        <th class="text-end">@L.T("Amount", "المبلغ")</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var p in Model.Payments)
+                {
+                    <tr>
+                        <td class="text-xs font-semibold text-brand-800">@p.ReceiptNo</td>
+                        <td class="text-xs">@L.Date(p.Date)</td>
+                        <td class="text-xs">@L.Pick(p.Student.FullNameAr, p.Student.FullNameEn)</td>
+                        <td><span class="badge badge-gray">@L.E(p.Method)</span></td>
+                        <td class="text-xs text-ink-500">@p.ReceivedByName</td>
+                        <td class="max-w-56 text-[11px] text-ink-500">@(p.Notes ?? "—")</td>
+                        <td class="text-end text-sm font-bold text-emerald-700">@L.Money(p.Amount)</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<p class="mt-4 flex items-center gap-2 text-[11px] text-ink-500">
+    <svg class="h-4 w-4 text-brand-600"><use href="#i-info"/></svg>
+    @L.T("Payments are recorded by the accountant and cannot be edited here. Keep your receipt for reference; contact the accounting department for any discrepancy.",
+        "تُسجل المدفوعات من المحاسب ولا يمكن تعديلها هنا. احتفظ بالوصول للمراجعة، وتواصل مع قسم المحاسبة عند وجود فرق.")
+</p>

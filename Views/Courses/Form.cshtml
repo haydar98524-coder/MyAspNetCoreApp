@@ -1,0 +1,147 @@
+@model CourseFormViewModel
+@{
+    var isEdit = Model.Id > 0;
+    ViewData["Title"] = isEdit ? L.T("Edit course", "تعديل دورة") : L.T("New course", "دورة جديدة");
+    var grades = ViewBag.Grades as List<Grade> ?? new();
+    var subjects = ViewBag.Subjects as List<Subject> ?? new();
+    var teachers = ViewBag.Teachers as List<Teacher> ?? new();
+}
+<div class="page-head">
+    <div>
+        <div class="mb-1 flex items-center gap-2 text-xs text-ink-500">
+            <a asp-action="Index" class="hover:text-brand-700">@L.T("Courses", "الدورات")</a>
+            <svg class="h-3 w-3 flip-x"><use href="#i-chevron-down"/></svg>
+            <span>@(isEdit ? L.T("Edit", "تعديل") : L.T("New", "جديد"))</span>
+        </div>
+        <h1 class="page-title">@(isEdit ? L.T("Edit course", "تعديل الدورة") : L.T("Create a course", "إنشاء دورة"))</h1>
+    </div>
+    @if (isEdit)
+    {
+        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline btn-sm">@L.T("Cancel", "إلغاء")</a>
+    }
+</div>
+
+<form method="post" asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@(isEdit ? Model.Id : (int?)null)" class="grid gap-5 lg:grid-cols-3">
+    <input type="hidden" asp-for="Id" />
+    <div class="space-y-5 lg:col-span-2">
+        <div asp-validation-summary="ModelOnly" class="alert alert-error @(ViewData.ModelState.IsValid ? "hidden" : "")"></div>
+        <div class="card card-pad">
+            <h2 class="section-title mb-4">@L.T("Course details", "بيانات الدورة")</h2>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label asp-for="NameAr" class="label">@L.T("Course name (Arabic)", "اسم الدورة (عربي)") *</label>
+                    <input asp-for="NameAr" class="input" />
+                    <span asp-validation-for="NameAr" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="NameEn" class="label">@L.T("Course name (English)", "اسم الدورة (إنكليزي)") *</label>
+                    <input asp-for="NameEn" class="input" dir="ltr" />
+                    <span asp-validation-for="NameEn" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="GradeId" class="label">@L.T("Grade", "الصف") *</label>
+                    <select asp-for="GradeId" class="select">
+                        <option value="0">@L.T("Select grade…", "اختر الصف…")</option>
+                        @foreach (var group in grades.GroupBy(g => g.Stage))
+                        {
+                            <optgroup label="@L.Pick(group.Key.NameAr, group.Key.NameEn)">
+                                @foreach (var g in group)
+                                {
+                                    <option value="@g.Id">@L.Pick(g.NameAr, g.NameEn)</option>
+                                }
+                            </optgroup>
+                        }
+                    </select>
+                    <span asp-validation-for="GradeId" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="SubjectId" class="label">@L.T("Subject", "المادة") *</label>
+                    <select asp-for="SubjectId" class="select">
+                        <option value="0">@L.T("Select subject…", "اختر المادة…")</option>
+                        @foreach (var s in subjects)
+                        {
+                            <option value="@s.Id">@L.Pick(s.NameAr, s.NameEn)</option>
+                        }
+                    </select>
+                    <span asp-validation-for="SubjectId" class="field-error"></span>
+                </div>
+                <div class="sm:col-span-2">
+                    <label asp-for="TeacherId" class="label">@L.T("Assigned teacher", "المدرّس المسند") *</label>
+                    <select asp-for="TeacherId" class="select">
+                        <option value="0">@L.T("Select teacher…", "اختر المدرّس…")</option>
+                        @foreach (var t in teachers)
+                        {
+                            <option value="@t.Id">@L.Pick(t.FullNameAr, t.FullNameEn) · @t.Specialization</option>
+                        }
+                    </select>
+                    <span asp-validation-for="TeacherId" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="Type" class="label">@L.T("Course type", "نوع الدورة")</label>
+                    <select asp-for="Type" class="select" asp-items="Html.GetEnumSelectList<CourseType>()"></select>
+                </div>
+                <div>
+                    <label asp-for="Status" class="label">@L.T("Status", "الحالة")</label>
+                    <select asp-for="Status" class="select" asp-items="Html.GetEnumSelectList<CourseStatus>()"></select>
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-pad">
+            <h2 class="section-title mb-4">@L.T("Pricing & duration", "التسعير والمدة")</h2>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label asp-for="Fee" class="label">@L.T("Course fee (IQD)", "رسوم الدورة (د.ع)") *</label>
+                    <input asp-for="Fee" type="number" step="1000" class="input" />
+                </div>
+                <div>
+                    <label asp-for="TeacherSharePercent" class="label">@L.T("Teacher share (%)", "حصة المدرّس (%)")</label>
+                    <input asp-for="TeacherSharePercent" type="number" step="0.5" min="0" max="100" class="input" />
+                    <p class="help">@L.T("Typical range for Kirkuk institutes: 50–60%.", "النطاق المعتاد في معاهد كركوك: 50–60%.")</p>
+                </div>
+                <div>
+                    <label asp-for="StartDate" class="label">@L.T("Start date", "تاريخ البدء")</label>
+                    <input asp-for="StartDate" type="date" class="input" />
+                </div>
+                <div>
+                    <label asp-for="EndDate" class="label">@L.T("End date", "تاريخ الانتهاء")</label>
+                    <input asp-for="EndDate" type="date" class="input" />
+                </div>
+                <div>
+                    <label asp-for="Capacity" class="label">@L.T("Seat capacity", "عدد المقاعد")</label>
+                    <input asp-for="Capacity" type="number" min="1" class="input" />
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-pad">
+            <h2 class="section-title mb-4">@L.T("Description", "الوصف")</h2>
+            <div class="grid gap-4">
+                <div>
+                    <label asp-for="DescriptionAr" class="label">@L.T("Arabic description", "الوصف بالعربية")</label>
+                    <textarea asp-for="DescriptionAr" class="textarea"></textarea>
+                </div>
+                <div>
+                    <label asp-for="DescriptionEn" class="label">@L.T("English description", "الوصف بالإنكليزية")</label>
+                    <textarea asp-for="DescriptionEn" class="textarea" dir="ltr"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="space-y-5">
+        <div class="card card-pad !bg-brand-50">
+            <h2 class="section-title mb-2">@L.T("Iraqi curriculum note", "ملاحظة المنهج العراقي")</h2>
+            <p class="text-xs leading-6 text-brand-800">@L.T("Courses follow the Iraqi Ministry of Education curriculum for primary, intermediate and preparatory stages, including scientific and literary branches in grades 4–6 preparatory.", "تتبع الدورات منهج وزارة التربية العراقية للمراحل الابتدائية والمتوسطة والإعدادية، بما يشمل الفرعين العلمي والأدبي للصفوف الرابع–السادس الإعدادي.")</p>
+        </div>
+        <div class="card card-pad">
+            <h2 class="section-title mb-3">@L.T("After saving", "بعد الحفظ")</h2>
+            <ul class="space-y-2 text-xs text-ink-500">
+                <li class="flex gap-2"><svg class="h-4 w-4 shrink-0 text-brand-500"><use href="#i-check"/></svg>@L.T("Add one or more sections (شعب).", "أضف شعبة أو أكثر.")</li>
+                <li class="flex gap-2"><svg class="h-4 w-4 shrink-0 text-brand-500"><use href="#i-check"/></svg>@L.T("Assign weekly classroom slots.", "حدد مواعيد القاعات الأسبوعية.")</li>
+                <li class="flex gap-2"><svg class="h-4 w-4 shrink-0 text-brand-500"><use href="#i-check"/></svg>@L.T("Enroll students and collect fees.", "اشترك الطلاب وحصّل الرسوم.")</li>
+            </ul>
+        </div>
+        <button class="btn btn-primary btn-lg w-full"><svg class="h-5 w-5"><use href="#i-check"/></svg>@(isEdit ? L.T("Save changes", "حفظ التغييرات") : L.T("Create course", "إنشاء الدورة"))</button>
+    </div>
+</form>

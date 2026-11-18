@@ -1,0 +1,171 @@
+@model ExamsIndexViewModel
+@{
+    ViewData["Title"] = L.T("Exams & results", "الامتحانات والنتائج");
+    var q = ViewBag.Q as string;
+    var courseId = ViewBag.CourseId as int?;
+    var type = ViewBag.Type as ExamType?;
+    var courses = ViewBag.Courses as List<Course> ?? new();
+    var canManage = User.IsInRole(Roles.Administrator) || User.IsInRole(Roles.Manager) || User.IsInRole(Roles.Registrar) || User.IsInRole(Roles.Teacher);
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Exams & results", "الامتحانات والنتائج")</h1>
+        <p class="page-sub">@L.Num(Model.Total) @L.T("exams", "امتحاناً") · @L.Num(Model.Upcoming) @L.T("scheduled ahead", "قادمة") · @Model.AveragePassRate.ToString("0.#")% @L.T("average pass rate", "متوسط النجاح")</p>
+    </div>
+    @if (canManage)
+    {
+        <a asp-action="Create" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-plus"/></svg>@L.T("New exam", "امتحان جديد")</a>
+    }
+</div>
+
+<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="stat-card !p-4">
+        <p class="text-xs text-ink-500">@L.T("Total exams", "إجمالي الامتحانات")</p>
+        <p class="kpi mt-1">@L.Num(Model.Total)</p>
+    </div>
+    <div class="stat-card !p-4">
+        <p class="text-xs text-ink-500">@L.T("Upcoming", "قادمة")</p>
+        <p class="kpi mt-1 text-sky-700">@L.Num(Model.Upcoming)</p>
+    </div>
+    <div class="stat-card !p-4">
+        <p class="text-xs text-ink-500">@L.T("Marks recorded", "درجات مسجلة")</p>
+        <p class="kpi mt-1">@L.Num(Model.Recorded)</p>
+    </div>
+    <div class="stat-card !p-4">
+        <p class="text-xs text-ink-500">@L.T("Average pass rate", "متوسط نسبة النجاح")</p>
+        <p class="kpi mt-1 text-emerald-700">@Model.AveragePassRate.ToString("0.#")%</p>
+    </div>
+</div>
+
+<form method="get" class="card card-pad !py-4 mt-5">
+    <div class="flex flex-wrap gap-2">
+        <div class="relative min-w-60 flex-1">
+            <span class="pointer-events-none absolute inset-y-0 start-3 flex items-center text-ink-500"><svg class="h-4 w-4"><use href="#i-search"/></svg></span>
+            <input name="q" value="@q" class="input !ps-9" placeholder="@L.T("Exam or course name…", "اسم الامتحان أو الدورة…")" />
+        </div>
+        <select name="courseId" class="select !w-auto">
+            <option value="">@L.T("All courses", "كل الدورات")</option>
+            @foreach (var c in courses)
+            {
+                <option value="@c.Id" selected="@(courseId == c.Id)">@L.Pick(c.NameAr, c.NameEn) · @L.Pick(c.Grade.NameAr, c.Grade.NameEn)</option>
+            }
+        </select>
+        <select name="type" class="select !w-auto">
+            <option value="">@L.T("All types", "كل الأنواع")</option>
+            @foreach (var value in Enum.GetValues<ExamType>())
+            {
+                <option value="@value" selected="@(type == value)">@L.E(value)</option>
+            }
+        </select>
+        <button class="btn btn-primary">@L.T("Filter", "تصفية")</button>
+        @if (!string.IsNullOrEmpty(q) || courseId.HasValue || type.HasValue)
+        {
+            <a asp-action="Index" class="btn btn-ghost">@L.T("Clear", "مسح")</a>
+        }
+    </div>
+</form>
+
+<div class="card mt-4 overflow-hidden">
+    <div class="table-wrap">
+        <table class="table-base min-w-[980px]">
+            <thead>
+                <tr>
+                    <th>@L.T("Exam", "الامتحان")</th>
+                    <th>@L.T("Course", "الدورة")</th>
+                    <th>@L.T("Marks", "الدرجات")</th>
+                    <th>@L.T("Average", "المعدل")</th>
+                    <th>@L.T("Pass rate", "نسبة النجاح")</th>
+                    <th>@L.T("Status", "الحالة")</th>
+                    <th class="text-end">@L.T("Actions", "الإجراءات")</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (Model.Rows.Count == 0)
+            {
+                <tr><td colspan="7"><div class="empty">@L.T("No exams found. Create the first exam to start recording marks.", "لا توجد امتحانات. أنشئ أول امتحان لبدء تسجيل الدرجات.")</div></td></tr>
+            }
+            @foreach (var row in Model.Rows)
+            {
+                <tr>
+                    <td>
+                        <p class="font-semibold text-ink-900">@L.Pick(row.Exam.NameAr, row.Exam.NameEn)</p>
+                        <p class="text-[11px] text-ink-500">@L.E(row.Exam.Type) · @L.Date(row.Exam.Date)</p>
+                    </td>
+                    <td>
+                        <p class="text-sm font-semibold text-ink-800">@row.CourseName</p>
+                        <p class="text-[11px] text-ink-500">@row.TeacherName · @row.GradeName</p>
+                    </td>
+                    <td>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-semibold">@L.Num(row.Recorded)</span>
+                            <span class="text-[10px] text-ink-400">/ @L.Num(row.Enrolled)</span>
+                        </div>
+                        <p class="text-[10px] text-ink-400">@L.T("out of", "من") @row.Exam.MaxMark · @L.T("pass", "النجاح") @row.Exam.PassMark</p>
+                    </td>
+                    <td>
+                        @if (row.Recorded == 0)
+                        {
+                            <span class="text-xs text-ink-400">—</span>
+                        }
+                        else
+                        {
+                            <span class="text-sm font-bold @(row.Average >= row.Exam.PassMark ? "text-emerald-700" : "text-red-600")">@row.Average.ToString("0.#")</span>
+                            <span class="text-[10px] text-ink-400">/ @row.Exam.MaxMark</span>
+                        }
+                    </td>
+                    <td>
+                        @if (row.Recorded == 0)
+                        {
+                            <span class="badge badge-gray">@L.T("Not recorded", "غير مسجلة")</span>
+                        }
+                        else
+                        {
+                            <div class="flex items-center gap-2">
+                                <div class="progress w-20"><span style="width:@row.PassRate.ToString("0.#")%"></span></div>
+                                <span class="text-xs font-bold @(row.PassRate >= 75 ? "text-emerald-700" : row.PassRate >= 50 ? "text-amber-600" : "text-red-600")">@row.PassRate.ToString("0.#")%</span>
+                            </div>
+                            <p class="text-[10px] text-ink-400">@L.Num(row.Passed) @L.T("passed", "ناجح")</p>
+                        }
+                    </td>
+                    <td>
+                        @if (row.Exam.Date > DateTime.Today)
+                        {
+                            <span class="badge badge-blue">@L.T("Upcoming", "قادم")</span>
+                        }
+                        else if (row.Recorded >= row.Enrolled && row.Enrolled > 0)
+                        {
+                            <span class="badge badge-green">@L.T("Complete", "مكتمل")</span>
+                        }
+                        else if (row.Recorded > 0)
+                        {
+                            <span class="badge badge-amber">@L.T("Partial", "جزئي")</span>
+                        }
+                        else
+                        {
+                            <span class="badge badge-gray">@L.T("Pending marks", "بانتظار الدرجات")</span>
+                        }
+                    </td>
+                    <td>
+                        <div class="flex justify-end gap-1">
+                            <a asp-action="Results" asp-route-id="@row.Exam.Id" class="btn btn-primary btn-xs" title="@L.T("Enter marks", "إدخال الدرجات")">
+                                <svg class="h-3.5 w-3.5"><use href="#i-edit"/></svg>@L.T("Marks", "الدرجات")
+                            </a>
+                            @if (canManage)
+                            {
+                                <a asp-action="Edit" asp-route-id="@row.Exam.Id" class="icon-btn" title="@L.T("Edit", "تعديل")"><svg class="h-4 w-4"><use href="#i-settings"/></svg></a>
+                            }
+                            @if (User.IsInRole(Roles.Administrator) || User.IsInRole(Roles.Manager))
+                            {
+                                <form asp-action="Delete" asp-route-id="@row.Exam.Id" method="post" onsubmit="return confirm('@L.T("Delete this exam?", "حذف هذا الامتحان؟")')">
+                                    @Html.AntiForgeryToken()
+                                    <button class="icon-btn text-red-600" title="@L.T("Delete", "حذف")"><svg class="h-4 w-4"><use href="#i-ban"/></svg></button>
+                                </form>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

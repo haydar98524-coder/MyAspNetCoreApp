@@ -1,0 +1,83 @@
+@model Payroll
+@{
+    ViewData["Title"] = L.T("Payslip", "قسيمة الراتب");
+    var settings = ViewBag.Settings as InstituteSettings;
+    var gross = Model.Basic + Model.Allowances + Model.Overtime;
+    var deductions = Model.AbsenceDeduction + Model.OtherDeductions + Model.Advances;
+}
+<div class="page-head no-print">
+    <div>
+        <div class="mb-1 flex items-center gap-2 text-xs text-ink-500">
+            <a asp-action="Payroll" asp-route-month="@Model.Month.ToString("yyyy-MM")" class="hover:text-brand-700">@L.T("Payroll", "الرواتب")</a>
+            <svg class="h-3 w-3 flip-x"><use href="#i-chevron-down"/></svg>
+            <span>@L.Pick(Model.Employee.FullNameAr, Model.Employee.FullNameEn)</span>
+        </div>
+        <h1 class="page-title">@L.T("Payslip", "قسيمة الراتب")</h1>
+        <p class="page-sub">@L.Month(Model.Month)</p>
+    </div>
+    <div class="flex gap-2">
+        <a asp-action="Payroll" asp-route-month="@Model.Month.ToString("yyyy-MM")" class="btn btn-outline btn-sm">@L.T("Back", "رجوع")</a>
+        <button type="button" class="btn btn-primary btn-sm" onclick="window.print()"><svg class="h-4 w-4"><use href="#i-printer"/></svg>@L.T("Print", "طباعة")</button>
+    </div>
+</div>
+
+<div class="card card-pad print-card mx-auto mt-2 max-w-3xl">
+    <div class="flex flex-wrap items-start justify-between gap-4 border-b border-sand-200 pb-4">
+        <div>
+            <p class="text-lg font-extrabold text-brand-950">@L.Pick(settings?.NameAr, settings?.NameEn)</p>
+            <p class="text-xs text-ink-500">@L.Pick(settings?.AddressAr, settings?.AddressEn)</p>
+            <p class="mt-1 text-[11px] text-ink-500">@L.T("License", "إجازة") @settings?.LicenseNo · @settings?.Phone</p>
+        </div>
+        <div class="text-end">
+            <p class="text-xs font-bold uppercase tracking-widest text-ink-400">@L.T("Payslip", "قسيمة راتب")</p>
+            <p class="text-sm font-bold text-brand-900">@L.Month(Model.Month)</p>
+            <p class="text-[11px] text-ink-500">@L.T("Slip no.", "رقم القسيمة") PAY-@Model.Id.ToString("D5")</p>
+        </div>
+    </div>
+
+    <div class="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+        <div>
+            <p class="text-[11px] text-ink-400">@L.T("Employee", "الموظف")</p>
+            <p class="font-bold text-ink-900">@L.Pick(Model.Employee.FullNameAr, Model.Employee.FullNameEn)</p>
+            <p class="text-xs text-ink-500">@Model.Employee.Code · @L.Pick(Model.Employee.JobTitleAr, Model.Employee.JobTitleEn)</p>
+        </div>
+        <div class="sm:text-end">
+            <p class="text-[11px] text-ink-400">@L.T("Department", "القسم")</p>
+            <p class="font-semibold text-ink-800">@Model.Employee.Department</p>
+            <p class="text-xs text-ink-500">@L.T("Status", "الحالة"): @L.E(Model.Status)</p>
+        </div>
+    </div>
+
+    <div class="mt-5 grid gap-4 sm:grid-cols-2">
+        <div class="rounded-xl border border-sand-200">
+            <p class="border-b border-sand-200 bg-sand-50 px-4 py-2 text-xs font-bold text-ink-600">@L.T("Earnings", "الاستحقاقات")</p>
+            <dl class="divide-y divide-sand-100 px-4 py-2 text-sm">
+                <div class="flex justify-between py-2"><dt class="text-ink-600">@L.T("Basic salary", "الراتب الأساسي")</dt><dd class="font-semibold">@L.Money(Model.Basic)</dd></div>
+                <div class="flex justify-between py-2"><dt class="text-ink-600">@L.T("Allowances", "المخصصات")</dt><dd class="font-semibold">@L.Money(Model.Allowances)</dd></div>
+                <div class="flex justify-between py-2"><dt class="text-ink-600">@L.T("Overtime", "ساعات إضافية")</dt><dd class="font-semibold">@L.Money(Model.Overtime)</dd></div>
+                <div class="flex justify-between py-2"><dt class="font-bold text-ink-800">@L.T("Gross", "الإجمالي")</dt><dd class="font-bold text-ink-900">@L.Money(gross)</dd></div>
+            </dl>
+        </div>
+        <div class="rounded-xl border border-sand-200">
+            <p class="border-b border-sand-200 bg-sand-50 px-4 py-2 text-xs font-bold text-ink-600">@L.T("Deductions", "الاستقطاعات")</p>
+            <dl class="divide-y divide-sand-100 px-4 py-2 text-sm">
+                <div class="flex justify-between py-2"><dt class="text-ink-600">@L.T("Absence", "غياب")</dt><dd class="font-semibold text-red-600">@L.Money(Model.AbsenceDeduction)</dd></div>
+                <div class="flex justify-between py-2"><dt class="text-ink-600">@L.T("Other deductions", "خصومات أخرى")</dt><dd class="font-semibold text-red-600">@L.Money(Model.OtherDeductions)</dd></div>
+                <div class="flex justify-between py-2"><dt class="text-ink-600">@L.T("Advances", "السلف")</dt><dd class="font-semibold text-red-600">@L.Money(Model.Advances)</dd></div>
+                <div class="flex justify-between py-2"><dt class="font-bold text-ink-800">@L.T("Total deductions", "إجمالي الاستقطاعات")</dt><dd class="font-bold text-red-700">@L.Money(deductions)</dd></div>
+            </dl>
+        </div>
+    </div>
+
+    <div class="mt-4 flex items-center justify-between rounded-xl bg-brand-950 px-5 py-4 text-white">
+        <p class="text-sm font-semibold">@L.T("Net payable", "الصافي المستحق")</p>
+        <p class="text-2xl font-extrabold">@L.Money(Model.Net)</p>
+    </div>
+
+    <div class="mt-8 grid grid-cols-3 gap-4 text-center text-[11px] text-ink-500">
+        <div><div class="mx-auto h-12 border-b border-dashed border-ink-300"></div><p class="mt-1">@L.T("Employee signature", "توقيع الموظف")</p></div>
+        <div><div class="mx-auto h-12 border-b border-dashed border-ink-300"></div><p class="mt-1">@L.T("Accountant", "المحاسب")</p></div>
+        <div><div class="mx-auto h-12 border-b border-dashed border-ink-300"></div><p class="mt-1">@L.T("Manager", "مدير المعهد")</p></div>
+    </div>
+    <p class="mt-6 text-center text-[10px] text-ink-400">@L.T("This slip is issued electronically. Paid at", "تصدر هذه القسيمة إلكترونياً. تاريخ الصرف") @(Model.PaidAt.HasValue ? L.Date(Model.PaidAt.Value) : "—")</p>
+</div>

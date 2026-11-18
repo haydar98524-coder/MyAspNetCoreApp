@@ -1,0 +1,112 @@
+@{
+    ViewData["Title"] = L.T("Rental overview", "نظرة عامة على الإيجارات");
+    var bookings = ViewBag.Upcoming as List<ClassroomBooking> ?? new List<ClassroomBooking>();
+    var cafeteria = ViewBag.CafeteriaContracts as List<CafeteriaContract> ?? new List<CafeteriaContract>();
+    var rents = ViewBag.RentContracts as List<TeacherRentContract> ?? new List<TeacherRentContract>();
+    var monthStart = (DateTime)ViewBag.MonthStart;
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Rentals & facility income", "الإيجارات وإيرادات المرافق")</h1>
+        <p class="page-sub">@L.Month(monthStart) · @L.T("halls, cafeteria and teacher room contracts", "القاعات والكافيتيريا وعقود مدرسي السادس")</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <a asp-action="CreateBooking" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-plus"/></svg>@L.T("New hall booking", "حجز قاعة")</a>
+        <a asp-action="TeacherRent" class="btn btn-outline btn-sm"><svg class="h-4 w-4"><use href="#i-key"/></svg>@L.T("Teacher rents", "إيجار المدرسين")</a>
+    </div>
+</div>
+
+<div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="stat-card">
+        <div class="flex items-start justify-between">
+            <div><p class="text-xs text-ink-500">@L.T("Hall rent this month", "إيجار القاعات هذا الشهر")</p><p class="kpi mt-2 text-emerald-700">@L.Money((long)ViewBag.HallRevenue)</p><p class="mt-1 text-[11px] text-ink-500">@L.Num((int)ViewBag.BookingCount) @L.T("bookings", "حجزاً")</p></div>
+            <span class="stat-icon bg-emerald-50 text-emerald-700"><svg class="h-5 w-5"><use href="#i-building"/></svg></span>
+        </div>
+        <p class="mt-3 text-[11px] text-amber-700">@L.Money((long)ViewBag.HallUnpaid) @L.T("awaiting collection", "بانتظار القبض")</p>
+    </div>
+    <div class="stat-card">
+        <div class="flex items-start justify-between">
+            <div><p class="text-xs text-ink-500">@L.T("Cafeteria (monthly)", "الكافتيريا (شهرياً)")</p><p class="kpi mt-2 text-brand-900">@L.Money((long)ViewBag.CafeteriaMonthly)</p><p class="mt-1 text-[11px] text-ink-500">@L.T("from annual contracts", "من العقود السنوية")</p></div>
+            <span class="stat-icon bg-orange-50 text-orange-600"><svg class="h-5 w-5"><use href="#i-cash"/></svg></span>
+        </div>
+        <p class="mt-3 text-[11px] text-ink-500">@L.Money((long)ViewBag.CafeteriaCollected) @L.T("collected this year", "محصل هذه السنة")</p>
+    </div>
+    <div class="stat-card">
+        <div class="flex items-start justify-between">
+            <div><p class="text-xs text-ink-500">@L.T("Teacher room rent (monthly)", "إيجار مدرسي السادس (شهرياً)")</p><p class="kpi mt-2 text-brand-900">@L.Money((long)ViewBag.TeacherRentMonthly)</p><p class="mt-1 text-[11px] text-ink-500">@L.Num(rents.Count) @L.T("active contracts", "عقداً نشطاً")</p></div>
+            <span class="stat-icon bg-violet-50 text-violet-700"><svg class="h-5 w-5"><use href="#i-key"/></svg></span>
+        </div>
+        <p class="mt-3 text-[11px] text-ink-500">@L.Money((long)ViewBag.TeacherRentCollected) @L.T("collected this month", "محصل هذا الشهر")</p>
+    </div>
+    <div class="stat-card">
+        <div class="flex items-start justify-between">
+            <div><p class="text-xs text-ink-500">@L.T("Overdue hall payments", "حجوزات متأخرة الدفع")</p><p class="kpi mt-2 text-red-600">@L.Num((int)ViewBag.UnpaidBookings)</p><p class="mt-1 text-[11px] text-ink-500">@L.T("past bookings without payment", "حجوزات سابقة دون قبض")</p></div>
+            <span class="stat-icon bg-red-50 text-red-600"><svg class="h-5 w-5"><use href="#i-alert"/></svg></span>
+        </div>
+        <a asp-action="Bookings" asp-route-status="Unpaid" class="mt-3 inline-block text-[11px] font-bold text-brand-700 hover:underline">@L.T("Follow up", "متابعة")</a>
+    </div>
+</div>
+
+<div class="mt-5 grid gap-5 lg:grid-cols-3">
+    <div class="card lg:col-span-2">
+        <div class="card-header">
+            <div><h2 class="section-title">@L.T("Upcoming hall bookings", "الحجوزات القادمة")</h2><p class="mt-0.5 text-xs text-ink-500">@L.T("Confirmed and pending bookings", "حجوزات مؤكدة وقيد الدفع")</p></div>
+            <a asp-action="Bookings" class="text-xs link">@L.T("All bookings", "كل الحجوزات")</a>
+        </div>
+        <div class="table-wrap">
+            <table class="table-base">
+                <thead><tr><th>@L.T("Tenant", "المستأجر")</th><th>@L.T("Room", "القاعة")</th><th>@L.T("Date", "التاريخ")</th><th>@L.T("Time", "الوقت")</th><th>@L.T("Amount", "المبلغ")</th><th>@L.T("Status", "الحالة")</th></tr></thead>
+                <tbody>
+                @if (bookings.Count == 0)
+                {
+                    <tr><td colspan="6"><div class="empty">@L.T("No upcoming bookings.", "لا توجد حجوزات قادمة.")</div></td></tr>
+                }
+                @foreach (var b in bookings)
+                {
+                    <tr>
+                        <td><p class="font-semibold text-ink-900">@b.TenantName</p><p class="text-[10px] text-ink-500">@b.Purpose</p></td>
+                        <td><span class="chip !px-2 !py-0.5">@b.Classroom.Number · @L.Pick(b.Classroom.NameAr, b.Classroom.NameEn)</span></td>
+                        <td class="text-xs text-ink-600">@L.DateShort(b.Date)</td>
+                        <td class="text-xs font-semibold" dir="ltr">@b.StartTime - @b.EndTime</td>
+                        <td class="font-bold text-brand-900">@L.Money(b.TotalAmount)</td>
+                        <td><span class="badge @(b.PaymentStatus == BookingPaymentStatus.Paid ? "badge-green" : "badge-amber")">@L.E(b.PaymentStatus)</span></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><h2 class="section-title">@L.T("Contracts", "العقود")</h2></div>
+        <div class="card-pad space-y-3">
+            @foreach (var c in cafeteria)
+            {
+                <a asp-action="Cafeteria" class="block rounded-xl border border-sand-200 p-3 transition hover:border-brand-300 hover:bg-brand-50/40">
+                    <div class="flex items-center justify-between gap-2">
+                        <p class="text-xs font-bold text-ink-900">@L.T("Cafeteria", "الكافتيريا") · @c.TenantName</p>
+                        <span class="badge @(c.IsActive ? "badge-green" : "badge-gray")">@(c.IsActive ? L.T("Active", "نشط") : L.T("Ended", "منتهي"))</span>
+                    </div>
+                    <p class="mt-1 text-[11px] text-ink-500">@L.Money(c.AnnualAmount) @L.T("per year", "سنوياً") · @L.Money(c.AnnualAmount / 12) @L.T("monthly", "شهرياً")</p>
+                </a>
+            }
+            @foreach (var c in rents)
+            {
+                <a asp-action="TeacherRent" class="block rounded-xl border border-sand-200 p-3 transition hover:border-brand-300 hover:bg-brand-50/40">
+                    <div class="flex items-center justify-between gap-2">
+                        <p class="text-xs font-bold text-ink-900">@L.Pick(c.Teacher.FullNameAr, c.Teacher.FullNameEn)</p>
+                        <span class="badge @(c.IsActive ? "badge-green" : "badge-gray")">@L.Money(c.MonthlyAmount)</span>
+                    </div>
+                    <p class="mt-1 text-[11px] text-ink-500">@L.T("Monthly teacher room rent", "إيجار مدرّس شهري") · @L.DateShort(c.StartDate) → @(c.EndDate.HasValue ? L.DateShort(c.EndDate.Value) : L.T("open", "مفتوح"))</p>
+                </a>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <a asp-action="Bookings" class="portal-tile"><span class="stat-icon bg-blue-50 text-blue-700"><svg class="h-5 w-5"><use href="#i-calendar"/></svg></span><span><span class="block text-sm font-bold text-brand-950">@L.T("Hall bookings", "حجوزات القاعات")</span><span class="block text-xs text-ink-500">@L.T("Availability and payments", "التوفر والمدفوعات")</span></span></a>
+    <a asp-action="Cafeteria" class="portal-tile"><span class="stat-icon bg-orange-50 text-orange-600"><svg class="h-5 w-5"><use href="#i-cash"/></svg></span><span><span class="block text-sm font-bold text-brand-950">@L.T("Cafeteria contract", "عقد الكافتيريا")</span><span class="block text-xs text-ink-500">@L.T("Annual rent and instalments", "الإيجار السنوي والأقساط")</span></span></a>
+    <a asp-action="TeacherRent" class="portal-tile"><span class="stat-icon bg-violet-50 text-violet-700"><svg class="h-5 w-5"><use href="#i-key"/></svg></span><span><span class="block text-sm font-bold text-brand-950">@L.T("Teacher room rent", "إيجار مدرسي السادس")</span><span class="block text-xs text-ink-500">@L.T("Monthly contracts", "العقود الشهرية")</span></span></a>
+    <a asp-controller="Classrooms" asp-action="Index" class="portal-tile"><span class="stat-icon bg-brand-50 text-brand-700"><svg class="h-5 w-5"><use href="#i-building"/></svg></span><span><span class="block text-sm font-bold text-brand-950">@L.T("Classrooms", "القاعات")</span><span class="block text-xs text-ink-500">@L.T("Capacity and equipment", "السعة والتجهيزات")</span></span></a>
+</div>

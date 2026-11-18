@@ -1,0 +1,102 @@
+@model List<Stage>
+@{
+    ViewData["Title"] = L.T("Stages & grades", "المراحل والصفوف");
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Stages & grades", "المراحل والصفوف")</h1>
+        <p class="page-sub">@L.T("The Iraqi education ladder: 6 primary, 3 intermediate and 3 preparatory grades (scientific / literary).", "السلم التعليمي العراقي: 6 ابتدائي، 3 متوسط، و3 إعدادي (علمي / أدبي).")</p>
+    </div>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-3">
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Stages", "المراحل")</p><p class="kpi mt-1">@L.Num(Model.Count)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Active students", "الطلاب المنتظمون")</p><p class="kpi mt-1">@L.Num((int)ViewBag.StudentCount)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Active courses", "الدورات النشطة")</p><p class="kpi mt-1">@L.Num((int)ViewBag.CourseCount)</p></div>
+</div>
+
+<div class="mt-5 space-y-5">
+    @foreach (var stage in Model)
+    {
+        var color = stage.Type switch
+        {
+            StageType.Primary => "brand",
+            StageType.Intermediate => "gold",
+            _ => "violet"
+        };
+        <div class="card overflow-hidden">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-sand-200 bg-gradient-to-r from-brand-50 to-white px-5 py-4">
+                <div class="flex items-center gap-3">
+                    <span class="stat-icon bg-brand-100 text-brand-800"><svg class="h-5 w-5"><use href="#i-cap"/></svg></span>
+                    <div>
+                        <h2 class="text-base font-extrabold text-brand-950">@L.Pick(stage.NameAr, stage.NameEn)</h2>
+                        <p class="text-[11px] text-ink-500">@L.E(stage.Type) · @L.Num(stage.Grades.Count) @L.T("grades", "صفوف") · @L.Num(stage.Grades.Sum(g => g.Students.Count(s => s.Status == StudentStatus.Active))) @L.T("students", "طالباً")</p>
+                    </div>
+                </div>
+                <span class="badge badge-blue">@L.Num(stage.Grades.Sum(g => g.Courses.Count(c => c.Status == CourseStatus.Active))) @L.T("active courses", "دورة نشطة")</span>
+            </div>
+            <div class="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-3">
+                @foreach (var g in stage.Grades.OrderBy(g => g.Level).ThenBy(g => g.Branch))
+                {
+                    <div class="rounded-xl border border-sand-200 p-4">
+                        <div class="flex items-start justify-between gap-2">
+                            <div>
+                                <p class="font-bold text-ink-900">@L.Pick(g.NameAr, g.NameEn)</p>
+                                <p class="text-[10px] text-ink-500">@L.T("Level", "المستوى") @g.Level · @L.E(g.Branch)</p>
+                            </div>
+                            <span class="badge @(g.Branch == GradeBranch.Scientific ? "badge-blue" : g.Branch == GradeBranch.Literary ? "badge-violet" : "badge-gray")">@L.E(g.Branch)</span>
+                        </div>
+                        <div class="mt-2 flex gap-2 text-[10px] text-ink-500">
+                            <span class="chip !px-2 !py-0.5">@L.Num(g.Students.Count(s => s.Status == StudentStatus.Active)) @L.T("students", "طالب")</span>
+                            <span class="chip !px-2 !py-0.5">@L.Num(g.Courses.Count(c => c.Status == CourseStatus.Active)) @L.T("courses", "دورة")</span>
+                        </div>
+                        <details class="mt-2 border-t border-sand-100 pt-2">
+                            <summary class="cursor-pointer text-[10px] font-bold text-brand-700">@L.T("Edit", "تعديل")</summary>
+                            <form asp-action="Edit" method="post" class="mt-2 space-y-1.5">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@g.Id" />
+                                <input name="nameAr" value="@g.NameAr" class="input !py-1 !text-xs" required />
+                                <input name="nameEn" value="@g.NameEn" class="input !py-1 !text-xs" dir="ltr" required />
+                                <div class="grid grid-cols-2 gap-1.5">
+                                    <input name="level" type="number" value="@g.Level" class="input !py-1 !text-xs" />
+                                    <select name="branch" class="select !py-1 !text-xs">
+                                        @foreach (var b in Enum.GetValues<GradeBranch>())
+                                        {
+                                            <option value="@b" selected="@(b == g.Branch)">@L.E(b)</option>
+                                        }
+                                    </select>
+                                </div>
+                                <button class="btn btn-soft btn-xs w-full">@L.T("Save", "حفظ")</button>
+                            </form>
+                        </details>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<div class="card card-pad mt-5">
+    <h2 class="section-title mb-4">@L.T("Add a grade", "إضافة صف")</h2>
+    <form asp-action="Create" method="post" class="grid gap-3 md:grid-cols-5">
+        @Html.AntiForgeryToken()
+        <select name="stageId" class="select">
+            @foreach (var stage in Model)
+            {
+                <option value="@stage.Id">@L.Pick(stage.NameAr, stage.NameEn)</option>
+            }
+        </select>
+        <input name="nameAr" class="input" placeholder="@L.T("Arabic name", "الاسم بالعربية")" required />
+        <input name="nameEn" class="input" placeholder="@L.T("English name", "الاسم بالإنكليزية")" dir="ltr" required />
+        <div class="grid grid-cols-2 gap-2">
+            <input name="level" type="number" class="input" placeholder="@L.T("Level", "المستوى")" min="1" max="12" required />
+            <select name="branch" class="select">
+                @foreach (var b in Enum.GetValues<GradeBranch>())
+                {
+                    <option value="@b">@L.E(b)</option>
+                }
+            </select>
+        </div>
+        <button class="btn btn-primary"><svg class="h-4 w-4"><use href="#i-plus"/></svg>@L.T("Add", "إضافة")</button>
+    </form>
+</div>

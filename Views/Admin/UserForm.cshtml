@@ -1,0 +1,156 @@
+@model AdminUserFormViewModel
+@{
+    var isEdit = Model.IsEdit;
+    ViewData["Title"] = isEdit ? L.T("Edit account", "تعديل حساب") : L.T("New account", "حساب جديد");
+    var roleOptions = ViewBag.RoleOptions as List<string> ?? new List<string>();
+    var teachers = ViewBag.Teachers as List<LinkOption> ?? new();
+    var parents = ViewBag.Parents as List<LinkOption> ?? new();
+    var students = ViewBag.Students as List<LinkOption> ?? new();
+}
+<div class="page-head">
+    <div>
+        <div class="mb-1 flex items-center gap-2 text-xs text-ink-500">
+            <a asp-action="Users" class="hover:text-brand-700">@L.T("Users & roles", "المستخدمون والصلاحيات")</a>
+            <svg class="h-3 w-3 flip-x"><use href="#i-chevron-down"/></svg>
+            <span>@(isEdit ? L.T("Edit", "تعديل") : L.T("New", "جديد"))</span>
+        </div>
+        <h1 class="page-title">@(isEdit ? L.T("Edit account", "تعديل الحساب") : L.T("Create an account", "إنشاء حساب"))</h1>
+        <p class="page-sub">@(isEdit ? L.T("Update identity, role and linked portal record.", "تحديث الهوية والصلاحية والسجل المرتبط بالبوابة.") : L.T("Staff and portal accounts are created here with a single role.", "تُنشأ حسابات الموظفين والبوابات هنا بصلاحية واحدة."))</p>
+    </div>
+    <a asp-action="Users" class="btn btn-outline btn-sm">@L.T("Cancel", "إلغاء")</a>
+</div>
+
+<form method="post" asp-action="@(isEdit ? "EditUser" : "CreateUser")" class="grid items-start gap-5 lg:grid-cols-3">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
+    <div class="space-y-5 lg:col-span-2">
+        <div asp-validation-summary="ModelOnly" class="alert alert-error @(ViewData.ModelState.IsValid ? "hidden" : "")"></div>
+
+        <div class="card card-pad">
+            <h2 class="section-title mb-4">@L.T("Account details", "بيانات الحساب")</h2>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label asp-for="FullName" class="label">@L.T("Full name", "الاسم الكامل") *</label>
+                    <input asp-for="FullName" class="input" />
+                    <span asp-validation-for="FullName" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="Email" class="label">@L.T("Sign-in email", "بريد الدخول") *</label>
+                    <input asp-for="Email" class="input" dir="ltr" autocomplete="off" />
+                    <span asp-validation-for="Email" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="Role" class="label">@L.T("Role", "الصلاحية") *</label>
+                    <select asp-for="Role" id="roleSelect" class="select">
+                        @foreach (var r in roleOptions)
+                        {
+                            <option value="@r">@L.Role(r)</option>
+                        }
+                    </select>
+                    <span asp-validation-for="Role" class="field-error"></span>
+                    <p class="help">@L.T("Each account holds one role; change the role here to move the user between modules.", "لكل حساب صلاحية واحدة، وغيّرها هنا لنقل المستخدم بين الوحدات.")</p>
+                </div>
+                <div>
+                    <label asp-for="PreferredLanguage" class="label">@L.T("Preferred language", "اللغة المفضلة")</label>
+                    <select asp-for="PreferredLanguage" class="select">
+                        <option value="ar">@L.T("Arabic", "العربية")</option>
+                        <option value="en">@L.T("English", "الإنجليزية")</option>
+                    </select>
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="flex items-center gap-2 text-sm font-semibold text-ink-700">
+                        <input asp-for="IsActive" class="checkbox" />
+                        @L.T("Account is active", "الحساب نشط")
+                    </label>
+                    <p class="help">@L.T("Disabled accounts cannot sign in, and their sessions are revoked.", "الحسابات المعطلة لا تستطيع تسجيل الدخول وتُغلق جلساتها.")</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-pad">
+            <h2 class="section-title mb-1">@L.T("Linked portal record", "السجل المرتبط بالبوابة")</h2>
+            <p class="mb-4 text-xs text-ink-500">@L.T("Connect the account to the matching teacher, guardian or student record so the portal shows the right data.", "اربط الحساب بسجل المدرّس أو ولي الأمر أو الطالب المطابق كي تعرض البوابة البيانات الصحيحة.")</p>
+
+            <div data-link-group="Teacher" class="hidden">
+                <label asp-for="TeacherId" class="label">@L.T("Teacher record", "سجل المدرّس")</label>
+                <select asp-for="TeacherId" class="select">
+                    <option value="">@L.T("Not linked", "غير مرتبط")</option>
+                    @foreach (var t in teachers)
+                    {
+                        <option value="@t.Id">@t.Name</option>
+                    }
+                </select>
+            </div>
+            <div data-link-group="Parent" class="hidden">
+                <label asp-for="ParentId" class="label">@L.T("Guardian record", "سجل ولي الأمر")</label>
+                <select asp-for="ParentId" class="select">
+                    <option value="">@L.T("Not linked", "غير مرتبط")</option>
+                    @foreach (var p in parents)
+                    {
+                        <option value="@p.Id">@p.Name</option>
+                    }
+                </select>
+            </div>
+            <div data-link-group="Student" class="hidden">
+                <label asp-for="StudentId" class="label">@L.T("Student record", "سجل الطالب")</label>
+                <select asp-for="StudentId" class="select">
+                    <option value="">@L.T("Not linked", "غير مرتبط")</option>
+                    @foreach (var s in students)
+                    {
+                        <option value="@s.Id">@s.Name</option>
+                    }
+                </select>
+            </div>
+            <div data-link-group="Staff" class="hidden rounded-xl border border-dashed border-sand-300 bg-sand-50 p-4 text-xs text-ink-500">
+                @L.T("Staff accounts use the management modules directly and do not need a portal record.", "تستخدم حسابات الموظفين وحدات الإدارة مباشرة ولا تحتاج إلى سجل بوابة.")
+            </div>
+        </div>
+    </div>
+
+    <div class="space-y-5">
+        <div class="card card-pad">
+            <h2 class="section-title mb-4">@L.T("Security", "الأمان")</h2>
+            @if (isEdit)
+            {
+                <p class="text-xs text-ink-500">@L.T("Passwords are stored as secure hashes and cannot be viewed. Issue a new password if the user has lost access.", "تُحفظ كلمات المرور كتجزيئات آمنة ولا يمكن عرضها. أصدر كلمة مرور جديدة إذا فقد المستخدم الوصول.")</p>
+                <a asp-action="ResetPassword" asp-route-id="@Model.Id" class="btn btn-outline btn-sm mt-4 w-full"><svg class="h-4 w-4"><use href="#i-key"/></svg>@L.T("Reset password", "إعادة تعيين كلمة المرور")</a>
+            }
+            else
+            {
+                <div>
+                    <label asp-for="Password" class="label">@L.T("Initial password", "كلمة المرور الأولية") *</label>
+                    <input asp-for="Password" type="password" class="input" dir="ltr" autocomplete="new-password" />
+                    <span asp-validation-for="Password" class="field-error"></span>
+                    <p class="help">@L.T("At least 8 characters with an uppercase letter and a symbol.", "8 أحرف على الأقل مع حرف كبير ورمز.")</p>
+                </div>
+            }
+            <div class="mt-4 flex items-start gap-2 rounded-xl bg-brand-50 p-3 text-[11px] text-brand-800">
+                <svg class="mt-0.5 h-4 w-4 shrink-0"><use href="#i-shield"/></svg>
+                <span>@L.T("Every account change is recorded in the audit trail with the acting administrator.", "كل تغيير على الحساب يُسجل في سجل التدقيق مع مدير النظام المنفّذ.")</span>
+            </div>
+        </div>
+
+        <div class="card card-pad">
+            <button class="btn btn-primary w-full"><svg class="h-5 w-5"><use href="#i-check"/></svg>@(isEdit ? L.T("Save account", "حفظ الحساب") : L.T("Create account", "إنشاء الحساب"))</button>
+            <a asp-action="Users" class="btn btn-ghost mt-2 w-full">@L.T("Back to users", "العودة إلى المستخدمين")</a>
+        </div>
+    </div>
+</form>
+
+<script>
+    (function () {
+        var select = document.getElementById('roleSelect');
+        if (!select) return;
+        var staffRoles = ['Administrator', 'Manager', 'Accountant', 'Hr', 'Registrar'];
+        function sync() {
+            var role = select.value;
+            document.querySelectorAll('[data-link-group]').forEach(function (el) {
+                var group = el.getAttribute('data-link-group');
+                var show = group === role || (group === 'Staff' && staffRoles.indexOf(role) >= 0);
+                el.classList.toggle('hidden', !show);
+            });
+        }
+        select.addEventListener('change', sync);
+        sync();
+    })();
+</script>

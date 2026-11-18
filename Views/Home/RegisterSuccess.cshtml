@@ -1,0 +1,30 @@
+@{
+    Layout = "_PublicLayout";
+    ViewData["Title"] = L.T("Registration received", "تم استلام الطلب");
+    var note = TempData["RegisterNote"] as string;
+}
+<section class="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
+    <div class="card overflow-hidden">
+        <div class="bg-gradient-to-l from-brand-800 to-brand-700 px-6 py-10 text-center">
+            <span class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gold-400 text-brand-950 shadow-lg"><svg class="h-8 w-8"><use href="#i-check"/></svg></span>
+            <h1 class="mt-4 text-2xl font-extrabold text-white">@L.T("Registration request received", "تم استلام طلب التسجيل")</h1>
+            <p class="mt-2 text-sm text-brand-100/70">@L.T("Thank you. Your request is now with the registrar.", "شكراً لكم. طلبكم الآن لدى مسؤول التسجيل.")</p>
+        </div>
+        <div class="card-pad">
+            @if (!string.IsNullOrWhiteSpace(note))
+            {
+                <div class="alert alert-info mb-5"><svg class="mt-0.5 h-5 w-5 shrink-0"><use href="#i-info"/></svg><p>@note</p></div>
+            }
+            <h2 class="text-sm font-bold">@L.T("What happens next?", "ما الخطوة التالية؟")</h2>
+            <ul class="mt-4 space-y-3 text-sm text-ink-700">
+                <li class="flex gap-3"><span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[11px] font-bold text-brand-700">1</span><p>@L.T("The registrar will call the guardian phone number to confirm the details.", "سيتصل مسؤول التسجيل برقم ولي الأمر لتأكيد البيانات.")</p></li>
+                <li class="flex gap-3"><span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[11px] font-bold text-brand-700">2</span><p>@L.T("Bring the student's school ID or a recent report card when you visit.", "أحضر هوية الطالب المدرسية أو آخر بطاقة درجات عند الزيارة.")</p></li>
+                <li class="flex gap-3"><span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[11px] font-bold text-brand-700">3</span><p>@L.T("Pay the first instalment at reception to activate the enrollment.", "ادفع القسط الأول في الاستقبال لتفعيل الاشتراك.")</p></li>
+            </ul>
+            <div class="mt-7 flex flex-wrap justify-center gap-2 border-t border-sand-200 pt-6">
+                <a asp-controller="Home" asp-action="Index" class="btn btn-outline">@L.T("Back to homepage", "العودة للرئيسية")</a>
+                <a asp-controller="Home" asp-action="Register" class="btn btn-primary">@L.T("Register another student", "تسجيل طالب آخر")</a>
+            </div>
+        </div>
+    </div>
+</section>

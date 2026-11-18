@@ -1,0 +1,149 @@
+@model ExamResultsViewModel
+@{
+    ViewData["Title"] = L.T("Exam results", "نتائج الامتحان");
+    var examDate = (DateTime)ViewData["ExamDate"]!;
+    var examType = (ExamType)ViewData["ExamType"]!;
+    var teacherName = ViewData["TeacherName"] as string ?? "";
+    var gradeName = ViewData["GradeName"] as string ?? "";
+    var recorded = Model.Rows.Count(r => r.Mark.HasValue);
+    var passed = Model.Rows.Count(r => r.Mark.HasValue && r.Mark >= Model.PassMark);
+    var average = recorded == 0 ? 0 : Model.Rows.Where(r => r.Mark.HasValue).Average(r => r.Mark!.Value);
+    var highest = recorded == 0 ? 0 : Model.Rows.Where(r => r.Mark.HasValue).Max(r => r.Mark!.Value);
+}
+<div class="page-head">
+    <div>
+        <div class="mb-1 flex items-center gap-2 text-xs text-ink-500">
+            <a asp-action="Index" class="hover:text-brand-700">@L.T("Exams & results", "الامتحانات والنتائج")</a>
+            <svg class="h-3 w-3 flip-x"><use href="#i-chevron-down"/></svg>
+            <span>@Model.ExamName</span>
+        </div>
+        <h1 class="page-title">@Model.ExamName</h1>
+        <p class="page-sub">@Model.CourseName · @gradeName · @teacherName</p>
+        <p class="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-ink-500">
+            <span class="badge badge-blue">@L.E(examType)</span>
+            <span>@L.Date(examDate)</span>
+            <span class="dot bg-ink-300"></span>
+            <span>@L.T("pass mark", "درجة النجاح") @Model.PassMark / @Model.MaxMark</span>
+        </p>
+    </div>
+    <div class="flex flex-wrap gap-2 no-print">
+        <a asp-action="Edit" asp-route-id="@Model.ExamId" class="btn btn-outline btn-sm"><svg class="h-4 w-4"><use href="#i-settings"/></svg>@L.T("Edit exam", "تعديل الامتحان")</a>
+        <button type="button" class="btn btn-soft btn-sm" onclick="window.print()"><svg class="h-4 w-4"><use href="#i-printer"/></svg>@L.T("Print sheet", "طباعة الورقة")</button>
+    </div>
+</div>
+
+<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="stat-card !p-4">
+        <p class="text-xs text-ink-500">@L.T("Students", "الطلاب")</p>
+        <p class="kpi mt-1" id="kpiTotal">@L.Num(Model.Rows.Count)</p>
+    </div>
+    <div class="stat-card !p-4">
+        <p class="text-xs text-ink-500">@L.T("Marks entered", "الدرجات المدخلة")</p>
+        <p class="kpi mt-1 text-brand-800" id="kpiRecorded">@L.Num(recorded)</p>
+    </div>
+    <div class="stat-card !p-4">
+        <p class="text-xs text-ink-500">@L.T("Passed", "ناجح")</p>
+        <p class="kpi mt-1 text-emerald-700"><span id="kpiPassed">@L.Num(passed)</span> <span class="text-sm font-normal text-ink-400">/ @L.Num(recorded)</span></p>
+        <p class="text-[10px] text-ink-500" id="kpiRate">@(recorded == 0 ? "0" : Math.Round((decimal)passed / recorded * 100, 1).ToString("0.#"))%</p>
+    </div>
+    <div class="stat-card !p-4">
+        <p class="text-xs text-ink-500">@L.T("Average / highest", "المعدل / الأعلى")</p>
+        <p class="kpi mt-1"><span id="kpiAverage">@average.ToString("0.#")</span> <span class="text-sm font-normal text-ink-400">/ @highest.ToString("0.#")</span></p>
+    </div>
+</div>
+
+<form method="post" asp-action="SaveResults" class="card mt-5 overflow-hidden">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="ExamId" />
+    <input type="hidden" asp-for="ExamName" />
+    <input type="hidden" asp-for="CourseName" />
+    <input type="hidden" asp-for="MaxMark" />
+    <input type="hidden" asp-for="PassMark" />
+    <div class="card-header flex-wrap gap-2">
+        <div>
+            <h2 class="section-title">@L.T("Marking sheet", "ورقة التصحيح")</h2>
+            <p class="text-[11px] text-ink-500">@L.T("Enter each student's mark out of", "أدخل درجة كل طالب من") @Model.MaxMark @L.T("or leave it blank.", "أو اتركها فارغة.")</p>
+        </div>
+        <span class="badge badge-gray">@L.T("Auto-saved only when you press Save", "لا تُحفظ إلا بالضغط على حفظ")</span>
+    </div>
+    <div class="table-wrap">
+        <table class="table-base min-w-[760px]">
+            <thead>
+                <tr>
+                    <th class="w-12">#</th>
+                    <th>@L.T("Student", "الطالب")</th>
+                    <th class="w-44">@L.T("Mark", "الدرجة")</th>
+                    <th class="w-32">@L.T("Result", "النتيجة")</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (Model.Rows.Count == 0)
+            {
+                <tr><td colspan="4"><div class="empty">@L.T("No students are enrolled in this course yet.", "لا يوجد طلاب مسجلون في هذه الدورة بعد.")</div></td></tr>
+            }
+            @for (var i = 0; i < Model.Rows.Count; i++)
+            {
+                var row = Model.Rows[i];
+                <tr data-mark-row>
+                    <td class="text-xs text-ink-400">@(i + 1)</td>
+                    <td>
+                        <input type="hidden" name="Rows[@i].StudentId" value="@row.StudentId" />
+                        <input type="hidden" name="Rows[@i].StudentNo" value="@row.StudentNo" />
+                        <input type="hidden" name="Rows[@i].StudentName" value="@row.StudentName" />
+                        <p class="font-semibold text-ink-900">@row.StudentName</p>
+                        <p class="text-[11px] text-ink-500">@row.StudentNo</p>
+                    </td>
+                    <td>
+                        <div class="flex items-center gap-2">
+                            <input name="Rows[@i].Mark" value="@(row.Mark?.ToString("0.#"))" type="number" min="0" max="@Model.MaxMark" step="0.5"
+                                   class="input !w-24 text-center font-bold" data-mark-input data-pass="@Model.PassMark" placeholder="—" />
+                            <span class="text-xs text-ink-400">/ @Model.MaxMark</span>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge badge-gray" data-mark-badge>—</span>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    <div class="flex flex-wrap items-center justify-between gap-3 border-t border-sand-200 bg-sand-50 px-5 py-4">
+        <p class="text-[11px] text-ink-500">@L.T("Marks below the pass mark trigger a notification to the guardian.", "تتسبب الدرجات دون درجة النجاح بإشعار لولي الأمر.")</p>
+        <button class="btn btn-primary"><svg class="h-4 w-4"><use href="#i-check"/></svg>@L.T("Save marks", "حفظ الدرجات")</button>
+    </div>
+</form>
+
+@section Scripts {
+<script>
+    (function () {
+        var inputs = Array.prototype.slice.call(document.querySelectorAll('[data-mark-input]'));
+        var total = inputs.length;
+        function fmt(n) { return new Intl.NumberFormat(document.documentElement.lang === 'ar' ? 'en' : document.documentElement.lang).format(n); }
+        function refresh() {
+            var recorded = 0, passed = 0, sum = 0, highest = 0;
+            inputs.forEach(function (input) {
+                var row = input.closest('[data-mark-row]');
+                var badge = row.querySelector('[data-mark-badge]');
+                var value = input.value === '' ? null : Number(input.value);
+                if (value === null || isNaN(value)) {
+                    badge.className = 'badge badge-gray';
+                    badge.textContent = '—';
+                    return;
+                }
+                recorded++; sum += value; highest = Math.max(highest, value);
+                var pass = value >= Number(input.dataset.pass);
+                if (pass) passed++;
+                badge.className = 'badge ' + (pass ? 'badge-green' : 'badge-red');
+                badge.textContent = pass ? '@L.T("Pass", "ناجح")' : '@L.T("Fail", "راسب")';
+            });
+            document.getElementById('kpiRecorded').textContent = fmt(recorded);
+            document.getElementById('kpiPassed').textContent = fmt(passed);
+            document.getElementById('kpiRate').textContent = (recorded ? (passed / recorded * 100).toFixed(1) : '0') + '%';
+            document.getElementById('kpiAverage').textContent = recorded ? (sum / recorded).toFixed(1) : '0';
+        }
+        inputs.forEach(function (input) { input.addEventListener('input', refresh); });
+        refresh();
+    })();
+</script>
+}

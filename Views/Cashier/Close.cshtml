@@ -1,0 +1,105 @@
+@model CloseCashierShiftViewModel
+@{
+    ViewData["Title"] = L.T("Close drawer", "إغلاق الصندوق");
+    var shift = ViewBag.Shift as CashierShift;
+    var receiptCount = (int)ViewBag.ReceiptCount;
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Close drawer", "إغلاق الصندوق")</h1>
+        <p class="page-sub">@L.T("Count the physical cash in your drawer by denomination. The expected amount stays hidden until you submit.", "عدّ النقد الفعلي في صندوقك حسب الفئة. يبقى المبلغ المتوقع مخفياً حتى ترسل العد.")</p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline btn-sm"><svg class="h-4 w-4 flip-x"><use href="#i-arrow-left"/></svg>@L.T("Cashier", "الصندوق")</a>
+</div>
+
+@if (shift is null)
+{
+    <div class="alert alert-warning"><svg class="h-4 w-4"><use href="#i-clipboard"/></svg><p>@L.T("Shift not found.", "الوردية غير موجودة.")</p></div>
+}
+else
+{
+    <div class="grid gap-4 sm:grid-cols-3">
+        <div class="stat-card !p-4">
+            <p class="text-xs text-ink-500">@L.T("Shift", "الوردية")</p>
+            <p class="mt-1 font-mono text-lg font-extrabold text-brand-950">@shift.ShiftNo</p>
+        </div>
+        <div class="stat-card !p-4">
+            <p class="text-xs text-ink-500">@L.T("Opening float", "الرصيد الافتتاحي")</p>
+            <p class="kpi mt-1">@L.Money(shift.OpeningFloat)</p>
+        </div>
+        <div class="stat-card !p-4">
+            <p class="text-xs text-ink-500">@L.T("Cash receipts on this shift", "السندات النقدية في هذه الوردية")</p>
+            <p class="kpi mt-1">@L.Num(receiptCount)</p>
+        </div>
+    </div>
+
+    <div class="alert alert-info mt-5">
+        <svg class="h-4 w-4"><use href="#i-eye"/></svg>
+        <p>@L.T("Blind count: enter how many notes of each denomination you actually have. The system will compare your total with the expected cash after you confirm.", "عدّ أعمى: أدخل عدد الأوراق الفعلية لكل فئة. سيقارن النظام مجموعك مع النقد المتوقع بعد التأكيد.")</p>
+    </div>
+
+    <form method="post" asp-action="Close" class="mt-5 grid gap-5 lg:grid-cols-3" id="closeForm">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="ShiftId" />
+
+        <div class="card card-pad lg:col-span-2">
+            <h2 class="section-title">@L.T("Denomination count", "عدّ الفئات")</h2>
+            <div class="mt-4 divide-y divide-ink-100">
+                @for (var i = 0; i < Model.Counts.Count; i++)
+                {
+                    <div class="flex items-center gap-4 py-2.5">
+                        <input type="hidden" asp-for="Counts[i].Denomination" />
+                        <span class="w-24 font-mono text-sm font-semibold text-ink-800">@L.Num(Model.Counts[i].Denomination)</span>
+                        <span class="text-[11px] text-ink-500">@L.T("IQD note", "د.ع ورقة")</span>
+                        <input asp-for="Counts[i].Count" type="number" min="0" step="1" inputmode="numeric"
+                               class="input !w-28 count-input" data-value="@Model.Counts[i].Denomination" placeholder="0" />
+                        <span class="ms-auto font-mono text-xs text-ink-500 line-total" data-index="@i">0</span>
+                    </div>
+                }
+            </div>
+            <div class="mt-4 flex items-center justify-between border-t border-ink-200 pt-4">
+                <span class="text-sm font-semibold text-ink-700">@L.T("Your counted total", "إجمالي عدّك")</span>
+                <span class="font-mono text-xl font-extrabold text-brand-950" id="grandTotal">0</span>
+            </div>
+            <div class="mt-3">
+                <label class="label" asp-for="Notes">@L.T("Close notes", "ملاحظات الإغلاق")</label>
+                <textarea asp-for="Notes" class="textarea" rows="2" placeholder="@L.T("Explain any shortage, overage, or handover note…", "اشرح أي نقص أو زيادة أو ملاحظة تسليم…")"></textarea>
+            </div>
+        </div>
+
+        <div class="space-y-4">
+            <div class="card card-pad !bg-amber-50">
+                <h3 class="text-sm font-bold text-amber-900">@L.T("What happens next", "ما يحدث بعد الإرسال")</h3>
+                <ul class="mt-2 space-y-2 text-[11px] leading-5 text-amber-900">
+                    <li>@L.T("If your count matches the expected cash, the drawer closes immediately.", "إذا طابق عدّك النقد المتوقع، يُغلق الصندوق فوراً.")</li>
+                    <li>@L.T("Any difference becomes a variance locked to this shift and sent to the manager for approval.", "أي فرق يصبح عجزاً/زيادة مرتبطة بهذه الوردية ويُرسل للمدير للاعتماد.")</li>
+                    <li>@L.T("You cannot open a new shift until a variance is approved.", "لا يمكنك فتح وردية جديدة حتى يُعتمد الفرق.")</li>
+                </ul>
+            </div>
+            <button class="btn btn-primary w-full" onclick="return confirm('@L.T("Submit the count and close this drawer?", "هل تريد إرسال العد وإغلاق الصندوق؟")')">
+                <svg class="h-4 w-4"><use href="#i-check"/></svg>@L.T("Submit count & close", "إرسال العد وإغلاق")
+            </button>
+        </div>
+    </form>
+
+    <script>
+        (function () {
+            const form = document.getElementById('closeForm');
+            const grand = document.getElementById('grandTotal');
+            function recalc() {
+                let total = 0;
+                form.querySelectorAll('.count-input').forEach(function (input) {
+                    const value = parseInt(input.dataset.value || '0', 10);
+                    const count = parseInt(input.value || '0', 10);
+                    const line = Math.max(0, value * (isNaN(count) ? 0 : count));
+                    total += line;
+                    const cell = input.parentElement.querySelector('.line-total');
+                    if (cell) cell.textContent = line.toLocaleString('en-US');
+                });
+                grand.textContent = total.toLocaleString('en-US');
+            }
+            form.addEventListener('input', recalc);
+            recalc();
+        })();
+    </script>
+}

@@ -1,0 +1,126 @@
+@model ManualJournalViewModel
+@{
+    ViewData["Title"] = L.T("Manual journal entry", "قيد يومية يدوي");
+    var accounts = ViewBag.Accounts as List<Account> ?? new List<Account>();
+    var rowCount = Math.Max(4, Model.Lines.Count);
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Manual journal entry", "قيد يومية يدوي")</h1>
+        <p class="page-sub">@L.T("Balanced double-entry · posted immediately to the general ledger.", "قيد مزدوج متوازن · يُرحّل فوراً إلى دفتر الأستاذ.")</p>
+    </div>
+    <a asp-action="Journal" class="btn btn-outline btn-sm"><svg class="h-4 w-4 flip-x"><use href="#i-arrow-left"/></svg>@L.T("Journal", "القيود")</a>
+</div>
+
+<form asp-action="NewEntry" method="post" class="space-y-4">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="ModelOnly" class="alert alert-error @(ViewData.ModelState.ErrorCount == 0 ? "hidden" : "")"></div>
+
+    <div class="card card-pad">
+        <div class="grid gap-4 sm:grid-cols-3">
+            <div><label class="label">@L.T("Date", "التاريخ")</label><input asp-for="Date" type="date" class="input" /></div>
+            <div class="sm:col-span-2"><label class="label">@L.T("Description", "الوصف")</label><input asp-for="Description" class="input" placeholder="@L.T("e.g. Monthly generator fuel adjustment", "مثال: تسوية وقود المولدة الشهرية")" /></div>
+            <div class="sm:col-span-3"><label class="label">@L.T("Reference (optional)", "المرجع (اختياري)")</label><input asp-for="Reference" class="input" placeholder="@L.T("Document or voucher number", "رقم المستند أو السند")" /></div>
+        </div>
+    </div>
+
+    <div class="card overflow-hidden">
+        <div class="card-header">
+            <h2 class="section-title">@L.T("Journal lines", "سطور القيد")</h2>
+            <button type="button" id="addLine" class="btn btn-outline btn-xs"><svg class="h-3.5 w-3.5"><use href="#i-plus"/></svg>@L.T("Add line", "إضافة سطر")</button>
+        </div>
+        <div class="table-wrap">
+            <table class="table-base">
+                <thead><tr><th>@L.T("Account", "الحساب")</th><th class="w-40">@L.T("Debit", "مدين")</th><th class="w-40">@L.T("Credit", "دائن")</th><th>@L.T("Line note", "ملاحظة السطر")</th><th></th></tr></thead>
+                <tbody id="lines">
+                @for (var i = 0; i < rowCount; i++)
+                {
+                    var line = i < Model.Lines.Count ? Model.Lines[i] : new JournalLineInput();
+                    <tr data-line>
+                        <td>
+                            <select name="Lines[@i].AccountId" class="select !py-2">
+                                <option value="0">@L.T("Select account…", "اختر الحساب…")</option>
+                                @foreach (var account in accounts)
+                                {
+                                    <option value="@account.Id" selected="@(line.AccountId == account.Id)">@account.Code · @L.Pick(account.NameAr, account.NameEn)</option>
+                                }
+                            </select>
+                        </td>
+                        <td><input name="Lines[@i].Debit" value="@(line.Debit == 0 ? "" : line.Debit.ToString())" type="number" min="0" step="1000" class="input !py-2 text-end tabular-nums" data-debit /></td>
+                        <td><input name="Lines[@i].Credit" value="@(line.Credit == 0 ? "" : line.Credit.ToString())" type="number" min="0" step="1000" class="input !py-2 text-end tabular-nums" data-credit /></td>
+                        <td><input name="Lines[@i].Description" value="@line.Description" class="input !py-2 !text-xs" placeholder="@L.T("Optional", "اختياري")" /></td>
+                        <td><button type="button" class="icon-btn text-red-500" data-remove-line title="@L.T("Remove", "حذف")"><svg class="h-4 w-4"><use href="#i-x"/></svg></button></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        <div class="flex flex-wrap items-center justify-between gap-3 border-t border-sand-200 bg-sand-50 px-5 py-3">
+            <div class="flex gap-6 text-xs">
+                <span class="text-ink-500">@L.T("Total debit", "مجموع المدين") <span id="debitTotal" class="ms-1 font-bold text-brand-900">0</span></span>
+                <span class="text-ink-500">@L.T("Total credit", "مجموع الدائن") <span id="creditTotal" class="ms-1 font-bold text-brand-900">0</span></span>
+                <span id="balanceState" class="badge badge-red">@L.T("Not balanced", "غير متوازن")</span>
+            </div>
+            <p class="text-[11px] text-ink-500">@L.T("Debits must equal credits before posting.", "يجب أن يتساوى المدين مع الدائن قبل الترحيل.")</p>
+        </div>
+    </div>
+
+    <div class="flex justify-end gap-2">
+        <a asp-action="Journal" class="btn btn-outline">@L.T("Cancel", "إلغاء")</a>
+        <button class="btn btn-primary"><svg class="h-4 w-4"><use href="#i-check"/></svg>@L.T("Post journal entry", "ترحيل القيد")</button>
+    </div>
+</form>
+
+@section Scripts {
+<script>
+    (function () {
+        var lines = document.getElementById('lines');
+        var add = document.getElementById('addLine');
+        var accountsHtml = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(accounts.Select(a => new { id = a.Id, label = L.Pick(a.NameAr, a.NameEn), code = a.Code })));
+        var stub = '@L.T("Select account…", "اختر الحساب…")';
+        var optional = '@L.T("Optional", "اختياري")';
+        var removeTitle = '@L.T("Remove", "حذف")';
+
+        function nextIndex() {
+            var rows = lines.querySelectorAll('tr[data-line]');
+            return rows.length;
+        }
+        function bindRemove(row) {
+            row.querySelector('[data-remove-line]').addEventListener('click', function () {
+                if (lines.querySelectorAll('tr[data-line]').length <= 1) return;
+                row.remove();
+                recalc();
+            });
+        }
+        function recalc() {
+            var d = 0, c = 0;
+            lines.querySelectorAll('[data-debit]').forEach(function (el) { d += Number(el.value || 0); });
+            lines.querySelectorAll('[data-credit]').forEach(function (el) { c += Number(el.value || 0); });
+            document.getElementById('debitTotal').textContent = d.toLocaleString();
+            document.getElementById('creditTotal').textContent = c.toLocaleString();
+            var state = document.getElementById('balanceState');
+            if (d > 0 && d === c) { state.className = 'badge badge-green'; state.textContent = '@L.T("Balanced", "متوازن")'; }
+            else { state.className = 'badge badge-red'; state.textContent = '@L.T("Not balanced", "غير متوازن")'; }
+        }
+        add.addEventListener('click', function () {
+            var i = nextIndex();
+            var row = document.createElement('tr');
+            row.setAttribute('data-line', '');
+            var options = accountsHtml.map(function (a) {
+                return '<option value="' + a.id + '">' + a.code + ' · ' + a.label.replace(/</g, '&lt;') + '</option>';
+            }).join('');
+            row.innerHTML =
+                '<td><select name="Lines[' + i + '].AccountId" class="select !py-2"><option value="0">' + stub + '</option>' + options + '</select></td>' +
+                '<td><input name="Lines[' + i + '].Debit" type="number" min="0" step="1000" class="input !py-2 text-end tabular-nums" data-debit /></td>' +
+                '<td><input name="Lines[' + i + '].Credit" type="number" min="0" step="1000" class="input !py-2 text-end tabular-nums" data-credit /></td>' +
+                '<td><input name="Lines[' + i + '].Description" class="input !py-2 !text-xs" placeholder="' + optional + '" /></td>' +
+                '<td><button type="button" class="icon-btn text-red-500" data-remove-line title="' + removeTitle + '"><svg class="h-4 w-4"><use href="#i-x"/></svg></button></td>';
+            lines.appendChild(row);
+            bindRemove(row);
+        });
+        lines.querySelectorAll('tr[data-line]').forEach(bindRemove);
+        lines.addEventListener('input', recalc);
+        recalc();
+    })();
+</script>
+}

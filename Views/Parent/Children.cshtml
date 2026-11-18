@@ -1,0 +1,153 @@
+@model List<ChildSummary>
+@{
+    ViewData["Title"] = L.T("My children", "أبنائي");
+    var parent = ViewBag.Parent as Parent;
+}
+<div class="page-head">
+    <div>
+        <div class="flex items-center gap-2 text-xs text-ink-500">
+            <a asp-action="Index" class="link">@L.T("Guardian overview", "نظرة عامة")</a>
+            <svg class="h-3.5 w-3.5"><use href="#i-chevron-down"/></svg>
+            <span>@L.T("My children", "أبنائي")</span>
+        </div>
+        <h1 class="page-title mt-1">@L.T("My children", "أبنائي")</h1>
+        <p class="page-sub">@(parent is null ? "" : L.Pick(parent.FullNameAr, parent.FullNameEn)) · @L.Num(Model.Count) @L.T("students", "طالباً")</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <a asp-action="Results" class="btn btn-outline btn-sm"><svg class="h-4 w-4"><use href="#i-chart"/></svg>@L.T("Results", "النتائج")</a>
+        <a asp-action="Payments" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-receipt"/></svg>@L.T("Fees", "الأقساط")</a>
+    </div>
+</div>
+
+<div class="mb-5 inline-flex flex-wrap items-center gap-1 rounded-xl border border-sand-200 bg-sand-50 p-1">
+    <a asp-action="Index" class="tab">@L.T("Overview", "نظرة عامة")</a>
+    <a asp-action="Children" class="tab active">@L.T("My children", "أبنائي")</a>
+    <a asp-action="Payments" class="tab">@L.T("Fees", "الأقساط")</a>
+    <a asp-action="Attendance" class="tab">@L.T("Attendance", "الحضور")</a>
+    <a asp-action="Results" class="tab">@L.T("Results", "النتائج")</a>
+</div>
+
+@if (Model.Count == 0)
+{
+    <div class="card"><div class="empty">@L.T("No children are linked to your account. Please contact the registrar.", "لا يوجد أبناء مرتبطون بحسابك. يرجى التواصل مع التسجيل.")</div></div>
+}
+else
+{
+    <div class="space-y-5">
+        @foreach (var child in Model)
+        {
+            var s = child.Student;
+            var cname = L.Pick(s.FullNameAr, s.FullNameEn);
+            <div class="card">
+                <div class="card-header">
+                    <div class="flex items-center gap-3">
+                        <span class="avatar h-11 w-11 bg-brand-100 text-brand-800">@L.Initials(cname)</span>
+                        <div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <p class="text-base font-bold text-brand-950">@cname</p>
+                                <span class="badge @(s.Status == StudentStatus.Active ? "badge-green" : "badge-gray")">@L.E(s.Status)</span>
+                            </div>
+                            <p class="mt-0.5 text-xs text-ink-500">@s.StudentNo · @L.Pick(s.Grade.NameAr, s.Grade.NameEn) · @L.Age(s.BirthDate)</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <a asp-action="Attendance" asp-route-studentId="@s.Id" class="btn btn-soft btn-xs">@L.T("Attendance", "الحضور")</a>
+                        <a asp-action="Results" asp-route-studentId="@s.Id" class="btn btn-soft btn-xs">@L.T("Results", "النتائج")</a>
+                    </div>
+                </div>
+
+                <div class="grid gap-3 px-5 py-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <div class="rounded-xl bg-sand-50 px-4 py-3">
+                        <p class="text-[11px] text-ink-500">@L.T("Active courses", "الدورات النشطة")</p>
+                        <p class="mt-1 text-lg font-bold text-brand-950">@L.Num(child.Enrollments)</p>
+                    </div>
+                    <div class="rounded-xl bg-sand-50 px-4 py-3">
+                        <p class="text-[11px] text-ink-500">@L.T("Attendance rate", "نسبة الحضور")</p>
+                        <p class="mt-1 text-lg font-bold @(child.AttendanceRate >= 80 ? "text-emerald-700" : "text-amber-700")">@L.Percent(child.AttendanceRate)</p>
+                        <div class="progress mt-1.5"><span style="width:@Math.Min(100, child.AttendanceRate)%"></span></div>
+                    </div>
+                    <div class="rounded-xl bg-sand-50 px-4 py-3">
+                        <p class="text-[11px] text-ink-500">@L.T("Average mark", "المعدل العام")</p>
+                        <p class="mt-1 text-lg font-bold text-brand-800">@child.AverageMark.ToString("0.0")%</p>
+                    </div>
+                    <div class="rounded-xl bg-sand-50 px-4 py-3">
+                        <p class="text-[11px] text-ink-500">@L.T("Outstanding", "المتبقي عليه")</p>
+                        <p class="mt-1 text-lg font-bold @(child.Outstanding > 0 ? "text-amber-700" : "text-emerald-700")">@L.Money(child.Outstanding)</p>
+                    </div>
+                </div>
+
+                <div class="grid gap-4 border-t border-sand-200 px-5 py-4 sm:grid-cols-2">
+                    <div class="text-xs text-ink-600">
+                        <p class="mb-1 font-bold text-ink-800">@L.T("Contact", "بيانات التواصل")</p>
+                        <p>@L.T("Phone", "الهاتف"): @(string.IsNullOrWhiteSpace(s.Phone) ? "—" : s.Phone)</p>
+                        <p>@L.T("Area", "المنطقة"): @(string.IsNullOrWhiteSpace(s.Area) ? "—" : s.Area)</p>
+                        <p>@L.T("School", "المدرسة"): @(string.IsNullOrWhiteSpace(s.SchoolName) ? "—" : s.SchoolName)</p>
+                    </div>
+                    <div class="text-xs text-ink-600">
+                        <p class="mb-1 font-bold text-ink-800">@L.T("Registration", "التسجيل")</p>
+                        <p>@L.T("Registered on", "تاريخ التسجيل"): @L.Date(s.RegistrationDate)</p>
+                        <p>@L.T("Guardian", "ولي الأمر"): @(s.Parent is null ? "—" : L.Pick(s.Parent.FullNameAr, s.Parent.FullNameEn))</p>
+                        <p>@L.T("Address", "العنوان"): @(string.IsNullOrWhiteSpace(s.Address) ? "—" : s.Address)</p>
+                    </div>
+                </div>
+
+                <div class="border-t border-sand-200">
+                    <div class="flex items-center justify-between px-5 py-3">
+                        <p class="text-sm font-bold text-brand-950">@L.T("Enrolled courses", "الدورات المسجل بها")</p>
+                    </div>
+                    @if (child.Courses.Count == 0)
+                    {
+                        <div class="empty !py-8">@L.T("No active enrollments.", "لا توجد اشتراكات نشطة.")</div>
+                    }
+                    else
+                    {
+                        <div class="table-wrap">
+                            <table class="table-base">
+                                <thead>
+                                    <tr>
+                                        <th>@L.T("Course", "الدورة")</th>
+                                        <th>@L.T("Teacher", "المدرّس")</th>
+                                        <th>@L.T("Section", "الشعبة")</th>
+                                        <th>@L.T("Schedule", "الجدول")</th>
+                                        <th>@L.T("Enrolled", "تاريخ الاشتراك")</th>
+                                        <th class="text-end">@L.T("Net fee", "الرسوم الصافية")</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                @foreach (var e in child.Courses)
+                                {
+                                    <tr>
+                                        <td>
+                                            <p class="text-sm font-semibold text-ink-900">@L.Pick(e.Course.Subject.NameAr, e.Course.Subject.NameEn)</p>
+                                            <p class="text-[11px] text-ink-500">@e.Course.Code · @L.E(e.Course.Type)</p>
+                                        </td>
+                                        <td class="text-xs">@L.Pick(e.Course.Teacher.FullNameAr, e.Course.Teacher.FullNameEn)</td>
+                                        <td class="text-xs">@(e.Section?.Name ?? "—")</td>
+                                        <td>
+                                            @if (e.Section is null || e.Section.Schedules.Count == 0)
+                                            {
+                                                <span class="text-[11px] text-ink-400">@L.T("Not scheduled", "غير مجدول")</span>
+                                            }
+                                            else
+                                            {
+                                                <div class="flex flex-wrap gap-1">
+                                                    @foreach (var sc in e.Section.Schedules.OrderBy(x => ((int)x.DayOfWeek + 6) % 7).ThenBy(x => x.StartTime))
+                                                    {
+                                                        <span class="chip !px-2 !py-0.5">@L.Day(sc.DayOfWeek) @sc.StartTime</span>
+                                                    }
+                                                </div>
+                                            }
+                                        </td>
+                                        <td class="text-xs">@L.Date(e.EnrollmentDate)</td>
+                                        <td class="text-end text-sm font-bold">@L.Money(e.NetFee)</td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}

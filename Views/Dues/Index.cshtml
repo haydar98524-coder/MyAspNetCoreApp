@@ -1,0 +1,98 @@
+@model List<Due>
+@{
+    ViewData["Title"] = L.T("Dues", "الأقساط");
+    var q = ViewBag.Q as string;
+    var status = ViewBag.Status as DueStatus?;
+    var overdue = (bool)ViewBag.Overdue;
+    var studentId = ViewBag.StudentId as int?;
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Student dues", "أقساط الطلاب")</h1>
+        <p class="page-sub">@L.Num((int)ViewBag.OpenCount) @L.T("open dues", "قسطاً مفتوحاً") · @L.Money((long)ViewBag.OpenTotal) @L.T("outstanding", "متبقٍ")</p>
+    </div>
+    <div class="flex gap-2">
+        <a asp-controller="Payments" asp-action="Collect" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-cash"/></svg>@L.T("Collect payment", "تحصيل دفعة")</a>
+    </div>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-3">
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Open balance", "الرصيد المفتوح")</p><p class="kpi mt-1">@L.Money((long)ViewBag.OpenTotal)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Overdue balance", "المتأخر")</p><p class="kpi mt-1 text-red-600">@L.Money((long)ViewBag.OverdueTotal)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Collected this month", "المحصل هذا الشهر")</p><p class="kpi mt-1 text-emerald-700">@L.Money((long)ViewBag.CollectedMonth)</p></div>
+</div>
+
+<form method="get" class="card card-pad !py-4 mt-5">
+    <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+        <div class="relative">
+            <span class="pointer-events-none absolute inset-y-0 start-3 flex items-center text-ink-500"><svg class="h-4 w-4"><use href="#i-search"/></svg></span>
+            <input name="q" value="@q" class="input !ps-9" placeholder="@L.T("Student, number, phone…", "الطالب أو الرقم أو الهاتف…")" />
+        </div>
+        <select name="status" class="select">
+            <option value="">@L.T("All statuses", "كل الحالات")</option>
+            @foreach (var s in Enum.GetValues<DueStatus>())
+            {
+                <option value="@s" selected="@(status == s)">@L.E(s)</option>
+            }
+        </select>
+        <label class="flex items-center gap-2 rounded-xl border border-sand-200 px-3 py-2 text-sm font-semibold text-ink-700">
+            <input type="checkbox" name="overdue" value="true" class="checkbox" checked="@overdue" />@L.T("Overdue only", "المتأخرة فقط")
+        </label>
+        <div class="flex gap-2">
+            <button class="btn btn-primary flex-1">@L.T("Filter", "تصفية")</button>
+            <a asp-action="Index" class="btn btn-outline">@L.T("Reset", "مسح")</a>
+        </div>
+    </div>
+    @if (studentId.HasValue)
+    {
+        <input type="hidden" name="studentId" value="@studentId" />
+    }
+</form>
+
+<div class="card mt-4 overflow-hidden">
+    <div class="table-wrap">
+        <table class="table-base">
+            <thead><tr><th>@L.T("Student", "الطالب")</th><th>@L.T("Description", "البيان")</th><th>@L.T("Amount", "المبلغ")</th><th>@L.T("Paid", "المدفوع")</th><th>@L.T("Remaining", "المتبقي")</th><th>@L.T("Due date", "الاستحقاق")</th><th>@L.T("Status", "الحالة")</th><th class="text-end">@L.T("Actions", "الإجراءات")</th></tr></thead>
+            <tbody>
+            @if (Model.Count == 0)
+            {
+                <tr><td colspan="8"><div class="empty">@L.T("No dues match the filter.", "لا توجد أقساط مطابقة.")</div></td></tr>
+            }
+            @foreach (var d in Model)
+            {
+                var isLate = d.DueDate < DateTime.Today && d.Remaining > 0;
+                <tr class="@(isLate ? "bg-red-50/40" : "")">
+                    <td>
+                        <a asp-controller="Students" asp-action="Details" asp-route-id="@d.StudentId" class="font-semibold text-brand-900 hover:underline">@L.Pick(d.Student.FullNameAr, d.Student.FullNameEn)</a>
+                        <p class="text-[11px] text-ink-500">@d.Student.StudentNo · @L.Pick(d.Student.Grade.NameAr, d.Student.Grade.NameEn)</p>
+                    </td>
+                    <td class="max-w-64">
+                        <p class="truncate text-sm text-ink-800">@d.Description</p>
+                        <p class="text-[11px] text-ink-500">@L.Pick(d.Enrollment.Course.NameAr, d.Enrollment.Course.NameEn)</p>
+                    </td>
+                    <td class="font-semibold">@L.Money(d.Amount)</td>
+                    <td class="text-emerald-700">@L.Money(d.PaidAmount)</td>
+                    <td class="font-bold @(d.Remaining > 0 ? "text-amber-700" : "text-emerald-700")">@L.Money(d.Remaining)</td>
+                    <td class="text-xs @(isLate ? "font-bold text-red-600" : "text-ink-500")">@L.DateShort(d.DueDate)@if (isLate) { <span class="block text-[10px]">@((DateTime.Today - d.DueDate).Days) @L.T("days late", "يوم تأخير")</span> }</td>
+                    <td><span class="badge @(d.Status == DueStatus.Paid ? "badge-green" : d.Status == DueStatus.Partial ? "badge-amber" : d.Status == DueStatus.Waived ? "badge-gray" : "badge-red")">@L.E(d.Status)</span></td>
+                    <td>
+                        <div class="flex justify-end gap-1">
+                            @if (d.Remaining > 0 && d.Status != DueStatus.Waived)
+                            {
+                                <a asp-controller="Payments" asp-action="Collect" asp-route-studentId="@d.StudentId" asp-route-dueId="@d.Id" class="icon-btn text-brand-700" title="@L.T("Collect", "تحصيل")"><svg class="h-4 w-4"><use href="#i-cash"/></svg></a>
+                                @if (d.PaidAmount == 0)
+                                {
+                                    <form asp-action="Waive" asp-route-id="@d.Id" method="post" data-confirm="@L.T("Waive this due?", "إعفاء هذا القسط؟")">
+                                        @Html.AntiForgeryToken()
+                                        <button class="icon-btn text-red-500 hover:bg-red-50" title="@L.T("Waive", "إعفاء")"><svg class="h-4 w-4"><use href="#i-ban"/></svg></button>
+                                    </form>
+                                }
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

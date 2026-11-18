@@ -1,0 +1,227 @@
+@{
+    ViewData["Title"] = L.T("AI assistant", "المساعد الذكي");
+    var toolCount = (int)(ViewBag.ToolCount ?? 0);
+    var canSeeFinance = (bool)(ViewBag.CanSeeFinance ?? false);
+    var suggestions = new List<string>
+    {
+        L.T("Give me an overview of the institute today", "أعطني نظرة عامة على المعهد اليوم"),
+        L.T("Which students have attendance problems this month?", "من هم الطلاب الذين لديهم مشاكل في الحضور هذا الشهر؟"),
+        L.T("Summarise the latest exam results", "لخّص نتائج آخر الامتحانات"),
+        L.T("Where do I register a new student?", "أين أسجّل طالباً جديداً؟")
+    };
+    if (canSeeFinance)
+    {
+        suggestions.Insert(2, L.T("Financial summary for this month", "الملخص المالي لهذا الشهر"));
+        suggestions.Insert(3, L.T("List overdue dues", "اعرض الأقساط المتأخرة"));
+    }
+}
+@Html.AntiForgeryToken()
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title flex items-center gap-2">
+            <svg class="h-6 w-6 text-gold-500"><use href="#i-sparkles"/></svg>
+            @L.T("Murshid, the AI assistant", "مُرشِد، المساعد الذكي")
+        </h1>
+        <p class="page-sub">@L.T("Ask about students, attendance, exams, dues and reports. Runs locally on Qwen2.5 through Ollama.",
+                                 "اسأل عن الطلاب والحضور والامتحانات والأقساط والتقارير. يعمل محلياً بنموذج Qwen2.5 عبر Ollama.")</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+        <span class="badge badge-green"><svg class="h-3.5 w-3.5"><use href="#i-shield"/></svg> @L.T("Read-only", "قراءة فقط")</span>
+        <span class="badge badge-blue">@L.Num(toolCount) @L.T("data tools", "أدوات بيانات")</span>
+        <span id="ai-health" class="badge badge-gray">@L.T("Checking…", "جارٍ الفحص…")</span>
+    </div>
+</div>
+
+<div class="alert alert-info mb-4">
+    <svg class="h-5 w-5 shrink-0"><use href="#i-info"/></svg>
+    <div class="text-sm">
+        @L.T("The assistant can only read and analyse data. It cannot create, edit or delete records, and it cannot collect payments or post any financial transaction. For actions it gives you a link to the page where you can do it yourself.",
+             "المساعد يقرأ البيانات ويحللها فقط. لا يستطيع إنشاء السجلات أو تعديلها أو حذفها، ولا استلام الدفعات أو تنفيذ أي عملية مالية. وعند طلب أي إجراء يعطيك رابط الصفحة التي تنفّذه منها بنفسك.")
+    </div>
+</div>
+
+<div class="card flex flex-col" style="min-height: 60vh">
+    <div id="ai-thread" class="flex-1 space-y-4 overflow-y-auto p-4 sm:p-6" style="max-height: 62vh">
+        <div id="ai-empty" class="py-8 text-center">
+            <div class="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-700">
+                <svg class="h-7 w-7"><use href="#i-sparkles"/></svg>
+            </div>
+            <p class="font-bold text-slate-800">@L.T("How can I help?", "كيف أستطيع مساعدتك؟")</p>
+            <p class="muted mt-1 text-sm">@L.T("Try one of these:", "جرّب أحد هذه الأسئلة:")</p>
+            <div class="mt-4 flex flex-wrap justify-center gap-2">
+                @foreach (var s in suggestions)
+                {
+                    <button type="button" class="chip ai-suggest hover:bg-brand-50">@s</button>
+                }
+            </div>
+        </div>
+    </div>
+
+    <form id="ai-form" class="border-t border-slate-100 p-3 sm:p-4" autocomplete="off">
+        <div class="flex items-end gap-2">
+            <textarea id="ai-input" class="textarea min-h-[48px] flex-1 resize-none" rows="1" maxlength="1500"
+                      placeholder="@L.T("Ask a question about the institute's data…", "اكتب سؤالك عن بيانات المعهد…")"></textarea>
+            <button id="ai-send" type="submit" class="btn btn-primary h-12">
+                <svg class="h-4 w-4"><use href="#i-arrow-@(L.IsArabic ? "left" : "right")"/></svg>
+                <span>@L.T("Ask", "اسأل")</span>
+            </button>
+        </div>
+        <p class="help mt-2">@L.T("Answers are generated from live data by a local model. Check important figures in the reports.",
+                                   "الإجابات مولّدة من البيانات الحية بنموذج محلي. تحقّق من الأرقام المهمة في التقارير.")</p>
+    </form>
+</div>
+
+@section Scripts {
+<script>
+(() => {
+    const lang = '@L.Lang';
+    const T = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, string>
+    {
+        ["thinking"] = L.T("Reading the data…", "جارٍ قراءة البيانات…"),
+        ["open"] = L.T("Open page", "فتح الصفحة"),
+        ["data"] = L.T("Data used", "البيانات المستخدمة"),
+        ["refused"] = L.T("Read-only: action not performed", "قراءة فقط: لم يُنفَّذ الإجراء"),
+        ["notGrounded"] = L.T("Not based on tool data — verify before relying on it.", "غير مستند إلى بيانات الأدوات — تحقّق قبل الاعتماد عليه."),
+        ["error"] = L.T("The assistant could not answer", "تعذّر على المساعد الإجابة"),
+        ["ready"] = L.T("Model ready", "النموذج جاهز"),
+        ["degraded"] = L.T("Assistant unavailable", "المساعد غير متاح")
+    }));
+    const intentLabel = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, string>
+    {
+        ["query"] = L.T("Query", "استعلام"),
+        ["analytics"] = L.T("Analytics", "تحليل"),
+        ["report"] = L.T("Report", "تقرير"),
+        ["navigation"] = L.T("Navigation", "توجيه"),
+        ["refused"] = L.T("Refused", "مرفوض"),
+        ["clarification"] = L.T("Clarification", "توضيح")
+    }));
+    const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+    const thread = document.getElementById('ai-thread');
+    const form = document.getElementById('ai-form');
+    const input = document.getElementById('ai-input');
+    const send = document.getElementById('ai-send');
+    const history = [];
+
+    const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+    const scroll = () => { thread.scrollTop = thread.scrollHeight; };
+
+    fetch('/api/ai/health', { credentials: 'same-origin' }).then(r => r.json()).then(h => {
+        const b = document.getElementById('ai-health');
+        const ok = h.status === 'ready';
+        b.className = 'badge ' + (ok ? 'badge-green' : 'badge-red');
+        b.textContent = ok ? `${T.ready} · ${h.ollama.model}` : T.degraded;
+        b.title = ok ? `DB: ${h.database.connected_as}` : JSON.stringify(h.ollama?.error || h.database?.error || '');
+    }).catch(() => {});
+
+    function addUser(text) {
+        document.getElementById('ai-empty')?.remove();
+        const row = el('div', 'flex justify-end');
+        row.appendChild(el('div', 'max-w-[85%] whitespace-pre-wrap rounded-2xl bg-brand-700 px-4 py-2.5 text-sm text-white', text));
+        thread.appendChild(row); scroll();
+    }
+
+    function addPending() {
+        const row = el('div', 'flex');
+        const bubble = el('div', 'flex items-center gap-2 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-500 ring-1 ring-slate-100');
+        bubble.appendChild(el('span', 'h-2 w-2 animate-pulse rounded-full bg-gold-500'));
+        bubble.appendChild(el('span', null, T.thinking));
+        row.appendChild(bubble); thread.appendChild(row); scroll();
+        return row;
+    }
+
+    function addAnswer(r) {
+        const row = el('div', 'flex');
+        const refused = r.intent === 'refused';
+        const failed = !r.ok;
+        const bubble = el('div', 'w-full max-w-[92%] space-y-3 rounded-2xl px-4 py-3 text-sm ring-1 ' +
+            (failed ? 'bg-red-50 ring-red-100' : refused ? 'bg-amber-50 ring-amber-100' : 'bg-white ring-slate-200'));
+
+        const head = el('div', 'flex flex-wrap items-center gap-2');
+        if (failed) head.appendChild(el('span', 'badge badge-red', T.error));
+        else {
+            head.appendChild(el('span', 'badge ' + (refused ? 'badge-amber' : 'badge-blue'), intentLabel[r.intent] || r.intent));
+            if (refused) head.appendChild(el('span', 'badge badge-amber', T.refused));
+            (r.tools_used || []).forEach(t => head.appendChild(el('span', 'badge badge-gray font-mono', t)));
+        }
+        if (r.duration_ms) head.appendChild(el('span', 'muted text-xs', (r.duration_ms / 1000).toFixed(1) + 's'));
+        bubble.appendChild(head);
+
+        bubble.appendChild(el('p', 'whitespace-pre-wrap leading-7 text-slate-800', r.answer || (r.error && r.error.message) || ''));
+
+        if (r.key_points && r.key_points.length) {
+            const ul = el('ul', 'list-disc space-y-1 ps-5 text-slate-700');
+            r.key_points.forEach(k => ul.appendChild(el('li', null, k)));
+            bubble.appendChild(ul);
+        }
+
+        if (r.route && typeof r.route.path === 'string' && r.route.path.startsWith('/') && !r.route.path.startsWith('//')) {
+            const a = el('a', 'btn btn-sm ' + (refused ? 'btn-gold' : 'btn-outline'));
+            a.href = r.route.path;
+            a.appendChild(el('span', null, `${T.open}: ${r.route.title}`));
+            bubble.appendChild(a);
+        }
+
+        if (r.ok && !r.grounded && ['query', 'analytics', 'report'].includes(r.intent))
+            bubble.appendChild(el('p', 'text-xs text-amber-700', T.notGrounded));
+
+        if (r.follow_ups && r.follow_ups.length) {
+            const f = el('div', 'flex flex-wrap gap-2');
+            r.follow_ups.forEach(q => {
+                const c = el('button', 'chip hover:bg-brand-50', q);
+                c.type = 'button';
+                c.addEventListener('click', () => ask(q));
+                f.appendChild(c);
+            });
+            bubble.appendChild(f);
+        }
+
+        const used = (r.data || []).filter(d => d.ok && d.tool !== 'find_system_page');
+        if (used.length) {
+            const det = el('details', 'rounded-xl bg-slate-50 p-2 text-xs');
+            det.appendChild(el('summary', 'cursor-pointer font-semibold text-slate-600', `${T.data} (${used.length})`));
+            used.forEach(d => {
+                det.appendChild(el('p', 'mt-2 font-mono font-bold text-slate-700', d.tool + ' ' + JSON.stringify(d.arguments || {})));
+                det.appendChild(el('pre', 'mt-1 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-white p-2 text-[11px] text-slate-600 ring-1 ring-slate-100', JSON.stringify(d.result, null, 2)));
+            });
+            bubble.appendChild(det);
+        }
+
+        row.appendChild(bubble); thread.appendChild(row); scroll();
+    }
+
+    async function ask(question) {
+        question = (question || '').trim();
+        if (!question || send.disabled) return;
+        addUser(question);
+        input.value = '';
+        send.disabled = true;
+        const pending = addPending();
+        let r;
+        try {
+            const res = await fetch('/api/ai/query', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
+                body: JSON.stringify({ question, language: lang, history: history.slice(-6) })
+            });
+            r = await res.json();
+        } catch (e) {
+            r = { ok: false, error: { message: String(e) } };
+        }
+        pending.remove();
+        addAnswer(r);
+        if (r.ok) {
+            history.push({ role: 'user', content: question });
+            history.push({ role: 'assistant', content: r.answer || '' });
+        }
+        send.disabled = false;
+        input.focus();
+    }
+
+    form.addEventListener('submit', e => { e.preventDefault(); ask(input.value); });
+    input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(input.value); } });
+    document.querySelectorAll('.ai-suggest').forEach(b => b.addEventListener('click', () => ask(b.textContent)));
+})();
+</script>
+}

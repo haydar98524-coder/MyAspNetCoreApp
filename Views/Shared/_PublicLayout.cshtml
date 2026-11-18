@@ -1,0 +1,130 @@
+@{
+    var settings = await Db.Settings.AsNoTracking().FirstOrDefaultAsync(s => s.Id == 1);
+    var pageTitle = ViewData["Title"] as string ?? L.T("Home", "الرئيسية");
+    var returnUrl = Context.Request.Path + Context.Request.QueryString;
+    var authed = User.Identity?.IsAuthenticated == true;
+}
+<!DOCTYPE html>
+<html lang="@L.Lang" dir="@L.Dir">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#032b28" />
+    <meta name="description" content="@L.T("Kirkuk National Institute for Tutoring — Iraqi curriculum support for primary, intermediate and preparatory grades, with qualified teachers and private lessons.", "معهد كركوك الأهلي لدورات التقوية — دعم المنهج العراقي للمراحل الابتدائية والمتوسطة والإعدادية مع مدرسين مؤهلين ودروس خصوصية.")" />
+    <title>@pageTitle · @L.T("Kirkuk National Institute", "معهد كركوك الأهلي")</title>
+    <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
+    <link rel="icon" href="~/favicon.svg" type="image/svg+xml" />
+    @await RenderSectionAsync("Head", required: false)
+</head>
+<body class="min-h-screen bg-sand-50">
+    @await Html.PartialAsync("_Icons")
+    <header class="sticky top-0 z-40 border-b border-white/10 bg-brand-950/95 backdrop-blur-lg">
+        <div class="mx-auto flex h-[76px] max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+            <a asp-controller="Home" asp-action="Index" class="shrink-0">@await Html.PartialAsync("_Logo", "dark")</a>
+
+            <nav class="hidden items-center gap-1 lg:flex">
+                <a asp-controller="Home" asp-action="Index" class="public-nav-link">@L.T("Home", "الرئيسية")</a>
+                <a href="/#programs" class="public-nav-link">@L.T("Programs", "البرامج")</a>
+                <a asp-controller="Teachers" asp-action="Directory" class="public-nav-link">@L.T("Teachers", "المدرسون")</a>
+                <a asp-controller="PrivateLessons" asp-action="Request" class="public-nav-link">@L.T("Private lessons", "الدروس الخصوصية")</a>
+                <a href="/#contact" class="public-nav-link">@L.T("Contact", "اتصل بنا")</a>
+            </nav>
+
+            <div class="flex items-center gap-2">
+                <a asp-controller="Account" asp-action="SetLanguage" asp-route-lang="@L.OtherLang" asp-route-returnUrl="@returnUrl" class="hidden items-center gap-1.5 rounded-full border border-white/15 px-3 py-1.5 text-xs font-bold text-brand-100 transition hover:bg-white/10 sm:inline-flex">
+                    <svg class="h-4 w-4"><use href="#i-globe"/></svg>
+                    @(L.IsArabic ? "English" : "العربية")
+                </a>
+                @if (authed)
+                {
+                    <a asp-controller="Home" asp-action="Dashboard" class="btn btn-gold btn-sm !rounded-full">
+                        <svg class="h-4 w-4"><use href="#i-dashboard"/></svg>
+                        @L.T("My workspace", "مساحتي")
+                    </a>
+                }
+                else
+                {
+                    <a asp-controller="Account" asp-action="Login" class="hidden text-xs font-bold text-brand-100 hover:text-white sm:block">@L.T("Sign in", "تسجيل الدخول")</a>
+                    <a asp-controller="Home" asp-action="Register" class="btn btn-gold btn-sm !rounded-full">@L.T("Register now", "سجّل الآن")</a>
+                }
+                <button type="button" class="icon-btn text-brand-100 hover:bg-white/10 hover:text-white lg:hidden" data-public-menu-toggle aria-label="@L.T("Menu", "القائمة")">
+                    <svg class="h-5 w-5"><use href="#i-menu"/></svg>
+                </button>
+            </div>
+        </div>
+        <div id="publicMenu" class="hidden border-t border-white/10 bg-brand-950 px-4 py-3 lg:hidden">
+            <nav class="mx-auto flex max-w-7xl flex-col gap-1">
+                <a asp-controller="Home" asp-action="Index" class="public-nav-link">@L.T("Home", "الرئيسية")</a>
+                <a href="/#programs" class="public-nav-link">@L.T("Programs", "البرامج")</a>
+                <a asp-controller="Teachers" asp-action="Directory" class="public-nav-link">@L.T("Teachers", "المدرسون")</a>
+                <a asp-controller="PrivateLessons" asp-action="Request" class="public-nav-link">@L.T("Private lessons", "الدروس الخصوصية")</a>
+                <a href="/#contact" class="public-nav-link">@L.T("Contact", "اتصل بنا")</a>
+                <div class="mt-2 flex items-center gap-3 border-t border-white/10 pt-3">
+                    <a asp-controller="Account" asp-action="SetLanguage" asp-route-lang="@L.OtherLang" asp-route-returnUrl="@returnUrl" class="public-nav-link">@(L.IsArabic ? "English" : "العربية")</a>
+                    @if (!authed)
+                    {
+                        <a asp-controller="Account" asp-action="Login" class="public-nav-link">@L.T("Sign in", "تسجيل الدخول")</a>
+                    }
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        @if (TempData["Success"] is string success)
+        {
+            <div class="mx-auto mt-5 max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div class="alert alert-success"><svg class="mt-0.5 h-5 w-5 shrink-0"><use href="#i-check"/></svg><p>@success</p></div>
+            </div>
+        }
+        @if (TempData["Error"] is string error)
+        {
+            <div class="mx-auto mt-5 max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div class="alert alert-error"><svg class="mt-0.5 h-5 w-5 shrink-0"><use href="#i-alert"/></svg><p>@error</p></div>
+            </div>
+        }
+        @RenderBody()
+    </main>
+
+    <footer id="contact" class="bg-brand-950 text-brand-100">
+        <div class="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+            <div class="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
+                <div class="lg:col-span-2">
+                    @await Html.PartialAsync("_Logo", "dark")
+                    <p class="mt-4 max-w-md text-sm leading-7 text-brand-200/75">@L.Pick(settings?.MottoAr, settings?.MottoEn)</p>
+                    <div class="mt-5 flex flex-wrap gap-2 text-[11px] font-semibold">
+                        <span class="rounded-full bg-white/10 px-3 py-1 ring-1 ring-inset ring-white/10">@L.T("License", "إجازة") @settings?.LicenseNo</span>
+                        <span class="rounded-full bg-white/10 px-3 py-1 ring-1 ring-inset ring-white/10">@L.T("Ministry code", "رمز الوزارة") @settings?.MinistryCode</span>
+                        <span class="rounded-full bg-white/10 px-3 py-1 ring-1 ring-inset ring-white/10">@settings?.AcademicYear</span>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-white">@L.T("Quick links", "روابط سريعة")</h3>
+                    <ul class="mt-4 space-y-2 text-sm text-brand-200/75">
+                        <li><a asp-controller="Home" asp-action="Register" class="hover:text-white">@L.T("Online registration", "التسجيل الإلكتروني")</a></li>
+                        <li><a asp-controller="Teachers" asp-action="Directory" class="hover:text-white">@L.T("Teacher directory", "دليل المدرسين")</a></li>
+                        <li><a asp-controller="PrivateLessons" asp-action="Request" class="hover:text-white">@L.T("Request a private lesson", "طلب درس خصوصي")</a></li>
+                        <li><a asp-controller="Account" asp-action="Login" class="hover:text-white">@L.T("Staff & portal sign in", "دخول الكادر والبوابات")</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-white">@L.T("Contact us", "اتصل بنا")</h3>
+                    <ul class="mt-4 space-y-3 text-sm text-brand-200/75">
+                        <li class="flex items-start gap-2"><svg class="mt-0.5 h-4 w-4 shrink-0 text-gold-400"><use href="#i-pin"/></svg><span>@L.Pick(settings?.AddressAr, settings?.AddressEn)</span></li>
+                        <li class="flex items-center gap-2"><svg class="h-4 w-4 shrink-0 text-gold-400"><use href="#i-phone"/></svg><span dir="ltr">@settings?.Phone</span></li>
+                        <li class="flex items-center gap-2"><svg class="h-4 w-4 shrink-0 text-gold-400"><use href="#i-mail"/></svg><span dir="ltr">@settings?.Email</span></li>
+                        <li class="flex items-center gap-2"><svg class="h-4 w-4 shrink-0 text-gold-400"><use href="#i-clock"/></svg><span>@L.T("Sat–Thu · 14:00 – 21:00", "السبت – الخميس · 2:00 – 9:00 مساءً")</span></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-6 text-[11px] text-brand-200/50">
+                <p>© @DateTime.Today.Year @L.T("Kirkuk National Institute for Tutoring. All rights reserved.", "معهد كركوك الأهلي لدورات التقوية. جميع الحقوق محفوظة.")</p>
+                <p>@L.T("Designed for the Iraqi curriculum · Kirkuk, Iraq", "مصمم وفق المنهج العراقي · كركوك، العراق")</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

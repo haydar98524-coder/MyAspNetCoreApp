@@ -1,0 +1,22 @@
+@{
+    ViewData["Title"] = L.T("Account not linked", "الحساب غير مرتبط");
+}
+<div class="card card-pad mx-auto max-w-2xl py-12 text-center">
+    <span class="stat-icon mx-auto !h-14 !w-14 bg-amber-50 text-amber-700">
+        <svg class="h-7 w-7"><use href="#i-shield"/></svg>
+    </span>
+    <h1 class="mt-5 text-xl font-bold text-brand-950">@L.T("Your portal account is not linked yet", "حساب البوابة غير مرتبط بعد")</h1>
+    <p class="mx-auto mt-2 max-w-md text-sm text-ink-600">
+        @L.T("Your user account exists, but it is not linked to an institute record. Please contact the administration to connect it, then sign in again.",
+            "حساب المستخدم موجود، لكنه غير مرتبط بسجل في المعهد. يرجى التواصل مع الإدارة لربطه، ثم تسجيل الدخول مرة أخرى.")
+    </p>
+    <div class="mt-6 flex flex-wrap justify-center gap-2">
+        <a asp-controller="Account" asp-action="Profile" class="btn btn-primary">
+            <svg class="h-4 w-4"><use href="#i-user"/></svg>@L.T("My account", "حسابي")
+        </a>
+        <form asp-controller="Account" asp-action="Logout" method="post">
+            @Html.AntiForgeryToken()
+            <button class="btn btn-outline"><svg class="h-4 w-4 flip-x"><use href="#i-logout"/></svg>@L.T("Sign out", "تسجيل الخروج")</button>
+        </form>
+    </div>
+</div>

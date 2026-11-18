@@ -1,0 +1,97 @@
+@model List<Teacher>
+@{
+    ViewData["Title"] = L.T("Teachers", "المدرسون");
+    var q = ViewBag.Q as string;
+    var active = ViewBag.Active as bool?;
+    var canEdit = User.IsInRole(Roles.Administrator) || User.IsInRole(Roles.Manager) || User.IsInRole(Roles.Hr);
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Teaching staff", "الهيئة التدريسية")</h1>
+        <p class="page-sub">@L.Num((int)ViewBag.TeacherCount) @L.T("active teachers", "مدرّساً نشطاً") · @L.Num((int)ViewBag.PublicCount) @L.T("visible in the public directory", "ظاهر في الدليل العام")</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <a asp-action="Directory" class="btn btn-outline btn-sm"><svg class="h-4 w-4"><use href="#i-star"/></svg>@L.T("Public directory", "الدليل العام")</a>
+        @if (canEdit)
+        {
+            <a asp-action="Create" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-plus"/></svg>@L.T("Add teacher", "إضافة مدرّس")</a>
+        }
+    </div>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-3">
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Average rating", "متوسط التقييم")</p><p class="kpi mt-1 text-gold-700">@(((double)ViewBag.Rating).ToString("0.0")) / 5</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Listed publicly", "معروضون علناً")</p><p class="kpi mt-1">@L.Num((int)ViewBag.PublicCount)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Active contracts", "العقود النشطة")</p><p class="kpi mt-1">@L.Num((int)ViewBag.TeacherCount)</p></div>
+</div>
+
+<form method="get" class="card card-pad !py-4 mt-5">
+    <div class="flex flex-wrap gap-2">
+        <div class="relative min-w-60 flex-1">
+            <span class="pointer-events-none absolute inset-y-0 start-3 flex items-center text-ink-500"><svg class="h-4 w-4"><use href="#i-search"/></svg></span>
+            <input name="q" value="@q" class="input !ps-9" placeholder="@L.T("Name, code, phone or specialization…", "الاسم أو الرمز أو الهاتف أو التخصص…")" />
+        </div>
+        <select name="active" class="select !w-auto">
+            <option value="">@L.T("All teachers", "كل المدرسين")</option>
+            <option value="true" selected="@(active == true)">@L.T("Active only", "النشطون فقط")</option>
+            <option value="false" selected="@(active == false)">@L.T("Inactive only", "غير النشطين")</option>
+        </select>
+        <button class="btn btn-primary">@L.T("Filter", "تصفية")</button>
+    </div>
+</form>
+
+<div class="card mt-4 overflow-hidden">
+    <div class="table-wrap">
+        <table class="table-base">
+            <thead><tr><th>@L.T("Teacher", "المدرّس")</th><th>@L.T("Subjects", "المواد")</th><th>@L.T("Mode", "النمط")</th><th>@L.T("Courses", "الدورات")</th><th>@L.T("Rating", "التقييم")</th><th>@L.T("Status", "الحالة")</th><th class="text-end">@L.T("Actions", "الإجراءات")</th></tr></thead>
+            <tbody>
+            @if (Model.Count == 0)
+            {
+                <tr><td colspan="7"><div class="empty">@L.T("No teachers found.", "لا يوجد مدرسون.")</div></td></tr>
+            }
+            @foreach (var t in Model)
+            {
+                <tr>
+                    <td>
+                        <div class="flex items-center gap-3">
+                            @if (!string.IsNullOrEmpty(t.PhotoPath))
+                            {
+                                <img src="@t.PhotoPath" alt="" class="h-9 w-9 rounded-full object-cover" />
+                            }
+                            else { <span class="avatar h-9 w-9 text-xs">@L.Initials(t.FullNameAr)</span> }
+                            <div>
+                                <a asp-action="Details" asp-route-id="@t.Id" class="font-bold text-brand-900 hover:underline">@L.Pick(t.FullNameAr, t.FullNameEn)</a>
+                                <p class="text-[11px] text-ink-500">@t.Code · @t.Specialization</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="flex max-w-52 flex-wrap gap-1">
+                            @foreach (var s in t.Subjects.Take(2))
+                            {
+                                <span class="chip !px-2 !py-0.5 !text-[10px]">@L.Pick(s.Subject.NameAr, s.Subject.NameEn)</span>
+                            }
+                            @if (t.Subjects.Count > 2) { <span class="chip !px-2 !py-0.5 !text-[10px]">+@(t.Subjects.Count - 2)</span> }
+                        </div>
+                    </td>
+                    <td class="text-xs text-ink-600">@L.E(t.TeachingMode)</td>
+                    <td class="text-xs">@L.Num(t.Courses.Count(c => c.Status == CourseStatus.Active))</td>
+                    <td>
+                        <span class="inline-flex items-center gap-1 text-xs font-bold text-gold-700"><svg class="h-3.5 w-3.5"><use href="#i-star-fill"/></svg>@t.RatingAvg.ToString("0.0") <span class="font-normal text-ink-400">(@t.RatingCount)</span></span>
+                    </td>
+                    <td><span class="badge @(t.IsActive ? "badge-green" : "badge-gray")">@(t.IsActive ? L.T("Active", "نشط") : L.T("Inactive", "غير نشط"))</span></td>
+                    <td>
+                        <div class="flex justify-end gap-1">
+                            <a asp-action="Profile" asp-route-id="@t.Id" class="icon-btn" title="@L.T("Profile", "الملف")"><svg class="h-4 w-4"><use href="#i-eye"/></svg></a>
+                            @if (canEdit)
+                            {
+                                <a asp-action="Edit" asp-route-id="@t.Id" class="icon-btn" title="@L.T("Edit", "تعديل")"><svg class="h-4 w-4"><use href="#i-edit"/></svg></a>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

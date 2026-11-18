@@ -1,0 +1,199 @@
+@model AdminSettingsViewModel
+@{
+    ViewData["Title"] = L.T("Institute settings", "إعدادات المعهد");
+}
+<div class="page-head">
+    <div>
+        <div class="mb-1 flex items-center gap-2 text-xs text-ink-500">
+            <a asp-controller="Home" asp-action="Dashboard" class="hover:text-brand-700">@L.T("Dashboard", "لوحة التحكم")</a>
+            <svg class="h-3 w-3 flip-x"><use href="#i-chevron-down"/></svg>
+            <span>@L.T("Settings", "الإعدادات")</span>
+        </div>
+        <h1 class="page-title">@L.T("Institute settings", "إعدادات المعهد")</h1>
+        <p class="page-sub">@L.T("Identity, academic policy and financial defaults used across the system.", "الهوية والسياسة الأكاديمية والافتراضات المالية المستخدمة في النظام.")</p>
+    </div>
+    <a asp-action="Compliance" class="btn btn-outline btn-sm"><svg class="h-4 w-4"><use href="#i-shield"/></svg>@L.T("Compliance check", "فحص الامتثال")</a>
+</div>
+
+<form method="post" asp-action="Settings" class="grid items-start gap-5 lg:grid-cols-3">
+    @Html.AntiForgeryToken()
+    <div class="space-y-5 lg:col-span-2">
+        <div asp-validation-summary="ModelOnly" class="alert alert-error @(ViewData.ModelState.IsValid ? "hidden" : "")"></div>
+
+        <div class="card card-pad">
+            <h2 class="section-title mb-4">@L.T("Institute identity", "هوية المعهد")</h2>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label asp-for="NameAr" class="label">@L.T("Name (Arabic)", "الاسم (عربي)") *</label>
+                    <input asp-for="NameAr" class="input" />
+                    <span asp-validation-for="NameAr" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="NameEn" class="label">@L.T("Name (English)", "الاسم (إنكليزي)") *</label>
+                    <input asp-for="NameEn" class="input" dir="ltr" />
+                    <span asp-validation-for="NameEn" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="LicenseNo" class="label">@L.T("Licence number", "رقم الإجازة")</label>
+                    <input asp-for="LicenseNo" class="input" dir="ltr" />
+                </div>
+                <div>
+                    <label asp-for="MinistryCode" class="label">@L.T("Ministry code", "رمز الوزارة")</label>
+                    <input asp-for="MinistryCode" class="input" dir="ltr" />
+                </div>
+                <div>
+                    <label asp-for="PrincipalName" class="label">@L.T("Principal", "مدير المعهد")</label>
+                    <input asp-for="PrincipalName" class="input" />
+                </div>
+                <div>
+                    <label asp-for="Phone" class="label">@L.T("Phone", "الهاتف")</label>
+                    <input asp-for="Phone" class="input" dir="ltr" />
+                    <span asp-validation-for="Phone" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="Email" class="label">@L.T("Email", "البريد الإلكتروني")</label>
+                    <input asp-for="Email" class="input" dir="ltr" />
+                    <span asp-validation-for="Email" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="AddressAr" class="label">@L.T("Address (Arabic)", "العنوان (عربي)")</label>
+                    <input asp-for="AddressAr" class="input" />
+                </div>
+                <div>
+                    <label asp-for="AddressEn" class="label">@L.T("Address (English)", "العنوان (إنكليزي)")</label>
+                    <input asp-for="AddressEn" class="input" dir="ltr" />
+                </div>
+                <div>
+                    <label asp-for="MottoAr" class="label">@L.T("Motto (Arabic)", "الشعار (عربي)")</label>
+                    <input asp-for="MottoAr" class="input" />
+                </div>
+                <div>
+                    <label asp-for="MottoEn" class="label">@L.T("Motto (English)", "الشعار (إنكليزي)")</label>
+                    <input asp-for="MottoEn" class="input" dir="ltr" />
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-pad">
+            <h2 class="section-title mb-1">@L.T("Academic policy", "السياسة الأكاديمية")</h2>
+            <p class="mb-4 text-xs text-ink-500">@L.T("Rules applied to attendance warnings, exams and tuition billing.", "قواعد تُطبَّق على إنذارات الغياب والامتحانات والرسوم الدراسية.")</p>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label asp-for="AcademicYear" class="label">@L.T("Academic year", "السنة الدراسية") *</label>
+                    <input asp-for="AcademicYear" class="input" dir="ltr" placeholder="2026–2027" />
+                    <span asp-validation-for="AcademicYear" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="PassMark" class="label">@L.T("Pass mark (%)", "درجة النجاح (%)")</label>
+                    <input asp-for="PassMark" type="number" min="0" max="100" class="input" />
+                    <p class="help">@L.T("Ministry baseline is 50%.", "الحد الوزاري هو 50%.")</p>
+                    <span asp-validation-for="PassMark" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="AttendanceWarningPercent" class="label">@L.T("Absence warning (%)", "حد التنبيه بالغياب (%)")</label>
+                    <input asp-for="AttendanceWarningPercent" type="number" min="0" max="100" class="input" />
+                    <p class="help">@L.T("Guardians are notified when absence reaches this share of sessions.", "يُبلَّغ ولي الأمر عند بلوغ الغياب هذه النسبة من الحصص.")</p>
+                    <span asp-validation-for="AttendanceWarningPercent" class="field-error"></span>
+                </div>
+                <div class="flex items-end pb-1">
+                    <label class="flex items-center gap-2 text-sm font-semibold text-ink-700">
+                        <input asp-for="TuitionEnabled" class="checkbox" />
+                        @L.T("Enable tuition fees and dues", "تفعيل الرسوم الدراسية والذمم")
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-pad">
+            <h2 class="section-title mb-1">@L.T("Financial defaults", "الافتراضات المالية")</h2>
+            <p class="mb-4 text-xs text-ink-500">@L.T("Default shares and rent rates applied to new courses and contracts.", "الحصص وأجور الإيجار الافتراضية عند إنشاء الدورات والعقود الجديدة.")</p>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label asp-for="DefaultTeacherShare" class="label">@L.T("Teacher course share (%)", "حصة المدرّس من الدورة (%)")</label>
+                    <input asp-for="DefaultTeacherShare" type="number" step="0.5" min="0" max="100" class="input" />
+                    <span asp-validation-for="DefaultTeacherShare" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="PrivateLessonTeacherShare" class="label">@L.T("Private lesson share (%)", "حصة الدرس الخصوصي (%)")</label>
+                    <input asp-for="PrivateLessonTeacherShare" type="number" step="0.5" min="0" max="100" class="input" />
+                    <span asp-validation-for="PrivateLessonTeacherShare" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="PrepTeacherMonthlyRent" class="label">@L.T("6th prep room rent (monthly)", "إيجار غرف السادس الإعدادي (شهرياً)")</label>
+                    <input asp-for="PrepTeacherMonthlyRent" type="number" step="1000" min="0" class="input" />
+                    <span asp-validation-for="PrepTeacherMonthlyRent" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="CafeteriaAnnualRent" class="label">@L.T("Cafeteria rent (annual)", "إيجار الكافتيريا (سنوياً)")</label>
+                    <input asp-for="CafeteriaAnnualRent" type="number" step="10000" min="0" class="input" />
+                    <span asp-validation-for="CafeteriaAnnualRent" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="CurrencyAr" class="label">@L.T("Currency (Arabic)", "العملة (عربي)")</label>
+                    <input asp-for="CurrencyAr" class="input" />
+                </div>
+                <div>
+                    <label asp-for="CurrencyEn" class="label">@L.T("Currency (English)", "العملة (إنكليزي)")</label>
+                    <input asp-for="CurrencyEn" class="input" dir="ltr" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="space-y-5">
+        <div class="card card-pad">
+            <h2 class="section-title mb-4">@L.T("Save changes", "حفظ التغييرات")</h2>
+            <button class="btn btn-primary w-full"><svg class="h-5 w-5"><use href="#i-check"/></svg>@L.T("Save settings", "حفظ الإعدادات")</button>
+            <p class="mt-3 text-center text-[11px] text-ink-500">
+                @if (Model.UpdatedAt.HasValue)
+                {
+                    <span>@L.T("Last updated", "آخر تحديث") · @L.DateTimeShort(Model.UpdatedAt.Value.ToLocalTime())</span>
+                }
+                else
+                {
+                    <span>@L.T("Not updated yet", "لم يُحدَّث بعد")</span>
+                }
+            </p>
+        </div>
+
+        <div class="card card-pad">
+            <h2 class="section-title mb-4">@L.T("Branches", "الفروع")</h2>
+            <div class="space-y-3">
+                @if (Model.Branches.Count == 0)
+                {
+                    <div class="empty !py-8">@L.T("No branches registered.", "لا توجد فروع مسجلة.")</div>
+                }
+                @foreach (var b in Model.Branches)
+                {
+                    <div class="rounded-xl border border-sand-200 p-3">
+                        <div class="flex items-start justify-between gap-2">
+                            <div>
+                                <p class="text-sm font-bold text-brand-950">@L.Pick(b.NameAr, b.NameEn)</p>
+                                <p class="text-[11px] text-ink-500">@b.Code · @b.Address</p>
+                            </div>
+                            @if (b.IsMain)
+                            {
+                                <span class="badge badge-gold">@L.T("Main", "رئيسي")</span>
+                            }
+                            else if (!b.IsActive)
+                            {
+                                <span class="badge badge-gray">@L.T("Inactive", "غير نشط")</span>
+                            }
+                        </div>
+                        <div class="mt-2 flex flex-wrap gap-3 text-[11px] text-ink-600">
+                            <span dir="ltr">@b.Phone</span>
+                            <span>@L.T("Licence", "إجازة") @b.LicenseNo</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card card-pad !bg-brand-50">
+            <p class="flex items-start gap-2 text-xs text-brand-800">
+                <svg class="mt-0.5 h-4 w-4 shrink-0"><use href="#i-info"/></svg>
+                <span>@L.T("Settings changes are written to the audit trail with the previous values. Financial defaults only affect new records; existing courses and contracts keep their own terms.", "تُسجَّل تغييرات الإعدادات في سجل التدقيق مع القيم السابقة. تؤثر الافتراضات المالية على السجلات الجديدة فقط، بينما تحتفظ الدورات والعقود الحالية بشروطها.")</span>
+            </p>
+        </div>
+    </div>
+</form>

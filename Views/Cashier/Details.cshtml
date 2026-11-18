@@ -1,0 +1,166 @@
+@model CashierShift
+@{
+    ViewData["Title"] = L.T("Shift details", "تفاصيل الوردية");
+    var canApprove = ViewBag.CanApprove is true;
+    var cashReceipts = Model.Payments.Where(p => p.Method == PaymentMethod.Cash).OrderBy(p => p.Date).ThenBy(p => p.ReceiptNo).ToList();
+    var otherReceipts = Model.Payments.Where(p => p.Method != PaymentMethod.Cash).OrderBy(p => p.Date).ToList();
+    var badge = Model.Status == CashierShiftStatus.Open ? "badge-green"
+        : Model.Status == CashierShiftStatus.PendingApproval ? "badge-amber" : "badge-gray";
+    var varianceTone = Model.Variance < 0 ? "text-red-600" : Model.Variance > 0 ? "text-amber-700" : "text-emerald-700";
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Shift", "الوردية") <span class="font-mono">@Model.ShiftNo</span></h1>
+        <p class="page-sub">@Model.CashierName · @L.DateTimeShort(Model.OpenedAt)</p>
+    </div>
+    <div class="flex gap-2">
+        <span class="badge @badge self-center">@L.E(Model.Status)</span>
+        @if (Model.Status == CashierShiftStatus.Open && Model.CashierUserId == User.CurrentUserId())
+        {
+            <a asp-action="Close" asp-route-id="@Model.Id" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-check"/></svg>@L.T("Close drawer", "إغلاق الصندوق")</a>
+        }
+        <a asp-action="Index" class="btn btn-outline btn-sm"><svg class="h-4 w-4 flip-x"><use href="#i-arrow-left"/></svg>@L.T("Cashier", "الصندوق")</a>
+    </div>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="stat-card !p-4">
+        <p class="text-xs text-ink-500">@L.T("Opening float", "الرصيد الافتتاحي")</p>
+        <p class="kpi mt-1">@L.Money(Model.OpeningFloat)</p>
+    </div>
+    <div class="stat-card !p-4">
+        <p class="text-xs text-ink-500">@L.T("Cash received", "النقد المستلم")</p>
+        <p class="kpi mt-1 text-emerald-700">@L.Money(Model.CashTaken)</p>
+        <p class="mt-1 text-[10px] text-ink-500">@L.Num(cashReceipts.Count) @L.T("receipts", "سنداً")</p>
+    </div>
+    <div class="stat-card !p-4">
+        <p class="text-xs text-ink-500">@L.T("Counted cash", "النقد المعدود")</p>
+        <p class="kpi mt-1">@(Model.Status == CashierShiftStatus.Open ? "—" : L.Money(Model.CountedCash))</p>
+    </div>
+    <div class="stat-card !p-4">
+        <p class="text-xs text-ink-500">@L.T("Variance", "الفرق")</p>
+        <p class="kpi mt-1 @varianceTone">@(Model.Status == CashierShiftStatus.Open ? "—" : L.Money(Model.Variance))</p>
+        @if (Model.Status != CashierShiftStatus.Open)
+        {
+            <p class="mt-1 text-[10px] text-ink-500">
+                @L.T("Expected", "المتوقع"): @L.Money(Model.ExpectedCash)
+            </p>
+        }
+    </div>
+</div>
+
+@if (Model.Status == CashierShiftStatus.PendingApproval)
+{
+    <div class="alert alert-warning mt-5">
+        <svg class="h-4 w-4"><use href="#i-clipboard"/></svg>
+        <div>
+            <p class="font-semibold">@L.T("This shift closed with a variance and is waiting for leadership approval.", "أُغلقت هذه الوردية بفرق وهي بانتظار اعتماد الإدارة.")</p>
+            <p class="mt-1 text-xs">@L.T("The cashier cannot open a new shift until the variance is approved.", "لا يمكن لأمين الصندوق فتح وردية جديدة حتى يُعتمد الفرق.")</p>
+        </div>
+    </div>
+    @if (canApprove)
+    {
+        <form method="post" asp-action="Approve" asp-route-id="@Model.Id" class="card card-pad mt-4"
+              onsubmit="return confirm('@L.T("Approve this variance and close the shift?", "هل تريد اعتماد هذا الفرق وإغلاق الوردية؟")')">
+            @Html.AntiForgeryToken()
+            <h2 class="section-title">@L.T("Leadership approval", "اعتماد الإدارة")</h2>
+            <div class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
+                <div class="flex-1">
+                    <label class="label" for="note">@L.T("Approval note", "ملاحظة الاعتماد")</label>
+                    <input id="note" name="note" class="input" maxlength="300" placeholder="@L.T("Reason for accepting the variance…", "سبب قبول الفرق…")" />
+                </div>
+                <button class="btn btn-primary"><svg class="h-4 w-4"><use href="#i-check"/></svg>@L.T("Approve variance", "اعتماد الفرق")</button>
+            </div>
+        </form>
+    }
+}
+else if (Model.Status == CashierShiftStatus.Closed && Model.ApprovedAt.HasValue)
+{
+    <div class="alert alert-info mt-5">
+        <svg class="h-4 w-4"><use href="#i-check"/></svg>
+        <p>@L.T("Variance approved", "تم اعتماد الفرق") — @Model.ApprovedByName · @L.DateTimeShort(Model.ApprovedAt.Value)</p>
+    </div>
+}
+
+<div class="mt-5 grid gap-5 lg:grid-cols-3">
+    <div class="card card-pad">
+        <h2 class="section-title">@L.T("Shift summary", "ملخص الوردية")</h2>
+        <dl class="mt-3 space-y-2 text-sm">
+            <div class="flex justify-between"><dt class="text-ink-500">@L.T("Cashier", "أمين الصندوق")</dt><dd class="font-semibold">@Model.CashierName</dd></div>
+            <div class="flex justify-between"><dt class="text-ink-500">@L.T("Opened", "الفتح")</dt><dd>@L.DateTimeShort(Model.OpenedAt)</dd></div>
+            <div class="flex justify-between"><dt class="text-ink-500">@L.T("Closed", "الإغلاق")</dt><dd>@(Model.ClosedAt.HasValue ? L.DateTimeShort(Model.ClosedAt.Value) : "—")</dd></div>
+            <div class="flex justify-between"><dt class="text-ink-500">@L.T("Opening float", "الرصيد الافتتاحي")</dt><dd>@L.Money(Model.OpeningFloat)</dd></div>
+            <div class="flex justify-between"><dt class="text-ink-500">@L.T("Cash receipts", "السندات النقدية")</dt><dd>@L.Money(Model.CashTaken)</dd></div>
+            @if (Model.Status != CashierShiftStatus.Open)
+            {
+                <div class="flex justify-between border-t border-ink-100 pt-2"><dt class="text-ink-500">@L.T("Expected cash", "النقد المتوقع")</dt><dd class="font-semibold">@L.Money(Model.ExpectedCash)</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Counted cash", "النقد المعدود")</dt><dd class="font-semibold">@L.Money(Model.CountedCash)</dd></div>
+                <div class="flex justify-between"><dt class="text-ink-500">@L.T("Variance", "الفرق")</dt><dd class="font-bold @varianceTone">@L.Money(Model.Variance)</dd></div>
+            }
+        </dl>
+        @if (!string.IsNullOrWhiteSpace(Model.Notes))
+        {
+            <div class="mt-4 rounded-lg bg-ink-50 p-3 text-xs text-ink-600">@Model.Notes</div>
+        }
+    </div>
+
+    <div class="card card-pad lg:col-span-2">
+        <div class="flex items-center justify-between">
+            <h2 class="section-title">@L.T("Blind count by denomination", "العد الأعمى حسب الفئة")</h2>
+            <span class="text-xs text-ink-500">@L.T("Total", "الإجمالي"): <strong class="font-mono text-ink-900">@L.Money(Model.CountedTotal)</strong></span>
+        </div>
+        @if (Model.Denominations.Count == 0)
+        {
+            <div class="empty mt-3">@L.T("The drawer has not been counted yet.", "لم يتم عد الصندوق بعد.")</div>
+        }
+        else
+        {
+            <div class="table-wrap mt-3">
+                <table class="table-base">
+                    <thead><tr><th>@L.T("Denomination", "الفئة")</th><th>@L.T("Count", "العدد")</th><th class="text-end">@L.T("Line total", "الإجمالي")</th></tr></thead>
+                    <tbody>
+                    @foreach (var d in Model.Denominations.OrderByDescending(d => d.Denomination))
+                    {
+                        <tr>
+                            <td class="font-mono text-xs font-semibold">@L.Num(d.Denomination)</td>
+                            <td class="text-xs">@L.Num(d.Count)</td>
+                            <td class="text-end text-xs font-semibold">@L.Money(d.LineTotal)</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="card mt-5 overflow-hidden">
+    <div class="card-header">
+        <h2 class="section-title">@L.T("Receipts linked to this shift", "السندات المرتبطة بهذه الوردية")</h2>
+        <span class="chip">@L.Num(Model.Payments.Count) @L.T("receipts", "سنداً")</span>
+    </div>
+    <div class="table-wrap">
+        <table class="table-base">
+            <thead><tr><th>@L.T("Receipt", "السند")</th><th>@L.T("Student", "الطالب")</th><th>@L.T("Method", "الطريقة")</th><th>@L.T("Date", "التاريخ")</th><th class="text-end">@L.T("Amount", "المبلغ")</th></tr></thead>
+            <tbody>
+            @if (Model.Payments.Count == 0)
+            {
+                <tr><td colspan="5"><div class="empty">@L.T("No receipts were taken on this shift.", "لم تُستلم أي سندات في هذه الوردية.")</div></td></tr>
+            }
+            @foreach (var p in cashReceipts.Concat(otherReceipts))
+            {
+                <tr>
+                    <td class="font-mono text-[11px] font-semibold text-brand-900">@p.ReceiptNo</td>
+                    <td class="text-xs">
+                        <p class="font-semibold text-ink-800">@L.Pick(p.Student?.FullNameAr, p.Student?.FullNameEn)</p>
+                        <p class="font-mono text-[10px] text-ink-500">@p.Student?.StudentNo</p>
+                    </td>
+                    <td><span class="badge badge-gray">@L.E(p.Method)</span></td>
+                    <td class="text-xs text-ink-500">@L.DateTimeShort(p.Date)</td>
+                    <td class="text-end font-semibold">@L.Money(p.Amount)</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

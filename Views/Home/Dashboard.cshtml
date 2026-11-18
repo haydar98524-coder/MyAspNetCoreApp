@@ -1,0 +1,340 @@
+@model DashboardViewModel
+@{
+    ViewData["Title"] = L.T("Dashboard", "لوحة التحكم");
+    var period = ViewData["Period"] as string ?? "month";
+    var from = (DateTime)(ViewData["From"] ?? DateTime.Today);
+    var to = (DateTime)(ViewData["To"] ?? DateTime.Today);
+    var maxTrend = Model.Trend.Count == 0 ? 1 : Math.Max(1, Model.Trend.Max(p => Math.Max(p.Revenue, p.Expense)));
+    var sourceTotal = Model.RevenueSources.Sum(s => s.Amount);
+    var maxAttendance = Model.AttendanceWeek.Count == 0 ? 1 : Math.Max(1, Model.AttendanceWeek.Max(p => p.Present + p.Absent));
+    var margin = Model.PeriodRevenue == 0 ? 0 : Math.Round((decimal)Model.NetProfitPeriod / Model.PeriodRevenue * 100, 1);
+    var attendanceTotal = Model.PresentToday + Model.AbsentToday;
+    var attendanceRate = attendanceTotal == 0 ? 0 : Math.Round(Model.PresentToday * 100m / attendanceTotal, 0);
+    var canAdmit = User.IsInRole(Roles.Administrator) || User.IsInRole(Roles.Manager) || User.IsInRole(Roles.Registrar);
+    var canFinance = User.IsInRole(Roles.Administrator) || User.IsInRole(Roles.Manager) || User.IsInRole(Roles.Accountant);
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Institute overview", "نظرة عامة على المعهد")</h1>
+        <p class="page-sub">@Model.PeriodLabel · @L.T("Updated", "آخر تحديث") @L.DateTimeShort(DateTime.Now)</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        @if (canFinance)
+        {
+            <a asp-controller="Payments" asp-action="Collect" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-cash"/></svg>@L.T("Collect payment", "تحصيل دفعة")</a>
+        }
+        @if (canAdmit)
+        {
+            <a asp-controller="Students" asp-action="Create" class="btn btn-gold btn-sm"><svg class="h-4 w-4"><use href="#i-plus"/></svg>@L.T("Register student", "تسجيل طالب")</a>
+        }
+        <a asp-controller="Reports" asp-action="Index" class="btn btn-outline btn-sm"><svg class="h-4 w-4"><use href="#i-chart"/></svg>@L.T("Reports", "التقارير")</a>
+    </div>
+</div>
+
+<div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+    <div class="inline-flex flex-wrap items-center gap-1 rounded-xl border border-sand-200 bg-sand-50 p-1">
+        <a asp-action="Dashboard" asp-route-period="month" class="tab !py-1.5 @(period == "month" ? "active" : "")">@L.T("This month", "هذا الشهر")</a>
+        <a asp-action="Dashboard" asp-route-period="week" class="tab !py-1.5 @(period == "week" ? "active" : "")">@L.T("Last 7 days", "آخر 7 أيام")</a>
+        <a asp-action="Dashboard" asp-route-period="year" class="tab !py-1.5 @(period == "year" ? "active" : "")">@L.T("This year", "هذه السنة")</a>
+        <a asp-action="Dashboard" asp-route-period="custom" asp-route-from="@from.ToString("yyyy-MM-dd")" asp-route-to="@to.ToString("yyyy-MM-dd")" class="tab !py-1.5 @(period == "custom" ? "active" : "")">@L.T("Custom", "مخصص")</a>
+    </div>
+    <form asp-action="Dashboard" method="get" class="flex flex-wrap items-center gap-2">
+        <input type="hidden" name="period" value="custom" />
+        <input type="date" name="from" value="@from.ToString("yyyy-MM-dd")" class="input !w-auto !py-1.5 !text-xs" />
+        <span class="text-xs text-ink-500">→</span>
+        <input type="date" name="to" value="@to.ToString("yyyy-MM-dd")" class="input !w-auto !py-1.5 !text-xs" />
+        <button class="btn btn-outline btn-xs"><svg class="h-3.5 w-3.5"><use href="#i-filter"/></svg>@L.T("Apply", "تطبيق")</button>
+    </form>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="stat-card">
+        <div class="flex items-start justify-between">
+            <div>
+                <p class="text-xs font-semibold text-ink-500">@L.T("Revenue · period", "إيرادات الفترة")</p>
+                <p class="kpi mt-2">@L.Money(Model.PeriodRevenue)</p>
+                <p class="mt-1 text-[11px] text-ink-500">@L.T("Today", "اليوم") <span class="font-semibold text-brand-700">@L.Money(Model.RevenueToday)</span></p>
+            </div>
+            <span class="stat-icon bg-brand-50 text-brand-700"><svg class="h-5 w-5"><use href="#i-cash"/></svg></span>
+        </div>
+        <div class="mt-4 flex items-center gap-2 text-[11px]">
+            <span class="badge badge-green"><svg class="h-3 w-3"><use href="#i-arrow-trend"/></svg>@L.Money(Model.RevenueMonth)</span>
+            <span class="text-ink-500">@L.T("this month", "هذا الشهر")</span>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="flex items-start justify-between">
+            <div>
+                <p class="text-xs font-semibold text-ink-500">@L.T("Net profit · period", "صافي الربح · الفترة")</p>
+                <p class="kpi mt-2 @(Model.NetProfitPeriod < 0 ? "!text-red-600" : "")">@L.Money(Model.NetProfitPeriod)</p>
+                <p class="mt-1 text-[11px] text-ink-500">@L.T("Margin", "هامش الربح") <span class="font-semibold @(margin < 0 ? "text-red-600" : "text-emerald-700")">@L.Percent(margin)</span></p>
+            </div>
+            <span class="stat-icon bg-emerald-50 text-emerald-700"><svg class="h-5 w-5"><use href="#i-chart"/></svg></span>
+        </div>
+        <div class="mt-4 flex flex-wrap gap-1.5 text-[10px] text-ink-500">
+            <span class="chip !px-2 !py-0.5">@L.T("Teacher shares", "حصص المدرسين") @L.Money(Model.TeacherCostsPeriod)</span>
+            <span class="chip !px-2 !py-0.5">@L.T("Payroll", "الرواتب") @L.Money(Model.PayrollPeriod)</span>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="flex items-start justify-between">
+            <div>
+                <p class="text-xs font-semibold text-ink-500">@L.T("Active students", "الطلاب المنتظمون")</p>
+                <p class="kpi mt-2">@L.Num(Model.TotalStudents)</p>
+                <p class="mt-1 text-[11px] text-ink-500"><span class="font-semibold text-brand-700">+@Model.NewStudentsThisMonth</span> @L.T("new this month", "جديد هذا الشهر")</p>
+            </div>
+            <span class="stat-icon bg-blue-50 text-blue-700"><svg class="h-5 w-5"><use href="#i-users"/></svg></span>
+        </div>
+        <div class="mt-4 flex items-center gap-2">
+            <div class="progress flex-1"><span style="width:@(Math.Min(100, Model.NewStudentsThisMonth * 100 / Math.Max(1, Model.TotalStudents)))%"></span></div>
+            <span class="text-[10px] text-ink-500">@Model.CourseCount @L.T("courses", "دورة")</span>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="flex items-start justify-between">
+            <div>
+                <p class="text-xs font-semibold text-ink-500">@L.T("Outstanding dues", "الأقساط المستحقة")</p>
+                <p class="kpi mt-2 text-amber-700">@L.Money(Model.TotalDues)</p>
+                <p class="mt-1 text-[11px] text-ink-500">@L.T("Across active enrollments", "على الاشتراكات النشطة")</p>
+            </div>
+            <span class="stat-icon bg-amber-50 text-amber-700"><svg class="h-5 w-5"><use href="#i-wallet"/></svg></span>
+        </div>
+        <div class="mt-4 flex items-center gap-2">
+            <a asp-controller="Dues" asp-action="Index" class="text-[11px] font-bold text-brand-700 hover:underline">@L.T("Follow up dues", "متابعة الأقساط")</a>
+            <span class="dot bg-amber-400"></span>
+            <span class="text-[10px] text-ink-500">@L.T("Cash + bank", "نقداً + مصرف")</span>
+        </div>
+    </div>
+</div>
+
+@if (Model.Alerts.Count > 0)
+{
+    <div class="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        @foreach (var alert in Model.Alerts)
+        {
+            var tone = alert.Tone switch
+            {
+                "danger" => "border-red-200 bg-red-50 text-red-800",
+                "warning" => "border-amber-200 bg-amber-50 text-amber-900",
+                "info" => "border-blue-200 bg-blue-50 text-blue-800",
+                _ => "border-brand-200 bg-brand-50 text-brand-800"
+            };
+            <a href="@alert.Url" class="flex items-start gap-3 rounded-xl border p-4 transition hover:-translate-y-0.5 hover:shadow-card @tone">
+                <svg class="mt-0.5 h-5 w-5 shrink-0"><use href="#i-alert"/></svg>
+                <div class="min-w-0">
+                    <p class="text-xs font-bold">@alert.Title</p>
+                    <p class="mt-0.5 text-[11px] opacity-80">@alert.Detail</p>
+                </div>
+            </a>
+        }
+    </div>
+}
+
+<div class="mt-5 grid gap-5 lg:grid-cols-3">
+    <div class="card lg:col-span-2">
+        <div class="card-header">
+            <div>
+                <h2 class="section-title">@L.T("Revenue vs. expenses", "الإيرادات مقابل المصروفات")</h2>
+                <p class="mt-0.5 text-xs text-ink-500">@L.T("Last six months, including teacher shares and payroll", "آخر ستة أشهر، شاملة حصص المدرسين والرواتب")</p>
+            </div>
+            <div class="flex items-center gap-4 text-[11px] font-semibold text-ink-500">
+                <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm bg-brand-600"></span>@L.T("Revenue", "إيرادات")</span>
+                <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-sm bg-gold-400"></span>@L.T("Expenses", "مصروفات")</span>
+            </div>
+        </div>
+        <div class="p-5 sm:p-6">
+            <div class="mb-3 flex items-center justify-between text-[10px] text-ink-500">
+                <span>@L.Money(maxTrend)</span>
+                <span>@L.T("Month", "الشهر")</span>
+            </div>
+            <div class="flex h-48 items-end gap-3 border-b border-sand-200 pb-0 sm:gap-5">
+                @foreach (var point in Model.Trend)
+                {
+                    var revenueHeight = point.Revenue == 0 ? 2 : Math.Max(3, (int)(point.Revenue * 100 / maxTrend));
+                    var expenseHeight = point.Expense == 0 ? 2 : Math.Max(3, (int)(point.Expense * 100 / maxTrend));
+                    <div class="group flex h-full flex-1 items-end justify-center gap-1.5">
+                        <div class="w-4 rounded-t-md bg-brand-600 transition group-hover:bg-brand-500 sm:w-6" style="height:@(revenueHeight)%" title="@L.Money(point.Revenue)"></div>
+                        <div class="w-4 rounded-t-md bg-gold-400 transition group-hover:bg-gold-300 sm:w-6" style="height:@(expenseHeight)%" title="@L.Money(point.Expense)"></div>
+                    </div>
+                }
+            </div>
+            <div class="mt-2 flex gap-3 sm:gap-5">
+                @foreach (var point in Model.Trend)
+                {
+                    <div class="flex-1 text-center text-[10px] font-semibold text-ink-500">@point.Label</div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2 class="section-title">@L.T("Revenue sources", "مصادر الإيرادات")</h2>
+            <span class="text-[10px] font-semibold text-ink-500">@L.Money(sourceTotal)</span>
+        </div>
+        <div class="card-pad space-y-4">
+            @if (Model.RevenueSources.Count == 0)
+            {
+                <div class="empty !py-8"><svg class="h-8 w-8 text-sand-300"><use href="#i-chart"/></svg><p>@L.T("No revenue recorded for this period.", "لا توجد إيرادات مسجلة في هذه الفترة.")</p></div>
+            }
+            @foreach (var source in Model.RevenueSources)
+            {
+                var pct = sourceTotal == 0 ? 0 : (int)Math.Round(source.Amount * 100m / sourceTotal);
+                <div>
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="flex items-center gap-1.5 font-semibold text-ink-700"><span class="h-2.5 w-2.5 rounded-sm" style="background-color:@source.Color"></span>@source.Label</span>
+                        <span class="font-bold text-brand-950">@L.Money(source.Amount)</span>
+                    </div>
+                    <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-sand-200">
+                        <span class="block h-full rounded-full" style="width:@(Math.Max(2, pct))%;background-color:@source.Color"></span>
+                    </div>
+                    <p class="mt-1 text-[10px] text-ink-500">@pct% @L.T("of period revenue", "من إيرادات الفترة")</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="mt-5 grid gap-5 lg:grid-cols-3">
+    <div class="card lg:col-span-2">
+        <div class="card-header">
+            <div>
+                <h2 class="section-title">@L.T("Today's sessions", "دروس اليوم")</h2>
+                <p class="mt-0.5 text-xs text-ink-500">@L.Day(DateTime.Today.DayOfWeek) · @L.Date(DateTime.Today)</p>
+            </div>
+            <span class="chip">@Model.TodaySessions.Count @L.T("sessions", "درس")</span>
+        </div>
+        @if (Model.TodaySessions.Count == 0)
+        {
+            <div class="empty"><svg class="h-10 w-10 text-sand-300"><use href="#i-calendar"/></svg><p>@L.T("No sessions are scheduled today.", "لا توجد دروس مجدولة اليوم.")</p></div>
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="table-base">
+                    <thead><tr><th>@L.T("Time", "الوقت")</th><th>@L.T("Course", "الدورة")</th><th>@L.T("Teacher", "المدرّس")</th><th>@L.T("Room", "القاعة")</th><th>@L.T("Section", "الشعبة")</th></tr></thead>
+                    <tbody>
+                        @foreach (var session in Model.TodaySessions)
+                        {
+                            <tr>
+                                <td class="whitespace-nowrap font-semibold text-brand-900" dir="ltr">@session.Time</td>
+                                <td class="font-semibold">@session.Course</td>
+                                <td class="text-ink-500">@session.Teacher</td>
+                                <td><span class="chip !px-2 !py-0.5">@session.Room</span></td>
+                                <td class="text-ink-500">@session.Section</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    <div class="space-y-5">
+        <div class="card">
+            <div class="card-header"><h2 class="section-title">@L.T("Attendance · 7 days", "الحضور · 7 أيام")</h2><a asp-controller="Attendance" asp-action="Index" class="text-xs link">@L.T("Register", "السجل")</a></div>
+            <div class="p-5">
+                <div class="flex items-center justify-between text-xs">
+                    <div><p class="text-2xl font-extrabold text-brand-950">@L.Num(Model.PresentToday)</p><p class="text-[10px] text-ink-500">@L.T("present today", "حاضر اليوم")</p></div>
+                    <div class="text-center"><p class="text-2xl font-extrabold text-red-600">@L.Num(Model.AbsentToday)</p><p class="text-[10px] text-ink-500">@L.T("absent", "غائب")</p></div>
+                    <div class="text-end"><p class="text-2xl font-extrabold text-brand-700">@attendanceRate%</p><p class="text-[10px] text-ink-500">@L.T("attendance", "نسبة الحضور")</p></div>
+                </div>
+                <div class="mt-5 flex h-24 items-end gap-2 border-b border-sand-200">
+                    @foreach (var day in Model.AttendanceWeek)
+                    {
+                        var presentHeight = day.Present == 0 ? 1 : Math.Max(3, day.Present * 100 / maxAttendance);
+                        var absentHeight = day.Absent == 0 ? 1 : Math.Max(3, day.Absent * 100 / maxAttendance);
+                        <div class="flex h-full flex-1 items-end justify-center gap-0.5">
+                            <div class="w-2.5 rounded-t bg-brand-500" style="height:@(presentHeight)%" title="@day.Present"></div>
+                            <div class="w-2.5 rounded-t bg-red-300" style="height:@(absentHeight)%" title="@day.Absent"></div>
+                        </div>
+                    }
+                </div>
+                <div class="mt-1.5 flex gap-2">
+                    @foreach (var day in Model.AttendanceWeek)
+                    {
+                        <div class="flex-1 text-center text-[9px] text-ink-500">@day.Label</div>
+                    }
+                </div>
+                <div class="mt-4 flex items-center justify-between rounded-lg bg-sand-50 px-3 py-2 text-[11px]">
+                    <span class="flex items-center gap-1.5 text-ink-500"><span class="dot bg-brand-500"></span>@L.T("Present", "حاضر")</span>
+                    <span class="flex items-center gap-1.5 text-ink-500"><span class="dot bg-red-300"></span>@L.T("Absent", "غائب")</span>
+                    <a asp-controller="Attendance" asp-action="Requests" class="font-bold text-brand-700 hover:underline">@Model.PendingChangeRequests @L.T("pending", "معلق")</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-pad">
+            <div class="flex items-center justify-between">
+                <h2 class="section-title">@L.T("Quick figures", "أرقام سريعة")</h2>
+                <svg class="h-4 w-4 text-gold-500"><use href="#i-sparkles"/></svg>
+            </div>
+            <div class="mt-4 grid grid-cols-2 gap-3 text-xs">
+                <div class="rounded-xl bg-sand-50 p-3"><p class="text-lg font-extrabold text-brand-950">@Model.TeacherCount</p><p class="text-[10px] text-ink-500">@L.T("Teachers", "مدرّس")</p></div>
+                <div class="rounded-xl bg-sand-50 p-3"><p class="text-lg font-extrabold text-brand-950">@Model.EmployeeCount</p><p class="text-[10px] text-ink-500">@L.T("Employees", "موظف")</p></div>
+                <div class="rounded-xl bg-sand-50 p-3"><p class="text-lg font-extrabold text-brand-950">@Model.SectionCount</p><p class="text-[10px] text-ink-500">@L.T("Sections", "شعبة")</p></div>
+                <div class="rounded-xl bg-sand-50 p-3"><p class="flex items-center gap-1 text-lg font-extrabold text-brand-950">@Model.AverageRating.ToString("0.0", CultureInfo.InvariantCulture)<svg class="h-3.5 w-3.5 text-gold-500"><use href="#i-star-fill"/></svg></p><p class="text-[10px] text-ink-500">@L.T("Avg. rating", "متوسط التقييم")</p></div>
+            </div>
+            <a asp-controller="PrivateLessons" asp-action="Index" class="mt-3 flex items-center justify-between rounded-xl bg-brand-50 px-3 py-2.5 text-[11px] font-bold text-brand-800 ring-1 ring-inset ring-brand-100 hover:bg-brand-100">
+                <span>@Model.PendingPrivateRequests @L.T("private requests waiting", "طلب خصوصي بانتظار الإسناد")</span>
+                <svg class="h-3.5 w-3.5 flip-x"><use href="#i-arrow-right"/></svg>
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="mt-5 grid gap-5 lg:grid-cols-2">
+    <div class="card">
+        <div class="card-header"><h2 class="section-title">@L.T("Top courses · revenue", "أعلى الدورات إيراداً")</h2><a asp-controller="Reports" asp-action="Profit" class="text-xs link">@L.T("Profitability", "الربحية")</a></div>
+        @if (Model.TopCourses.Count == 0)
+        {
+            <div class="empty"><svg class="h-10 w-10 text-sand-300"><use href="#i-book"/></svg><p>@L.T("No course revenue for this period yet.", "لا توجد إيرادات دورات لهذه الفترة بعد.")</p></div>
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="table-base">
+                    <thead><tr><th>@L.T("Course", "الدورة")</th><th>@L.T("Revenue", "الإيراد")</th><th>@L.T("Cost", "التكلفة")</th><th>@L.T("Net", "الصافي")</th></tr></thead>
+                    <tbody>
+                        @foreach (var row in Model.TopCourses)
+                        {
+                            <tr>
+                                <td class="max-w-[220px] truncate font-semibold">@row.Name</td>
+                                <td class="tabular-nums">@L.Money(row.Revenue)</td>
+                                <td class="tabular-nums text-ink-500">@L.Money(row.Cost)</td>
+                                <td class="tabular-nums font-bold @(row.Net < 0 ? "text-red-600" : "text-emerald-700")">@L.Money(row.Net)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    <div class="card">
+        <div class="card-header"><h2 class="section-title">@L.T("Recent payments", "أحدث الدفعات")</h2><a asp-controller="Payments" asp-action="Index" class="text-xs link">@L.T("All payments", "كل المدفوعات")</a></div>
+        @if (Model.RecentPayments.Count == 0)
+        {
+            <div class="empty"><svg class="h-10 w-10 text-sand-300"><use href="#i-receipt"/></svg><p>@L.T("No payments recorded yet.", "لا توجد دفعات مسجلة بعد.")</p></div>
+        }
+        else
+        {
+            <div class="divide-y divide-sand-200">
+                @foreach (var payment in Model.RecentPayments)
+                {
+                    <div class="flex items-center gap-3 px-5 py-3">
+                        <span class="avatar h-9 w-9 bg-brand-50 text-xs">@L.Initials(payment.Student)</span>
+                        <div class="min-w-0 flex-1">
+                            <p class="truncate text-sm font-semibold">@payment.Student</p>
+                            <p class="text-[10px] text-ink-500">@payment.ReceiptNo · @L.DateShort(payment.Date)</p>
+                        </div>
+                        <p class="tabular-nums text-sm font-bold text-brand-900">@L.Money(payment.Amount)</p>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>

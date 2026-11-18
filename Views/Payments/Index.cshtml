@@ -1,0 +1,87 @@
+@model List<Payment>
+@{
+    ViewData["Title"] = L.T("Payments", "المدفوعات");
+    var q = ViewBag.Q as string;
+    var from = ViewBag.From as DateTime?;
+    var to = ViewBag.To as DateTime?;
+    var method = ViewBag.Method as PaymentMethod?;
+    var studentId = ViewBag.StudentId as int?;
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Payments & receipts", "المدفوعات والسندات")</h1>
+        <p class="page-sub">@L.Num((int)ViewBag.Count) @L.T("receipts in this view", "سنداً في هذا العرض") · @L.Money((long)ViewBag.Total)</p>
+    </div>
+    <a asp-action="Collect" class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-cash"/></svg>@L.T("Collect payment", "تحصيل دفعة")</a>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-3">
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Received today", "المحصل اليوم")</p><p class="kpi mt-1 text-emerald-700">@L.Money((long)ViewBag.TodayTotal)</p><p class="text-[10px] text-ink-500">@L.Num((int)ViewBag.TodayCount) @L.T("receipts", "سند")</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Filter total", "إجمالي التصفية")</p><p class="kpi mt-1">@L.Money((long)ViewBag.Total)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Receipts", "السندات")</p><p class="kpi mt-1">@L.Num((int)ViewBag.Count)</p></div>
+</div>
+
+<form method="get" class="card card-pad !py-4 mt-5">
+    <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+        <div class="relative">
+            <span class="pointer-events-none absolute inset-y-0 start-3 flex items-center text-ink-500"><svg class="h-4 w-4"><use href="#i-search"/></svg></span>
+            <input name="q" value="@q" class="input !ps-9" placeholder="@L.T("Receipt no. or student…", "رقم السند أو الطالب…")" />
+        </div>
+        <input type="date" name="from" value="@from?.ToString("yyyy-MM-dd")" class="input" />
+        <input type="date" name="to" value="@to?.ToString("yyyy-MM-dd")" class="input" />
+        <select name="method" class="select">
+            <option value="">@L.T("All methods", "كل الطرق")</option>
+            @foreach (var m in Enum.GetValues<PaymentMethod>())
+            {
+                <option value="@m" selected="@(method == m)">@L.E(m)</option>
+            }
+        </select>
+        <div class="flex gap-2">
+            <button class="btn btn-primary flex-1">@L.T("Filter", "تصفية")</button>
+            <a asp-action="Index" class="btn btn-outline">@L.T("Reset", "مسح")</a>
+        </div>
+    </div>
+    @if (studentId.HasValue)
+    {
+        <input type="hidden" name="studentId" value="@studentId" />
+    }
+</form>
+
+<div class="card mt-4 overflow-hidden">
+    <div class="table-wrap">
+        <table class="table-base">
+            <thead><tr><th>@L.T("Receipt", "السند")</th><th>@L.T("Student", "الطالب")</th><th>@L.T("For", "البيان")</th><th>@L.T("Method", "الطريقة")</th><th>@L.T("Amount", "المبلغ")</th><th>@L.T("Date", "التاريخ")</th><th class="text-end">@L.T("Actions", "الإجراءات")</th></tr></thead>
+            <tbody>
+            @if (Model.Count == 0)
+            {
+                <tr><td colspan="7"><div class="empty">@L.T("No payments match the filter.", "لا توجد مدفوعات مطابقة.")</div></td></tr>
+            }
+            @foreach (var p in Model)
+            {
+                <tr>
+                    <td>
+                        <a asp-action="Receipt" asp-route-id="@p.Id" class="font-mono text-xs font-bold text-brand-800 hover:underline">@p.ReceiptNo</a>
+                        <p class="text-[10px] text-ink-500">@p.ReceivedByName</p>
+                    </td>
+                    <td>
+                        <a asp-controller="Students" asp-action="Details" asp-route-id="@p.StudentId" class="font-semibold text-ink-900 hover:text-brand-700">@L.Pick(p.Student.FullNameAr, p.Student.FullNameEn)</a>
+                        <p class="text-[11px] text-ink-500">@p.Student.StudentNo</p>
+                    </td>
+                    <td class="max-w-60">
+                        <p class="truncate text-xs text-ink-700">@(p.Enrollment is null ? L.T("General payment", "دفعة عامة") : L.Pick(p.Enrollment.Course.NameAr, p.Enrollment.Course.NameEn))</p>
+                        @if (p.Due is not null) { <p class="truncate text-[10px] text-ink-400">@p.Due.Description</p> }
+                    </td>
+                    <td><span class="badge badge-gray">@L.E(p.Method)</span></td>
+                    <td class="font-bold text-emerald-700">@L.Money(p.Amount)</td>
+                    <td class="text-xs text-ink-500">@L.DateShort(p.Date)</td>
+                    <td>
+                        <div class="flex justify-end">
+                            <a asp-action="Receipt" asp-route-id="@p.Id" class="btn btn-soft btn-xs"><svg class="h-3.5 w-3.5"><use href="#i-receipt"/></svg>@L.T("Receipt", "السند")</a>
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

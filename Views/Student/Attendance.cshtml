@@ -1,0 +1,120 @@
+@model StudentPortalViewModel
+@{
+    ViewData["Title"] = L.T("My attendance", "حضوري");
+    var onTime = Math.Max(0, Model.Present - Model.Late);
+}
+<div class="page-head">
+    <div>
+        <div class="flex items-center gap-2 text-xs text-ink-500">
+            <a asp-action="Index" class="link">@L.T("My profile", "ملفي")</a>
+            <svg class="h-3.5 w-3.5"><use href="#i-chevron-down"/></svg>
+            <span>@L.T("Attendance", "الحضور")</span>
+        </div>
+        <h1 class="page-title mt-1">@L.T("My attendance", "حضوري")</h1>
+        <p class="page-sub">@L.Pick(Model.Student.FullNameAr, Model.Student.FullNameEn) · @L.Date(DateTime.Today)</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <a asp-action="Schedule" class="btn btn-outline btn-sm"><svg class="h-4 w-4"><use href="#i-calendar"/></svg>@L.T("Schedule", "الجدول")</a>
+        <a asp-action="Results" class="btn btn-soft btn-sm"><svg class="h-4 w-4"><use href="#i-chart"/></svg>@L.T("Results", "النتائج")</a>
+    </div>
+</div>
+
+<div class="mb-5 inline-flex flex-wrap items-center gap-1 rounded-xl border border-sand-200 bg-sand-50 p-1">
+    <a asp-action="Index" class="tab">@L.T("My profile", "ملفي")</a>
+    <a asp-action="Schedule" class="tab">@L.T("Schedule", "الجدول")</a>
+    <a asp-action="Attendance" class="tab active">@L.T("Attendance", "الحضور")</a>
+    <a asp-action="Results" class="tab">@L.T("Results", "النتائج")</a>
+    <a asp-action="Payments" class="tab">@L.T("Fees", "الأقساط")</a>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="stat-card">
+        <p class="text-xs font-semibold text-ink-500">@L.T("Sessions", "الحصص")</p>
+        <p class="kpi mt-2">@L.Num(Model.Sessions)</p>
+        <p class="mt-1 text-[11px] text-ink-500">@L.T("Recorded for me", "مسجلة لي")</p>
+    </div>
+    <div class="stat-card">
+        <p class="text-xs font-semibold text-ink-500">@L.T("Attendance rate", "نسبة الحضور")</p>
+        <p class="kpi mt-2 @(Model.AttendanceRate >= 80 ? "text-emerald-700" : "text-amber-700")">@L.Percent(Model.AttendanceRate)</p>
+        <div class="progress mt-3"><span style="width:@Math.Min(100, Model.AttendanceRate)%"></span></div>
+    </div>
+    <div class="stat-card">
+        <p class="text-xs font-semibold text-ink-500">@L.T("Absences", "الغيابات")</p>
+        <p class="kpi mt-2 @(Model.Absent > 0 ? "text-amber-700" : "text-emerald-700")">@L.Num(Model.Absent)</p>
+        <p class="mt-1 text-[11px] text-ink-500">@L.T("Excused", "بعذر") @L.Num(Model.Excused)</p>
+    </div>
+    <div class="stat-card">
+        <p class="text-xs font-semibold text-ink-500">@L.T("On time / late", "في الوقت / متأخر")</p>
+        <p class="kpi mt-2">@L.Num(onTime) <span class="text-base font-semibold text-ink-400">/</span> <span class="text-amber-700">@L.Num(Model.Late)</span></p>
+        <p class="mt-1 text-[11px] text-ink-500">@L.T("Late is counted as present", "التأخر يُحتسب حضوراً")</p>
+    </div>
+</div>
+
+<div class="card mt-5">
+    <div class="card-header">
+        <div>
+            <p class="section-title">@L.T("Attendance records", "سجلات الحضور")</p>
+            <p class="mt-0.5 text-xs text-ink-500">@L.T("Latest records first", "الأحدث أولاً")</p>
+        </div>
+        <span class="badge badge-gray">@L.Num(Model.Attendance.Count)</span>
+    </div>
+    @if (Model.Attendance.Count == 0)
+    {
+        <div class="empty">@L.T("No attendance has been recorded yet.", "لم يُسجل حضور بعد.")</div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="table-base">
+                <thead>
+                    <tr>
+                        <th>@L.T("Date", "التاريخ")</th>
+                        <th>@L.T("Course & section", "الدورة والشعبة")</th>
+                        <th>@L.T("Status", "الحالة")</th>
+                        <th>@L.T("Note", "ملاحظة")</th>
+                        <th>@L.T("Recorded by", "سُجل بواسطة")</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var a in Model.Attendance)
+                {
+                    <tr>
+                        <td class="text-xs">
+                            <p class="font-semibold text-ink-800">@L.DateShort(a.Date)</p>
+                            <p class="text-[10px] text-ink-400">@L.Day(a.Date.DayOfWeek)</p>
+                        </td>
+                        <td>
+                            <p class="text-xs">@L.Pick(a.Section.Course.Subject.NameAr, a.Section.Course.Subject.NameEn)</p>
+                            <p class="text-[11px] text-ink-500">@a.Section.Name</p>
+                        </td>
+                        <td>
+                            @switch (a.Status)
+                            {
+                                case AttendanceStatus.Present: <span class="badge badge-green">@L.E(a.Status)</span> break;
+                                case AttendanceStatus.Absent: <span class="badge badge-red">@L.E(a.Status)</span> break;
+                                case AttendanceStatus.Late: <span class="badge badge-amber">@L.E(a.Status)</span> break;
+                                default: <span class="badge badge-blue">@L.E(a.Status)</span> break;
+                            }
+                            @if (a.IsEdited)
+                            {
+                                <span class="badge badge-gray ms-1">@L.T("Edited", "معدّل")</span>
+                            }
+                        </td>
+                        <td class="max-w-56 text-[11px] text-ink-500">@(a.Notes ?? "—")</td>
+                        <td class="text-[11px] text-ink-500">
+                            <p>@a.RecordedByName</p>
+                            <p class="text-ink-400">@L.DateTimeShort(a.RecordedAt.ToLocalTime())</p>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<p class="mt-4 flex items-center gap-2 text-[11px] text-ink-500">
+    <svg class="h-4 w-4 text-brand-600"><use href="#i-info"/></svg>
+    @L.T("If a record looks wrong, tell your teacher or the registrar. Corrections require management approval.",
+        "إذا ظهر سجل غير صحيح، أبلغ المدرّس أو التسجيل. التعديلات تتطلب موافقة الإدارة.")
+</p>

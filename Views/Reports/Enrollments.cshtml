@@ -1,0 +1,98 @@
+@model EnrollmentReportViewModel
+@{
+    ViewData["Title"] = L.T("Enrollment & fee collection", "الاشتراكات والتحصيل");
+    var collectionRate = Model.Fees == 0 ? 0 : Math.Round((decimal)Model.Collected / Model.Fees * 100, 1);
+}
+<div class="page-head">
+    <div>
+        <div class="mb-1 flex items-center gap-2 text-xs text-ink-500">
+            <a asp-action="Index" class="hover:text-brand-700">@L.T("Reports", "التقارير")</a>
+            <svg class="h-3 w-3 flip-x"><use href="#i-chevron-down"/></svg>
+            <span>@L.T("Enrollment & fee collection", "الاشتراكات والتحصيل")</span>
+        </div>
+        <h1 class="page-title">@L.T("Enrollment & fee collection", "الاشتراكات والتحصيل")</h1>
+        <p class="page-sub">@L.Date(Model.From) — @L.Date(Model.To)</p>
+    </div>
+    <div class="flex gap-2 no-print">
+        <a asp-action="Index" class="btn btn-outline btn-sm">@L.T("Back", "رجوع")</a>
+        <button type="button" class="btn btn-primary btn-sm" onclick="window.print()"><svg class="h-4 w-4"><use href="#i-printer"/></svg>@L.T("Print", "طباعة")</button>
+    </div>
+</div>
+
+<form method="get" class="card card-pad !py-4 no-print">
+    <div class="flex flex-wrap items-end gap-2">
+        <div><label class="label">@L.T("From", "من")</label><input type="date" name="from" value="@Model.From.ToString("yyyy-MM-dd")" class="input !py-2" /></div>
+        <div><label class="label">@L.T("To", "إلى")</label><input type="date" name="to" value="@Model.To.ToString("yyyy-MM-dd")" class="input !py-2" /></div>
+        <button class="btn btn-primary btn-sm">@L.T("Apply", "تطبيق")</button>
+    </div>
+</form>
+
+<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 mt-4">
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("New enrollments", "اشتراكات جديدة")</p><p class="kpi mt-1">@L.Num(Model.Enrollments)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Fees charged", "الرسوم المحتسبة")</p><p class="kpi mt-1 text-brand-900">@L.Money(Model.Fees)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Collected", "المحصّل")</p><p class="kpi mt-1 text-emerald-700">@L.Money(Model.Collected)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Outstanding", "المتبقي")</p><p class="kpi mt-1 text-amber-600">@L.Money(Model.Outstanding)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Collection rate", "نسبة التحصيل")</p><p class="kpi mt-1">@collectionRate.ToString("0.#")%</p></div>
+</div>
+
+<div class="card mt-4 overflow-hidden">
+    <div class="card-header">
+        <div>
+            <h2 class="section-title">@L.T("By course", "حسب الدورة")</h2>
+            <p class="text-[11px] text-ink-500">@L.T("Charged fees are for enrollments created in the period; collections and balances cover the whole course.", "الرسوم المحتسبة تخص الاشتراكات المنشأة في الفترة، أما التحصيل والأرصدة فتشمل الدورة كاملة.")</p>
+        </div>
+    </div>
+    <div class="table-wrap">
+        <table class="table-base min-w-[1000px]">
+            <thead>
+                <tr>
+                    <th>@L.T("Course", "الدورة")</th>
+                    <th>@L.T("New", "جديد")</th>
+                    <th>@L.T("Active", "نشط")</th>
+                    <th>@L.T("Fees", "الرسوم")</th>
+                    <th>@L.T("Collected", "المحصّل")</th>
+                    <th>@L.T("Outstanding", "المتبقي")</th>
+                    <th class="w-44">@L.T("Collection", "التحصيل")</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (Model.Rows.Count == 0)
+            {
+                <tr><td colspan="7"><div class="empty">@L.T("No enrollments or collections in this period.", "لا توجد اشتراكات أو تحصيل في هذه الفترة.")</div></td></tr>
+            }
+            @foreach (var row in Model.Rows)
+            {
+                var rate = row.Fees == 0 ? 0 : Math.Min(100, Math.Round((decimal)row.Collected / row.Fees * 100, 1));
+                <tr>
+                    <td>
+                        <a asp-controller="Courses" asp-action="Details" asp-route-id="@row.Course.Id" class="font-semibold text-brand-900 hover:underline">@L.Pick(row.Course.NameAr, row.Course.NameEn)</a>
+                        <p class="text-[11px] text-ink-500">@row.TeacherName · @L.Pick(row.Course.Grade.NameAr, row.Course.Grade.NameEn)</p>
+                    </td>
+                    <td class="text-xs font-semibold">@L.Num(row.NewEnrollments)</td>
+                    <td class="text-xs">@L.Num(row.ActiveEnrollments)</td>
+                    <td class="text-xs">@L.Money(row.Fees)</td>
+                    <td class="text-xs text-emerald-700">@L.Money(row.Collected)</td>
+                    <td class="text-xs text-amber-600">@L.Money(row.Outstanding)</td>
+                    <td>
+                        <div class="flex items-center gap-2">
+                            <div class="progress w-24"><span class="@(rate < 60 ? "!bg-amber-500" : "")" style="width:@(Math.Max(2, (int)rate))%"></span></div>
+                            <span class="text-xs font-semibold">@rate.ToString("0.#")%</span>
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+            <tfoot>
+                <tr class="bg-sand-50 font-bold">
+                    <td>@L.T("Total", "الإجمالي")</td>
+                    <td>@L.Num(Model.Enrollments)</td>
+                    <td></td>
+                    <td>@L.Money(Model.Fees)</td>
+                    <td class="text-emerald-700">@L.Money(Model.Collected)</td>
+                    <td class="text-amber-600">@L.Money(Model.Outstanding)</td>
+                    <td>@collectionRate.ToString("0.#")%</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>

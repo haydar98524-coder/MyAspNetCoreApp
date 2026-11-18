@@ -1,0 +1,91 @@
+@model ProfileViewModel
+@{
+    ViewData["Title"] = L.T("My profile", "ملفي الشخصي");
+    var knownRoles = new[] { Roles.Administrator, Roles.Manager, Roles.Accountant, Roles.Hr, Roles.Registrar, Roles.Teacher, Roles.Parent, Roles.Student }
+        .Where(User.IsInRole).ToArray();
+    var teacherId = User.TeacherId();
+    var parentId = User.ParentId();
+    var studentId = User.StudentId();
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("My profile", "ملفي الشخصي")</h1>
+        <p class="page-sub">@L.T("Your account details and language preferences.", "بيانات حسابك وتفضيلات اللغة.")</p>
+    </div>
+    <a asp-action="ChangePassword" class="btn btn-outline"><svg class="h-4 w-4"><use href="#i-key"/></svg>@L.T("Change password", "تغيير كلمة المرور")</a>
+</div>
+
+<div class="grid gap-5 lg:grid-cols-3">
+    <div class="card card-pad lg:col-span-2">
+        <form asp-action="Profile" method="post" class="space-y-5">
+            <div asp-validation-summary="ModelOnly" class="alert alert-error empty:hidden"></div>
+            <div class="form-grid">
+                <div>
+                    <label asp-for="FullName" class="label">@L.T("Full name", "الاسم الكامل")</label>
+                    <input asp-for="FullName" class="input" />
+                    <span asp-validation-for="FullName" class="field-error"></span>
+                </div>
+                <div>
+                    <label asp-for="Email" class="label">@L.T("Email", "البريد الإلكتروني")</label>
+                    <input asp-for="Email" class="input !bg-sand-50" readonly dir="ltr" />
+                </div>
+                <div>
+                    <label asp-for="PhoneNumber" class="label">@L.T("Phone number", "رقم الهاتف")</label>
+                    <input asp-for="PhoneNumber" class="input" dir="ltr" placeholder="0770 000 0000" />
+                </div>
+                <div>
+                    <label asp-for="PreferredLanguage" class="label">@L.T("Preferred language", "اللغة المفضلة")</label>
+                    <select asp-for="PreferredLanguage" class="select">
+                        <option value="ar">@L.T("Arabic", "العربية")</option>
+                        <option value="en">@L.T("English", "الإنجليزية")</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 border-t border-sand-200 pt-5">
+                <a asp-controller="Home" asp-action="Dashboard" class="btn btn-outline">@L.T("Cancel", "إلغاء")</a>
+                <button class="btn btn-primary"><svg class="h-4 w-4"><use href="#i-check"/></svg>@L.T("Save changes", "حفظ التغييرات")</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="space-y-5">
+        <div class="card card-pad text-center">
+            <span class="avatar mx-auto h-20 w-20 text-2xl">@L.Initials(Model.FullName)</span>
+            <h2 class="mt-3 text-lg font-bold">@Model.FullName</h2>
+            <p class="text-xs text-ink-500" dir="ltr">@Model.Email</p>
+            <div class="mt-3 flex flex-wrap justify-center gap-1.5">
+                @foreach (var role in knownRoles)
+                {
+                    <span class="badge badge-gold">@L.Role(role)</span>
+                }
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header"><h3 class="section-title">@L.T("Linked records", "السجلات المرتبطة")</h3></div>
+            <div class="divide-y divide-sand-200">
+                @if (teacherId.HasValue)
+                {
+                    <a asp-controller="Teachers" asp-action="Details" asp-route-id="@teacherId" class="flex items-center justify-between px-5 py-3.5 text-sm hover:bg-brand-50/50">
+                        <span class="flex items-center gap-2 font-semibold text-ink-700"><svg class="h-4 w-4 text-brand-600"><use href="#i-cap"/></svg>@L.T("Teacher record", "ملف المدرّس")</span>
+                        <svg class="h-4 w-4 text-ink-500"><use href="#i-arrow-right"/></svg>
+                    </a>
+                }
+                @if (parentId.HasValue)
+                {
+                    <a asp-controller="Parents" asp-action="Details" asp-route-id="@parentId" class="flex items-center justify-between px-5 py-3.5 text-sm hover:bg-brand-50/50">
+                        <span class="flex items-center gap-2 font-semibold text-ink-700"><svg class="h-4 w-4 text-brand-600"><use href="#i-user"/></svg>@L.T("Guardian record", "ملف ولي الأمر")</span>
+                        <svg class="h-4 w-4 text-ink-500"><use href="#i-arrow-right"/></svg>
+                    </a>
+                }
+                @if (studentId.HasValue)
+                {
+                    <a asp-controller="Students" asp-action="Details" asp-route-id="@studentId" class="flex items-center justify-between px-5 py-3.5 text-sm hover:bg-brand-50/50">
+                        <span class="flex items-center gap-2 font-semibold text-ink-700"><svg class="h-4 w-4 text-brand-600"><use href="#i-users"/></svg>@L.T("Student record", "ملف الطالب")</span>
+                        <svg class="h-4 w-4 text-ink-500"><use href="#i-arrow-right"/></svg>
+                    </a>
+                }
+                <div class="px-5 py-3.5 text-xs text-ink-500">@L.T("Accounts are linked by the administration. Contact the registrar for corrections.", "ترتبط الحسابات من قبل الإدارة. راجع مسؤول التسجيل لأي تصحيح.")</div>
+            </div>
+        </div>
+    </div>
+</div>

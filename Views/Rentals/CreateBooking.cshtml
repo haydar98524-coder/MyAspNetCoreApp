@@ -1,0 +1,100 @@
+@model BookingFormViewModel
+@{
+    ViewData["Title"] = L.T("New hall booking", "حجز قاعة جديد");
+    var rooms = ViewBag.Classrooms as List<Classroom> ?? new List<Classroom>();
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("New hall booking", "حجز قاعة جديد")</h1>
+        <p class="page-sub">@L.T("The system prevents conflicts with other bookings and scheduled classes.", "يمنع النظام التعارض مع الحجوزات والدروس المجدولة.")</p>
+    </div>
+    <a asp-action="Bookings" class="btn btn-outline btn-sm"><svg class="h-4 w-4 flip-x"><use href="#i-arrow-left"/></svg>@L.T("Bookings", "الحجوزات")</a>
+</div>
+
+<form asp-action="CreateBooking" method="post" class="grid gap-4 lg:grid-cols-3">
+    @Html.AntiForgeryToken()
+    <div class="lg:col-span-2 card card-pad">
+        <div asp-validation-summary="ModelOnly" class="alert alert-error mb-4 @(ViewData.ModelState.ErrorCount == 0 ? "hidden" : "")"></div>
+        <div class="grid gap-4 sm:grid-cols-2">
+            <div class="sm:col-span-2">
+                <label class="label">@L.T("Classroom", "القاعة")</label>
+                <select asp-for="ClassroomId" class="select" id="roomSelect">
+                    <option value="0">@L.T("Select a classroom…", "اختر القاعة…")</option>
+                    @foreach (var room in rooms)
+                    {
+                        <option value="@room.Id" data-rate="@room.RentPerHour" data-capacity="@room.Capacity" selected="@(Model.ClassroomId == room.Id)">
+                            @room.Number · @L.Pick(room.NameAr, room.NameEn) · @L.Num(room.Capacity) @L.T("seats", "مقعداً")
+                        </option>
+                    }
+                </select>
+                <span asp-validation-for="ClassroomId" class="field-error"></span>
+            </div>
+            <div><label class="label">@L.T("Tenant / organisation", "المستأجر / الجهة")</label><input asp-for="TenantName" class="input" placeholder="@L.T("e.g. Al-Noor Private School", "مثال: مدرسة النور الأهلية")" /><span asp-validation-for="TenantName" class="field-error"></span></div>
+            <div><label class="label">@L.T("Purpose", "الغرض")</label><input asp-for="Purpose" class="input" placeholder="@L.T("e.g. Teacher training workshop", "مثال: ورشة تدريب معلمين")" /><span asp-validation-for="Purpose" class="field-error"></span></div>
+            <div><label class="label">@L.T("Date", "التاريخ")</label><input asp-for="Date" type="date" class="input" min="@DateTime.Today.ToString("yyyy-MM-dd")" /><span asp-validation-for="Date" class="field-error"></span></div>
+            <div class="grid grid-cols-2 gap-3">
+                <div><label class="label">@L.T("From", "من")</label><input asp-for="StartTime" type="time" class="input" /></div>
+                <div><label class="label">@L.T("To", "إلى")</label><input asp-for="EndTime" type="time" class="input" /></div>
+            </div>
+            <div><label class="label">@L.T("Hourly rate (IQD)", "السعر للساعة (د.ع)")</label><input asp-for="HourlyRate" type="number" min="0" step="1000" class="input text-end tabular-nums" id="rateInput" /><span asp-validation-for="HourlyRate" class="field-error"></span></div>
+            <div><label class="label">@L.T("Notes", "ملاحظات")</label><input asp-for="Notes" class="input" /></div>
+            <div class="sm:col-span-2">
+                <label class="flex items-start gap-2 rounded-xl border border-sand-200 p-3 text-xs">
+                    <input asp-for="MarkPaid" type="checkbox" class="mt-0.5 h-4 w-4 rounded border-sand-300 text-brand-700 focus:ring-brand-500" />
+                    <span><span class="block font-bold text-ink-900">@L.T("Collect payment now", "قبض المبلغ الآن")</span><span class="mt-0.5 block text-ink-500">@L.T("Creates a cash receipt and posts hall-rent revenue immediately.", "ينشئ سند قبض ويرحّل إيراد القاعات فوراً.")</span></span>
+                </label>
+            </div>
+        </div>
+    </div>
+    <div class="card card-pad h-fit">
+        <p class="text-sm font-bold text-brand-950">@L.T("Booking summary", "ملخص الحجز")</p>
+        <dl class="mt-3 space-y-2 text-xs">
+            <div class="flex justify-between"><dt class="text-ink-500">@L.T("Duration", "المدة")</dt><dd id="duration" class="font-bold text-ink-900">—</dd></div>
+            <div class="flex justify-between"><dt class="text-ink-500">@L.T("Hourly rate", "سعر الساعة")</dt><dd id="rateView" class="font-bold text-ink-900">@L.Money(Model.HourlyRate)</dd></div>
+            <div class="flex justify-between border-t border-sand-200 pt-2"><dt class="text-ink-500">@L.T("Total", "الإجمالي")</dt><dd id="totalView" class="text-lg font-extrabold text-brand-900">—</dd></div>
+        </dl>
+        <p id="capacityHint" class="mt-3 rounded-xl bg-sand-50 p-3 text-[11px] text-ink-500"></p>
+        <div class="mt-5 flex flex-col gap-2">
+            <button class="btn btn-primary w-full"><svg class="h-4 w-4"><use href="#i-check"/></svg>@L.T("Save booking", "حفظ الحجز")</button>
+            <a asp-action="Bookings" class="btn btn-outline w-full">@L.T("Cancel", "إلغاء")</a>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+<script>
+    (function () {
+        var room = document.getElementById('roomSelect');
+        var start = document.getElementById('StartTime');
+        var end = document.getElementById('EndTime');
+        var rate = document.getElementById('rateInput');
+        var duration = document.getElementById('duration');
+        var totalView = document.getElementById('totalView');
+        var rateView = document.getElementById('rateView');
+        var hint = document.getElementById('capacityHint');
+
+        function recalc() {
+            var option = room.options[room.selectedIndex];
+            var capacity = option ? option.getAttribute('data-capacity') : null;
+            hint.textContent = capacity ? '@L.T("Capacity", "السعة")' + ': ' + capacity + ' @L.T("seats", "مقعداً")' : '';
+            var a = start.value ? start.value.split(':') : null;
+            var b = end.value ? end.value.split(':') : null;
+            if (!a || !b) { duration.textContent = '—'; totalView.textContent = '—'; return; }
+            var minutes = (Number(b[0]) * 60 + Number(b[1])) - (Number(a[0]) * 60 + Number(a[1]));
+            if (minutes <= 0) { duration.textContent = '@L.T("Invalid", "غير صالح")'; totalView.textContent = '—'; return; }
+            duration.textContent = (minutes / 60).toFixed(2).replace(/\.00$/, '') + ' @L.T("hours", "ساعة")';
+            var total = (minutes / 60) * Number(rate.value || 0);
+            totalView.textContent = Math.round(total).toLocaleString() + ' @L.T("IQD", "د.ع")';
+            rateView.textContent = Number(rate.value || 0).toLocaleString() + ' @L.T("IQD", "د.ع")';
+        }
+        room.addEventListener('change', function () {
+            var option = room.options[room.selectedIndex];
+            var value = option ? option.getAttribute('data-rate') : null;
+            if (value) rate.value = value;
+            recalc();
+        });
+        [start, end, rate].forEach(function (el) { el.addEventListener('input', recalc); });
+        recalc();
+    })();
+</script>
+}

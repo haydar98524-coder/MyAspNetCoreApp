@@ -1,0 +1,147 @@
+@model PayrollViewModel
+@{
+    ViewData["Title"] = L.T("Payroll", "الرواتب");
+    var monthValue = ViewBag.MonthValue as string ?? Model.Month.ToString("yyyy-MM");
+    var hasPaid = (bool)(ViewBag.HasPaid ?? false);
+    var canGenerate = User.IsInRole(Roles.Administrator) || User.IsInRole(Roles.Manager) || User.IsInRole(Roles.Hr);
+    var canPay = User.IsInRole(Roles.Administrator) || User.IsInRole(Roles.Manager) || User.IsInRole(Roles.Accountant);
+}
+<div class="page-head">
+    <div>
+        <div class="mb-1 flex items-center gap-2 text-xs text-ink-500">
+            <a asp-action="Index" class="hover:text-brand-700">@L.T("Employees", "الموظفون")</a>
+            <svg class="h-3 w-3 flip-x"><use href="#i-chevron-down"/></svg>
+            <span>@L.T("Payroll", "الرواتب")</span>
+        </div>
+        <h1 class="page-title">@L.T("Monthly payroll", "الرواتب الشهرية")</h1>
+        <p class="page-sub">@L.Month(Model.Month) · @L.Num(Model.Rows.Count) @L.T("employees", "موظفاً")</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+        <form method="get" class="flex items-center gap-2">
+            <input type="month" name="month" value="@monthValue" class="input !w-auto !py-2" />
+            <button class="btn btn-outline btn-sm">@L.T("Go", "انتقال")</button>
+        </form>
+        <a asp-action="Attendance" class="btn btn-soft btn-sm"><svg class="h-4 w-4"><use href="#i-clipboard"/></svg>@L.T("Staff attendance", "حضور الموظفين")</a>
+    </div>
+</div>
+
+@if (hasPaid)
+{
+    <div class="alert alert-info mt-4">
+        <svg class="mt-0.5 h-5 w-5 shrink-0"><use href="#i-info"/></svg>
+        <p>@L.T("Payroll for this month has already been paid. Paid rows are locked and were posted to the ledger.", "رواتب هذا الشهر مصروفة. السجلات المدفوعة مقفلة وتم ترحيلها إلى دفتر اليومية.")</p>
+    </div>
+}
+
+<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Basic salaries", "الرواتب الأساسية")</p><p class="kpi mt-1">@L.Money(Model.TotalBasic)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Allowances", "المخصصات")</p><p class="kpi mt-1 text-brand-800">@L.Money(Model.TotalAllowances)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Deductions", "الخصومات")</p><p class="kpi mt-1 text-red-600">@L.Money(Model.TotalDeductions)</p></div>
+    <div class="stat-card !p-4"><p class="text-xs text-ink-500">@L.T("Net payable", "الصافي المستحق")</p><p class="kpi mt-1 text-emerald-700">@L.Money(Model.TotalNet)</p></div>
+</div>
+
+<div class="card card-pad mt-5">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-2 text-xs">
+            <span class="badge badge-gray">@L.T("Draft", "مسودة") @L.Num(Model.Draft)</span>
+            <span class="badge badge-amber">@L.T("Approved", "معتمد") @L.Num(Model.Approved)</span>
+            <span class="badge badge-green">@L.T("Paid", "مدفوع") @L.Num(Model.Paid)</span>
+        </div>
+        <div class="flex flex-wrap gap-2 no-print">
+            @if (canGenerate)
+            {
+                <form asp-action="GeneratePayroll" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="month" value="@monthValue" />
+                    <button class="btn btn-outline btn-sm"><svg class="h-4 w-4"><use href="#i-sparkles"/></svg>@L.T("Generate / recalculate drafts", "توليد / إعادة حساب المسودات")</button>
+                </form>
+                @if (Model.Draft > 0)
+                {
+                    <form asp-action="ApprovePayroll" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="month" value="@monthValue" />
+                        <button class="btn btn-gold btn-sm"><svg class="h-4 w-4"><use href="#i-check"/></svg>@L.T("Approve payroll", "اعتماد الرواتب")</button>
+                    </form>
+                }
+            }
+            @if (canPay && Model.Approved > 0)
+            {
+                <form asp-action="PayPayroll" method="post" onsubmit="return confirm('@L.T("Pay the approved payroll and post it to the ledger?", "صرف الرواتب المعتمدة وترحيلها إلى دفتر اليومية؟")')">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="month" value="@monthValue" />
+                    <button class="btn btn-primary btn-sm"><svg class="h-4 w-4"><use href="#i-wallet"/></svg>@L.T("Pay approved payroll", "صرف الرواتب المعتمدة")</button>
+                </form>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="card mt-4 overflow-hidden">
+    <div class="table-wrap">
+        <table class="table-base min-w-[1080px]">
+            <thead>
+                <tr>
+                    <th>@L.T("Employee", "الموظف")</th>
+                    <th>@L.T("Basic", "الأساسي")</th>
+                    <th>@L.T("Allowances", "المخصصات")</th>
+                    <th>@L.T("Overtime", "إضافي")</th>
+                    <th>@L.T("Absence", "غياب")</th>
+                    <th>@L.T("Other", "أخرى")</th>
+                    <th>@L.T("Advances", "سلف")</th>
+                    <th>@L.T("Net", "الصافي")</th>
+                    <th>@L.T("Status", "الحالة")</th>
+                    <th class="text-end">@L.T("Slip", "قسيمة")</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (Model.Rows.Count == 0)
+            {
+                <tr><td colspan="10"><div class="empty">@L.T("No employees for this month.", "لا يوجد موظفون لهذا الشهر.")</div></td></tr>
+            }
+            @foreach (var row in Model.Rows)
+            {
+                var p = row.Payroll;
+                <tr>
+                    <td>
+                        <p class="font-semibold text-ink-900">@L.Pick(row.Employee.FullNameAr, row.Employee.FullNameEn)</p>
+                        <p class="text-[11px] text-ink-500">@row.Employee.Code · @row.Employee.Department</p>
+                    </td>
+                    <td class="text-xs">@L.Money(p?.Basic ?? row.Employee.BasicSalary)</td>
+                    <td class="text-xs">@L.Money(p?.Allowances ?? row.Employee.Allowances)</td>
+                    <td class="text-xs">@(p is null ? "—" : L.Money(p.Overtime))</td>
+                    <td class="text-xs text-red-600">@(p is null ? "—" : L.Money(p.AbsenceDeduction))</td>
+                    <td class="text-xs text-red-600">@(p is null ? "—" : L.Money(p.OtherDeductions))</td>
+                    <td class="text-xs text-red-600">@(p is null ? "—" : L.Money(p.Advances))</td>
+                    <td class="text-sm font-bold text-brand-900">@(p is null ? "—" : L.Money(p.Net))</td>
+                    <td>
+                        @if (p is null)
+                        {
+                            <span class="badge badge-gray">@L.T("Not generated", "غير مولّد")</span>
+                        }
+                        else
+                        {
+                            <span class="badge @(p.Status == PayrollStatus.Paid ? "badge-green" : p.Status == PayrollStatus.Approved ? "badge-amber" : "badge-gray")">@L.E(p.Status)</span>
+                            @if (p.PaidAt.HasValue)
+                            {
+                                <p class="mt-1 text-[10px] text-ink-400">@L.Date(p.PaidAt.Value)</p>
+                            }
+                        }
+                    </td>
+                    <td>
+                        <div class="flex justify-end">
+                            @if (p is not null)
+                            {
+                                <a asp-action="Slip" asp-route-id="@p.Id" class="icon-btn" title="@L.T("Payslip", "قسيمة الراتب")"><svg class="h-4 w-4"><use href="#i-receipt"/></svg></a>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card card-pad !bg-brand-50 mt-4">
+    <p class="flex items-start gap-2 text-xs text-brand-800"><svg class="mt-0.5 h-4 w-4 shrink-0"><use href="#i-info"/></svg><span>@L.T("Paying payroll posts a single journal entry (salaries expense / bank) and deducts the total from the bank fund. It cannot be paid twice.", "صرف الرواتب يرحّل قيداً واحداً (مصروف رواتب / مصرف) ويخصم الإجمالي من الصندوق المصرفي، ولا يمكن صرفها مرتين.")</span></p>
+</div>

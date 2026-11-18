@@ -1,0 +1,174 @@
+@model PrivateLessonRequestViewModel
+@{
+    ViewData["Title"] = L.T("Request a private lesson", "طلب درس خصوصي");
+    var grades = ViewBag.Grades as List<Grade> ?? new List<Grade>();
+    var subjects = ViewBag.Subjects as List<Subject> ?? new List<Subject>();
+    var teachers = ViewBag.Teachers as List<Teacher> ?? new List<Teacher>();
+    var students = ViewBag.Students as List<Student> ?? new List<Student>();
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@L.T("Request a private lesson", "طلب درس خصوصي")</h1>
+        <p class="page-sub">@L.T("Tell us what you need and the administration will match a suitable teacher.", "أخبرنا بما تحتاج وستقوم الإدارة بترشيح مدرّس مناسب.")</p>
+    </div>
+    <a asp-controller="Home" asp-action="Index" class="btn btn-outline btn-sm"><svg class="h-4 w-4 flip-x"><use href="#i-arrow-left"/></svg>@L.T("Dashboard", "الرئيسية")</a>
+</div>
+
+<form asp-action="Request" method="post" class="grid gap-4 lg:grid-cols-3">
+    @Html.AntiForgeryToken()
+    <div class="card card-pad lg:col-span-2">
+        <div asp-validation-summary="ModelOnly" class="alert alert-error mb-4 @(ViewData.ModelState.ErrorCount == 0 ? "hidden" : "")"></div>
+        <h2 class="section-title">@L.T("Lesson requirements", "متطلبات الدرس")</h2>
+        <div class="mt-4 grid gap-4 sm:grid-cols-2">
+            @if (students.Count > 0)
+            {
+                <div class="sm:col-span-2">
+                    <label class="label">@L.T("Student", "الطالب")</label>
+                    <select asp-for="StudentId" class="select" id="studentSelect">
+                        <option value="">@L.T("Not linked to a registered student", "غير مرتبط بطالب مسجّل")</option>
+                        @foreach (var student in students)
+                        {
+                            <option value="@student.Id" data-grade="@student.GradeId" selected="@(Model.StudentId == student.Id)">
+                                @L.Pick(student.FullNameAr, student.FullNameEn) · @student.StudentNo
+                            </option>
+                        }
+                    </select>
+                    <span asp-validation-for="StudentId" class="field-error"></span>
+                </div>
+            }
+            <div>
+                <label class="label">@L.T("Grade", "الصف")</label>
+                <select asp-for="GradeId" class="select" id="gradeSelect">
+                    <option value="0">@L.T("Select a grade…", "اختر الصف…")</option>
+                    @foreach (var group in grades.GroupBy(g => g.Stage))
+                    {
+                        <optgroup label="@L.Pick(group.Key.NameAr, group.Key.NameEn)">
+                            @foreach (var grade in group)
+                            {
+                                <option value="@grade.Id" selected="@(Model.GradeId == grade.Id)">@L.Pick(grade.NameAr, grade.NameEn)</option>
+                            }
+                        </optgroup>
+                    }
+                </select>
+                <span asp-validation-for="GradeId" class="field-error"></span>
+            </div>
+            <div>
+                <label class="label">@L.T("Subject", "المادة")</label>
+                <select asp-for="SubjectId" class="select">
+                    <option value="0">@L.T("Select a subject…", "اختر المادة…")</option>
+                    @foreach (var subject in subjects)
+                    {
+                        <option value="@subject.Id" selected="@(Model.SubjectId == subject.Id)">@L.Pick(subject.NameAr, subject.NameEn)</option>
+                    }
+                </select>
+                <span asp-validation-for="SubjectId" class="field-error"></span>
+            </div>
+            <div class="sm:col-span-2">
+                <label class="label">@L.T("Teaching mode", "نمط التدريس")</label>
+                <div class="grid gap-2 sm:grid-cols-3">
+                    @foreach (var mode in Enum.GetValues<TeachingMode>())
+                    {
+                        <label class="flex cursor-pointer items-center gap-2 rounded-xl border border-sand-200 p-3 text-xs transition hover:border-brand-300">
+                            <input asp-for="Mode" type="radio" value="@mode" checked="@(Model.Mode == mode)" class="h-4 w-4 border-sand-300 text-brand-700 focus:ring-brand-500" />
+                            <span class="font-semibold text-ink-800">@L.E(mode)</span>
+                        </label>
+                    }
+                </div>
+                <span asp-validation-for="Mode" class="field-error"></span>
+            </div>
+            <div class="sm:col-span-2">
+                <label class="label">@L.T("Preferred teacher (optional)", "المدرّس المفضّل (اختياري)")</label>
+                <select asp-for="PreferredTeacherId" class="select">
+                    <option value="">@L.T("No preference — recommend the best match", "لا تفضيل — رشّح الأفضل")</option>
+                    @foreach (var teacher in teachers)
+                    {
+                        <option value="@teacher.Id" selected="@(Model.PreferredTeacherId == teacher.Id)">
+                            @L.Pick(teacher.FullNameAr, teacher.FullNameEn) · @teacher.Specialization
+                        </option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="label">@L.T("Days per week", "الأيام في الأسبوع")</label>
+                <input asp-for="DaysPerWeek" type="number" min="1" max="7" class="input" />
+                <span asp-validation-for="DaysPerWeek" class="field-error"></span>
+            </div>
+            <div>
+                <label class="label">@L.T("Preferred time", "الوقت المفضّل")</label>
+                <input asp-for="PreferredTime" type="time" class="input" />
+                <span asp-validation-for="PreferredTime" class="field-error"></span>
+            </div>
+            <div>
+                <label class="label">@L.T("Lesson duration", "مدة الدرس")</label>
+                <select asp-for="DurationMinutes" class="select">
+                    @foreach (var minutes in new[] { 30, 45, 60, 90, 120, 150, 180 })
+                    {
+                        <option value="@minutes" selected="@(Model.DurationMinutes == minutes)">@minutes @L.T("minutes", "دقيقة")</option>
+                    }
+                </select>
+                <span asp-validation-for="DurationMinutes" class="field-error"></span>
+            </div>
+            <div>
+                <label class="label">@L.T("Offered fee per lesson (IQD)", "الأجر المعروض للدرس (د.ع)")</label>
+                <input asp-for="OfferedFee" type="number" min="0" step="1000" class="input text-end tabular-nums" />
+                <span asp-validation-for="OfferedFee" class="field-error"></span>
+            </div>
+            <div class="sm:col-span-2">
+                <label class="label">@L.T("Notes", "ملاحظات")</label>
+                <textarea asp-for="Notes" rows="3" class="input" placeholder="@L.T("Level, learning goals or any special requirements", "المستوى أو أهداف التعلّم أو أي متطلبات خاصة")"></textarea>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex flex-col gap-4">
+        <div class="card card-pad">
+            <h2 class="section-title">@L.T("Guardian contact", "بيانات ولي الأمر")</h2>
+            <div class="mt-4 space-y-3">
+                <div>
+                    <label class="label">@L.T("Guardian name", "اسم ولي الأمر")</label>
+                    <input asp-for="GuardianName" class="input" />
+                    <span asp-validation-for="GuardianName" class="field-error"></span>
+                </div>
+                <div>
+                    <label class="label">@L.T("Phone number", "رقم الهاتف")</label>
+                    <input asp-for="GuardianPhone" class="input" dir="ltr" />
+                    <span asp-validation-for="GuardianPhone" class="field-error"></span>
+                </div>
+                <div>
+                    <label class="label">@L.T("Area", "المنطقة")</label>
+                    <input asp-for="Area" class="input" placeholder="@L.T("e.g. Al-Shorja, Kirkuk", "مثال: الشرقية، كركوك")" />
+                    <span asp-validation-for="Area" class="field-error"></span>
+                </div>
+                <div>
+                    <label class="label">@L.T("Address (for home lessons)", "العنوان (للدروس المنزلية)")</label>
+                    <textarea asp-for="Address" rows="2" class="input"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-pad">
+            <p class="text-xs text-ink-500">@L.T("What happens next?", "ما الخطوات التالية؟")</p>
+            <ol class="mt-3 space-y-2 text-[11px] text-ink-600">
+                <li class="flex gap-2"><span class="font-bold text-brand-700">1</span><span>@L.T("The administration reviews the request and matches a teacher.", "تراجع الإدارة الطلب وترشّح مدرّساً.")</span></li>
+                <li class="flex gap-2"><span class="font-bold text-brand-700">2</span><span>@L.T("We confirm the schedule with you by phone.", "نؤكد الموعد معكم هاتفياً.")</span></li>
+                <li class="flex gap-2"><span class="font-bold text-brand-700">3</span><span>@L.T("Lesson fees are collected per lesson; the teacher is rated afterwards.", "تُقبض أجور كل درس على حدة، ويُقيّم المدرّس بعد ذلك.")</span></li>
+            </ol>
+            <button class="btn btn-primary mt-4 w-full"><svg class="h-4 w-4"><use href="#i-check"/></svg>@L.T("Submit request", "إرسال الطلب")</button>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+<script>
+    (function () {
+        var students = document.getElementById('studentSelect');
+        var grades = document.getElementById('gradeSelect');
+        if (!students || !grades) return;
+        students.addEventListener('change', function () {
+            var option = students.options[students.selectedIndex];
+            var gradeId = option ? option.getAttribute('data-grade') : null;
+            if (gradeId) grades.value = gradeId;
+        });
+    })();
+</script>
+}

@@ -1,0 +1,121 @@
+@model StudentPortalViewModel
+@{
+    ViewData["Title"] = L.T("My results", "نتائجي");
+    var passed = Model.Results.Count(r => r.Mark >= r.Exam.PassMark);
+    var failed = Model.Results.Count(r => r.Mark < r.Exam.PassMark);
+}
+<div class="page-head">
+    <div>
+        <div class="flex items-center gap-2 text-xs text-ink-500">
+            <a asp-action="Index" class="link">@L.T("My profile", "ملفي")</a>
+            <svg class="h-3.5 w-3.5"><use href="#i-chevron-down"/></svg>
+            <span>@L.T("Results", "النتائج")</span>
+        </div>
+        <h1 class="page-title mt-1">@L.T("My exam results", "نتائج امتحاناتي")</h1>
+        <p class="page-sub">@L.Pick(Model.Student.FullNameAr, Model.Student.FullNameEn) · @L.Num(Model.Results.Count) @L.T("results", "نتيجة")</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <a asp-action="Schedule" class="btn btn-outline btn-sm"><svg class="h-4 w-4"><use href="#i-calendar"/></svg>@L.T("Schedule", "الجدول")</a>
+        <a asp-action="Attendance" class="btn btn-soft btn-sm"><svg class="h-4 w-4"><use href="#i-clipboard"/></svg>@L.T("Attendance", "الحضور")</a>
+    </div>
+</div>
+
+<div class="mb-5 inline-flex flex-wrap items-center gap-1 rounded-xl border border-sand-200 bg-sand-50 p-1">
+    <a asp-action="Index" class="tab">@L.T("My profile", "ملفي")</a>
+    <a asp-action="Schedule" class="tab">@L.T("Schedule", "الجدول")</a>
+    <a asp-action="Attendance" class="tab">@L.T("Attendance", "الحضور")</a>
+    <a asp-action="Results" class="tab active">@L.T("Results", "النتائج")</a>
+    <a asp-action="Payments" class="tab">@L.T("Fees", "الأقساط")</a>
+</div>
+
+<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="stat-card">
+        <p class="text-xs font-semibold text-ink-500">@L.T("Exams", "الامتحانات")</p>
+        <p class="kpi mt-2">@L.Num(Model.Results.Count)</p>
+        <p class="mt-1 text-[11px] text-ink-500">@L.T("Recorded results", "نتائج مسجلة")</p>
+    </div>
+    <div class="stat-card">
+        <p class="text-xs font-semibold text-ink-500">@L.T("Average", "المعدل")</p>
+        <p class="kpi mt-2 @(Model.AverageMark >= 50 ? "text-emerald-700" : "text-red-600")">@Model.AverageMark.ToString("0.0")%</p>
+        <div class="progress mt-3"><span style="width:@Math.Min(100, Model.AverageMark)%"></span></div>
+    </div>
+    <div class="stat-card">
+        <p class="text-xs font-semibold text-ink-500">@L.T("Passed", "ناجح")</p>
+        <p class="kpi mt-2 text-emerald-700">@L.Num(passed)</p>
+        <p class="mt-1 text-[11px] text-ink-500">@L.T("At or above the pass mark", "عند أو فوق درجة النجاح")</p>
+    </div>
+    <div class="stat-card">
+        <p class="text-xs font-semibold text-ink-500">@L.T("Below pass mark", "دون درجة النجاح")</p>
+        <p class="kpi mt-2 @(failed > 0 ? "text-red-600" : "")">@L.Num(failed)</p>
+        <p class="mt-1 text-[11px] text-ink-500">@L.T("Work on these subjects", "ركز على هذه المواد")</p>
+    </div>
+</div>
+
+<div class="card mt-5">
+    <div class="card-header">
+        <div>
+            <p class="section-title">@L.T("Result sheet", "كشف النتائج")</p>
+            <p class="mt-0.5 text-xs text-ink-500">@L.T("Latest exams first", "الأحدث أولاً")</p>
+        </div>
+    </div>
+    @if (Model.Results.Count == 0)
+    {
+        <div class="empty">@L.T("No results have been recorded yet.", "لم تُسجل نتائج بعد.")</div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="table-base">
+                <thead>
+                    <tr>
+                        <th>@L.T("Date", "التاريخ")</th>
+                        <th>@L.T("Exam", "الامتحان")</th>
+                        <th>@L.T("Course", "الدورة")</th>
+                        <th>@L.T("Type", "النوع")</th>
+                        <th class="text-end">@L.T("Mark", "الدرجة")</th>
+                        <th class="w-40">@L.T("Percentage", "النسبة")</th>
+                        <th>@L.T("Result", "النتيجة")</th>
+                        <th>@L.T("Notes", "ملاحظات")</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var r in Model.Results)
+                {
+                    var pct = r.Exam.MaxMark == 0 ? 0 : Math.Round(r.Mark * 100m / r.Exam.MaxMark, 1);
+                    var pass = r.Mark >= r.Exam.PassMark;
+                    <tr>
+                        <td class="text-xs">@L.DateShort(r.Exam.Date)</td>
+                        <td class="text-sm font-semibold">@L.Pick(r.Exam.NameAr, r.Exam.NameEn)</td>
+                        <td class="text-xs">@L.Pick(r.Exam.Course.Subject.NameAr, r.Exam.Course.Subject.NameEn)</td>
+                        <td><span class="badge badge-gray">@L.E(r.Exam.Type)</span></td>
+                        <td class="text-end text-sm font-bold">@r.Mark.ToString("0.#") <span class="text-[11px] font-normal text-ink-400">/ @r.Exam.MaxMark</span></td>
+                        <td>
+                            <div class="flex items-center gap-2">
+                                <div class="progress flex-1"><span style="width:@Math.Min(100, pct)%"></span></div>
+                                <span class="w-12 text-end text-[11px] font-bold text-ink-700">@pct.ToString("0.0")%</span>
+                            </div>
+                        </td>
+                        <td>
+                            @if (pass)
+                            {
+                                <span class="badge badge-green">@L.T("Pass", "ناجح")</span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-red">@L.T("Fail", "راسب")</span>
+                            }
+                        </td>
+                        <td class="max-w-48 text-[11px] text-ink-500">@(r.Notes ?? "—")</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<p class="mt-4 flex items-center gap-2 text-[11px] text-ink-500">
+    <svg class="h-4 w-4 text-brand-600"><use href="#i-info"/></svg>
+    @L.T("Marks are entered by your teachers and reviewed by the academic department. Speak to your teacher about any result.",
+        "تُدخل الدرجات من مدرسيك وتُراجع من القسم الأكاديمي. تحدث مع مدرّسك بخصوص أي نتيجة.")
+</p>
